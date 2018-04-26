@@ -10,3 +10,9 @@ class TestGetFunctions(object):
         assert len(results) == 3
         assertion_1 = [x for x in results if x.id == 1][0]
         assert assertion_1.variant.id == 306
+
+
+class TestCivicRecord(object):
+
+    def test_module(self):
+        assert str(type(civic.MODULE)) == "<class 'module'>"
