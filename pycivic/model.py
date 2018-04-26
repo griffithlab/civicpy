@@ -41,3 +41,6 @@ class CivicDb:
 
     def get_all_assertions(self):
         raise NotImplementedError
+
+    def list_loaded_assertions(self):
+        return list(self._assertions.values())
