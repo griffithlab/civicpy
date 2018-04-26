@@ -1,5 +1,4 @@
 import requests
-from collections import OrderedDict
 
 
 class CivicRecord:
@@ -7,6 +6,7 @@ class CivicRecord:
     def __init__(self, **kwargs):
         self.id = kwargs['id']
         self.type = kwargs['type']
+
 
 class Assertion(CivicRecord):
 
@@ -25,9 +25,9 @@ class CivicDb:
         self._evidence = dict()
 
     def get_assertions(self, assertion_id_list, update=False):
-        out = OrderedDict()
+        out = set()
         for assertion_id in assertion_id_list:
-            out[assertion_id] = self.get_assertion(assertion_id, update)
+            out.add(self.get_assertion(assertion_id, update))
         return out
 
     def get_assertion(self, assertion_id, update=False):
