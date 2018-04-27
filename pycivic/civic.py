@@ -31,14 +31,14 @@ class CivicRecord:
             v = kwargs[field]                           # Will error out if missing expected complex field
             is_compound = isinstance(v, list)
             if is_compound:
-                klass_string = field.rstrip('s')
+                klass_string = field.rstrip('s').capitalize()
                 klass = getattr(MODULE, klass_string, CivicRecord)
                 result = list()
                 for data in v:
                     result.append(klass(partial=True, **data))
                 self.__setattr__(field, result)
             else:
-                klass = getattr(MODULE, field, CivicRecord)
+                klass = getattr(MODULE, field.capitalize(), CivicRecord)
                 self.__setattr__(field, klass(partial=True, **v))
 
         self.partial = bool(self._incomplete)
@@ -46,20 +46,22 @@ class CivicRecord:
     def __repr__(self):
         return f'[<CIViC {self.type}>]: {self.id}'
 
-    def __getattribute__(self, item):
-        p = object.__getattribute__(self, 'partial')
-        i = object.__getattribute__(self, '_incomplete')
-        if p and item in i:
+    def __getattr__(self, item):
+        if self.partial and item in self._incomplete:
             self.update()
-        object.__getattribute__(self, item)
+        return object.__getattr__(self, item)
 
     def update(self, data=None):
         raise NotImplementedError
 
 
+class Variant(CivicRecord):
+    SIMPLE_FIELDS = CivicRecord.SIMPLE_FIELDS + ['description']
+
+
 class Assertion(CivicRecord):
 
-    SIMPLE_FIELDS = _FIELDS = CivicRecord.SIMPLE_FIELDS + \
+    SIMPLE_FIELDS = CivicRecord.SIMPLE_FIELDS + \
       [
         'allele_registry_id',
         'amp_level',
