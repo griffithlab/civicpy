@@ -44,6 +44,10 @@ class TestElements(object):
     def test_completeness(self, element):
         for complex_field in element.COMPLEX_FIELDS:
             complex_value = getattr(element, complex_field)
+            if not complex_value:
+                continue
+            if isinstance(complex_value, list):
+                complex_value = complex_value[0]
             assert complex_value.partial == False
-            if complex_field in ['variant', 'evidence', 'gene']:
+            if complex_value.type in ['variant', 'evidence', 'gene']:
                 assert complex_value.description
