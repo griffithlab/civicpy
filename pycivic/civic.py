@@ -44,7 +44,7 @@ class CivicRecord:
         self.partial = bool(self._incomplete)
 
     def __repr__(self):
-        return f'[<CIViC {self.type}>]: {self.id}'
+        return f'<CIViC {self.type}>: {self.id}'
 
     def __getattr__(self, item):
         if self.partial and item in self._incomplete:
