@@ -5,16 +5,12 @@ ELEMENTS = [
     'Assertion'
 ]
 
-UNMARKED_PLURALS = set(
-    'Evidence'
-)
-
 
 @pytest.fixture(scope="module", params=ELEMENTS)
 def element(request):
     element_type = request.param
     t = element_type.lower()
-    if element_type in UNMARKED_PLURALS:
+    if element_type.lower() in civic.UNMARKED_PLURALS:
         f = getattr(civic.MODULE, f'get_{t}')
     else:
         f = getattr(civic.MODULE, f'get_{t}s')

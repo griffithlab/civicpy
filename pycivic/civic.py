@@ -5,6 +5,18 @@ MODULE = importlib.import_module('pycivic.civic')
 
 API_URL = 'https://civicdb.org/api'
 
+UNMARKED_PLURALS = {'evidence'}
+
+CIVIC_TO_PYCLASS = {
+    'evidence_items': 'evidence'
+}
+
+def pluralize(element_type):
+    if element_type in UNMARKED_PLURALS:
+        return element_type
+    if element_type.endswith('s'):
+        return element_type
+    return element_type + 's'
 
 def search_url(element):
     return '/'.join([API_URL, element, 'search'])
@@ -16,14 +28,22 @@ def snake_to_camel(snake_string):
     return ''.join(cap_words)
 
 
-CLASS_MAP = {
-    'evidence_items': 'evidence'
-}
-
-
 def map_to_class_string(element_type):
-    x = CLASS_MAP.get(element_type, element_type)
+    x = CIVIC_TO_PYCLASS.get(element_type, element_type)
+    if x == 'evidence_item':
+        x = 'evidence'
     return snake_to_camel(x)
+
+
+def element_lookup_by_id(element_type, element_id):
+    e_string = pluralize(element_type.lower())
+    if e_string == 'evidence':
+        e_string = 'evidence_items'
+    url = '/'.join([API_URL, e_string, str(element_id)])
+    resp = requests.get(url)
+    resp.raise_for_status()
+    resp_dict = resp.json()
+    return resp_dict
 
 
 class CivicRecord:
@@ -89,12 +109,11 @@ class CivicRecord:
         """Updates record and returns True if record is complete after update, else False."""
         if kwargs:
             self.__init__(partial=allow_partial, **kwargs)
-            return self.partial
+            return not self.partial
 
-        raise NotImplementedError
-
-    def lookup_by_id(self):
-        raise NotImplementedError
+        resp_dict = element_lookup_by_id(self.type, self.id)
+        self.__init__(partial=False, **resp_dict)
+        return True
 
 
 class Variant(CivicRecord):
@@ -102,20 +121,18 @@ class Variant(CivicRecord):
 
 
 class Gene(CivicRecord):
-    pass
+    SIMPLE_FIELDS = CivicRecord.SIMPLE_FIELDS.union({'description'})
 
 
 class Evidence(CivicRecord):
-    pass
+
+    SIMPLE_FIELDS = CivicRecord.SIMPLE_FIELDS.union({'description'})
 
 
 class Attribute(CivicRecord):
 
     SIMPLE_FIELDS = {'type'}
     COMPLEX_FIELDS = set()
-
-    def lookup_by_id(self):
-        raise AttributeError('Attributes do not have lookups')
 
     def __repr__(self):
         return f'<CIViC Attribute {self.type}>'
