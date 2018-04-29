@@ -48,12 +48,8 @@ def element_lookup_by_id(element_type, element_id):
 
 class CivicRecord:
 
-    SIMPLE_FIELDS = {'id', 'type', 'name'}
-    COMPLEX_FIELDS = {
-        'errors',
-        'lifecycle_actions',
-        'provisional_values'
-    }
+    SIMPLE_FIELDS = {'id', 'type'}
+    COMPLEX_FIELDS = set()
 
     def __init__(self, partial=False, **kwargs):
         self._incomplete = set()
@@ -84,14 +80,18 @@ class CivicRecord:
             is_compound = isinstance(v, list)
             if is_compound:
                 class_string = map_to_class_string(field.rstrip('s'))
-                cls = getattr(MODULE, class_string, CivicRecord)
+                cls = getattr(MODULE, class_string, Attribute)
                 result = list()
                 for data in v:
-                    data['type'] = data.get('type', field.rstrip('s'))
-                    result.append(cls(partial=True, **data))
+                    try:
+                        data['type'] = data.get('type', field.rstrip('s'))
+                    except AttributeError:  # if data has no 'get' method, i.e. not a Dict
+                        result.append(v)
+                    else:
+                        result.append(cls(partial=True, **data))
                 self.__setattr__(field, result)
             else:
-                cls = getattr(MODULE, map_to_class_string(field), CivicRecord)
+                cls = getattr(MODULE, map_to_class_string(field), Attribute)
                 v['type'] = v.get('type', field)
                 self.__setattr__(field, cls(partial=True, **v))
 
@@ -117,54 +117,72 @@ class CivicRecord:
 
 
 class Variant(CivicRecord):
-    SIMPLE_FIELDS = CivicRecord.SIMPLE_FIELDS.union({'description'})
+    SIMPLE_FIELDS = {
+        'allele_registry_id',
+        'civic_actionability_score',
+        'description',
+        'entrez_id',
+        'entrez_name',
+        'gene_id',
+        'id',
+        'name',
+        'type'}
+    COMPLEX_FIELDS = {
+        'assertions',
+        'clinvar_entries',
+        'coordinates',
+        'errors',
+        'evidence_items',
+        'hgvs_expressions',
+        'lifecycle_actions',
+        'provisional_values',
+        'sources',
+        'variant_aliases',
+        'variant_groups',
+        'variant_types'}
 
 
 class Gene(CivicRecord):
-    SIMPLE_FIELDS = CivicRecord.SIMPLE_FIELDS.union({'description'})
+    SIMPLE_FIELDS = {'description', 'entrez_id', 'id', 'name', 'type'}
+    COMPLEX_FIELDS = {
+        'aliases',
+        'errors',
+        'lifecycle_actions',
+        'provisional_values',
+        'sources',
+        'variants'}
 
 
 class Evidence(CivicRecord):
-
-    SIMPLE_FIELDS = CivicRecord.SIMPLE_FIELDS.union({'description'})
-
-
-class Attribute(CivicRecord):
-
-    SIMPLE_FIELDS = {'type'}
-    COMPLEX_FIELDS = set()
-
-    def __repr__(self):
-        return f'<CIViC Attribute {self.type}>'
-
-    def __init__(self, **kwargs):
-        kwargs['partial'] = False
-        super().__init__(**kwargs)
-
-
-class LifecycleActions(Attribute):
-    pass
-
-
-class Errors(Attribute):
-    pass
-
-
-class ProvisionalValues(Attribute):
-    pass
-
-
-class Drug(Attribute):
-    SIMPLE_FIELDS = CivicRecord.SIMPLE_FIELDS.union({'pubchem_id'})
-
-
-class Disease(Attribute):
-    SIMPLE_FIELDS = CivicRecord.SIMPLE_FIELDS.union({'display_name', 'doid', 'url'})
+    SIMPLE_FIELDS = {
+        'clinical_significance',
+        'description',
+        'drug_interaction_type',
+        'evidence_direction',
+        'evidence_level',
+        'evidence_type',
+        'gene_id',
+        'id',
+        'name',
+        'open_change_count',
+        'rating',
+        'status',
+        'type',
+        'variant_id',
+        'variant_origin'}
+    COMPLEX_FIELDS = {
+        'assertions',
+        'disease',
+        'drugs',
+        'errors',
+        'fields_with_pending_changes',
+        'lifecycle_actions',
+        'phenotypes',
+        'source'}
 
 
 class Assertion(CivicRecord):
-
-    SIMPLE_FIELDS = CivicRecord.SIMPLE_FIELDS.union({
+    SIMPLE_FIELDS = {
         'allele_registry_id',
         'amp_level',
         'clinical_significance',
@@ -185,7 +203,7 @@ class Assertion(CivicRecord):
         'summary',
         'type',
         'variant_origin'
-    })
+    }
 
     COMPLEX_FIELDS = CivicRecord.COMPLEX_FIELDS.union({
         'acmg_codes',
@@ -198,12 +216,28 @@ class Assertion(CivicRecord):
         'variant'
     })
 
-    def update(self, **kwargs):
-        """Update record with kwargs if present, otherwise query CIViC for complete record"""
-        if kwargs:
-            return super().update(**kwargs)
-        else:
-            self.lookup_by_id()
+
+class Attribute(CivicRecord):
+
+    SIMPLE_FIELDS = {'type'}
+    COMPLEX_FIELDS = set()
+
+    def __repr__(self):
+        return f'<CIViC Attribute {self.type}>'
+
+    def __init__(self, **kwargs):
+        kwargs['partial'] = False
+        for k, v in kwargs.items():
+            self.__setattr__(k, v)
+        super().__init__(**kwargs)
+
+
+class Drug(Attribute):
+    SIMPLE_FIELDS = CivicRecord.SIMPLE_FIELDS.union({'pubchem_id'})
+
+
+class Disease(Attribute):
+    SIMPLE_FIELDS = CivicRecord.SIMPLE_FIELDS.union({'display_name', 'doid', 'url'})
 
 
 def get_assertions(assertion_id_list):
@@ -226,6 +260,5 @@ def get_assertions(assertion_id_list):
     url = search_url('assertions')
     response = requests.post(url, json=payload)
     response.raise_for_status()
-    # return response.json()['results']
     assertions = [Assertion(**x) for x in response.json()['results']]
     return assertions
