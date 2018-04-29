@@ -48,6 +48,9 @@ class TestElements(object):
                 continue
             if isinstance(complex_value, list):
                 complex_value = complex_value[0]
-            assert complex_value.partial == False
+            if isinstance(complex_value, civic.Attribute):
+                assert not complex_value.partial
+            else:
+                assert complex_value.partial
             if complex_value.type in ['variant', 'evidence', 'gene']:
                 assert complex_value.description
