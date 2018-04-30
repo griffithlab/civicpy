@@ -1,6 +1,8 @@
 import requests
 import importlib
 
+CACHE = dict()
+
 MODULE = importlib.import_module('pycivic.civic')
 
 API_URL = 'https://civicdb.org/api'
@@ -96,6 +98,8 @@ class CivicRecord:
                 self.__setattr__(field, cls(partial=True, **v))
 
         self.partial = bool(self._incomplete)
+        if not isinstance(self, Attribute) and not self.partial:     # Excludes attributes
+            CACHE[hash(self)] = self
 
     def __repr__(self):
         return f'<CIViC {self.type} {self.id}>'
@@ -105,12 +109,23 @@ class CivicRecord:
             self.update()
         return object.__getattribute__(self, item)
 
+    def __hash__(self):
+        return hash(f'{self.type}:{self.id}')
+
     def update(self, allow_partial=True, **kwargs):
         """Updates record and returns True if record is complete after update, else False."""
         if kwargs:
             self.__init__(partial=allow_partial, **kwargs)
             return not self.partial
 
+        if CACHE.get(hash(self)):
+            cached = CACHE[hash(self)]
+            for field in self.SIMPLE_FIELDS | self.COMPLEX_FIELDS:
+                v = getattr(cached, field)
+                setattr(self, field, v)
+            self.partial=False
+            print(f'Loading {str(self)} from cache')
+            return True
         resp_dict = element_lookup_by_id(self.type, self.id)
         self.__init__(partial=False, **resp_dict)
         return True
@@ -230,6 +245,9 @@ class Attribute(CivicRecord):
         for k, v in kwargs.items():
             self.__setattr__(k, v)
         super().__init__(**kwargs)
+
+    def __hash__(self):
+        return object.__hash__(self)
 
 
 class Drug(Attribute):
