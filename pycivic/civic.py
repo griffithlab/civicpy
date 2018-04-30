@@ -266,7 +266,7 @@ class Disease(Attribute):
     SIMPLE_FIELDS = CivicRecord.SIMPLE_FIELDS.union({'display_name', 'doid', 'url'})
 
 
-def get_element_by_ids(element, id_list):
+def get_elements_by_ids(element, id_list):
     queries = list()
     for element_id in id_list:
         query = {
@@ -291,9 +291,9 @@ def get_element_by_ids(element, id_list):
     return elements
 
 
-def get_assertion_by_ids(id_list):
-    return get_element_by_ids('assertion', id_list)
+def get_assertions_by_ids(id_list):
+    return get_elements_by_ids('assertion', id_list)
 
 
-def get_variant_by_ids(id_list):
-    return get_element_by_ids('variant', id_list)
+def get_variants_by_ids(id_list):
+    return get_elements_by_ids('variant', id_list)
