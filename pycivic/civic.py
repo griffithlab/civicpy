@@ -95,18 +95,19 @@ class CivicRecord:
                 result = list()
                 for data in v:
                     try:
-                        data['type'] = data.get('type', field.rstrip('s'))
+                        data['type'] = data.get('type', singularize(field))
                     except AttributeError:  # if data has no 'get' method, i.e. not a Dict
                         result.append(v)
                     else:
                         result.append(cls(partial=True, **data))
                 self.__setattr__(field, result)
             else:
-                v['type'] = v.get('type', field)
+                t = v.get('type', field)
+                v['type'] = CIVIC_TO_PYCLASS.get(t, t)
                 self.__setattr__(field, cls(partial=True, **v))
 
         self.partial = bool(self._incomplete)
-        if not isinstance(self, Attribute) and not self.partial:     # Excludes attributes
+        if not isinstance(self, Attribute) and not self.partial and self.__class__.__name__ != 'CivicRecord':
             CACHE[hash(self)] = self
 
     def __repr__(self):
@@ -164,15 +165,22 @@ class Variant(CivicRecord):
         'variant_groups',
         'variant_types'}
 
+    def __init__(self, **kwargs):
+        # Handle overloaded evidence_items from some advanced search views
+        evidence_items = kwargs.get('evidence_items')
+        if evidence_items and not isinstance(evidence_items, list):
+                del(kwargs['evidence_items'])
+        super().__init__(**kwargs)
+
 
 class Gene(CivicRecord):
     SIMPLE_FIELDS = {'description', 'entrez_id', 'id', 'name', 'type'}
     COMPLEX_FIELDS = {
         'aliases',
-        'errors',
-        'lifecycle_actions',
-        'provisional_values',
-        'sources',
+        # 'errors',                 # TODO: Add support for these fields in advanced search endpoint
+        # 'lifecycle_actions',
+        # 'provisional_values',
+        # 'sources',
         'variants'
     }
 
@@ -267,9 +275,17 @@ class Disease(Attribute):
     SIMPLE_FIELDS = CivicRecord.SIMPLE_FIELDS.union({'display_name', 'doid', 'url'})
 
 
-def get_elements_by_ids(element, id_list):
-    if singularize(element.lower()) == 'gene':
-        get_genes_by_ids(id_list)
+def get_cached(element_type, element_id):
+    r = Variant(type=element_type, id=element_id, partial=True)
+    return CACHE.get(hash(r), False)
+
+
+def get_elements_by_ids(element, id_list, allow_cached=True):
+    if allow_cached:
+        cached = [get_cached(element, element_id) for element_id in id_list]
+        if all(cached):
+            print(f'Loading {pluralize(element)} from cache')
+            return cached
     payload = _construct_query_payload(id_list)
     url = search_url(element)
     response = requests.post(url, json=payload)
@@ -302,12 +318,12 @@ def _construct_query_payload(id_list):
 def get_assertions_by_ids(id_list):
     print('Getting assertions...')
     assertions = get_elements_by_ids('assertion', id_list)
-    print('loading variant details...')
+    print('Caching variant details...')
     variant_ids = [x.variant.id for x in assertions]    # Add variants to cache
-    get_variants_by_ids(variant_ids)
-    print('loading gene details...')
+    get_elements_by_ids('variant', variant_ids)
+    print('Caching gene details...')
     gene_ids = [x.gene.id for x in assertions]          # Add genes to cache
-    get_genes_by_ids(gene_ids)
+    get_elements_by_ids('gene', gene_ids)
     for assertion in assertions:                        # Load from cache
         assertion.variant.update()
         assertion.gene.update()
@@ -315,25 +331,20 @@ def get_assertions_by_ids(id_list):
 
 
 def get_variants_by_ids(id_list):
+    print('Getting variants...')
     return get_elements_by_ids('variant', id_list)
 
 
 def get_genes_by_ids(id_list):
     print('Getting genes...')
-    payload = _construct_query_payload(id_list)
-    url = search_url('gene')
-    response = requests.post(url, json=payload)
-    response.raise_for_status()
-    genes = list()
+    genes = get_elements_by_ids('gene', id_list)  # Advanced search results are incomplete
     variant_ids = set()
-    for gene in response.json()['results']:
-        for variant in gene['variants']:
-            del (variant['evidence_items'])             # Remove overloaded attribute
-            variant_ids.add(variant['id'])
-        genes.append(Gene(partial=True, **gene))
+    for gene in genes:
+        for variant in gene.variants:
+            variant_ids.add(variant.id)
     if variant_ids:
         print('Caching variant details...')
-        get_variants_by_ids(variant_ids)
+        get_elements_by_ids('variant', variant_ids)
     for gene in genes:
         for variant in gene.variants:
             variant.update()
