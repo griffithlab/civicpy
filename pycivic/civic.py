@@ -16,7 +16,7 @@ CIVIC_TO_PYCLASS = {
 
 def pluralize(string):
     if string in UNMARKED_PLURALS:
-        return string
+        return f'{string}_items'
     if string.endswith('s'):
         return string
     return string + 's'
@@ -30,6 +30,7 @@ def singularize(string):
 
 
 def search_url(element):
+    element = pluralize(element).lower()
     return '/'.join([API_URL, element, 'search'])
 
 
@@ -265,15 +266,15 @@ class Disease(Attribute):
     SIMPLE_FIELDS = CivicRecord.SIMPLE_FIELDS.union({'display_name', 'doid', 'url'})
 
 
-def get_assertions(assertion_id_list):
+def get_element_by_ids(element, id_list):
     queries = list()
-    for assertion_id in assertion_id_list:
+    for element_id in id_list:
         query = {
             'field': 'id',
             'condition': {
                 'name': 'is_equal_to',
                 'parameters': [
-                    assertion_id
+                    element_id
                 ]
             }
         }
@@ -282,8 +283,17 @@ def get_assertions(assertion_id_list):
         'operator': 'OR',
         'queries': queries
     }
-    url = search_url('assertions')
+    url = search_url(element)
     response = requests.post(url, json=payload)
     response.raise_for_status()
-    assertions = [Assertion(**x) for x in response.json()['results']]
-    return assertions
+    cls = get_class(element)
+    elements = [cls(**x) for x in response.json()['results']]
+    return elements
+
+
+def get_assertion_by_ids(id_list):
+    return get_element_by_ids('assertion', id_list)
+
+
+def get_variant_by_ids(id_list):
+    return get_element_by_ids('variant', id_list)

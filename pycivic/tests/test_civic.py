@@ -9,19 +9,14 @@ ELEMENTS = [
 @pytest.fixture(scope="module", params=ELEMENTS)
 def element(request):
     element_type = request.param
-    t = element_type.lower()
-    if element_type.lower() in civic.UNMARKED_PLURALS:
-        f = getattr(civic.MODULE, f'get_{t}')
-    else:
-        f = getattr(civic.MODULE, f'get_{t}s')
-    return f([1])[0]
+    return civic.get_element_by_ids(element_type, [1])[0]
 
 
 class TestGetFunctions(object):
     
     def test_get_assertions(self):
         test_ids = [1, 2, 3]
-        results = civic.get_assertions(test_ids)
+        results = civic.get_element_by_ids('assertion', test_ids)
         assert len(results) == 3
 
 
