@@ -173,7 +173,8 @@ class Gene(CivicRecord):
         'lifecycle_actions',
         'provisional_values',
         'sources',
-        'variants'}
+        'variants'
+    }
 
 
 class Evidence(CivicRecord):
@@ -267,6 +268,18 @@ class Disease(Attribute):
 
 
 def get_elements_by_ids(element, id_list):
+    if singularize(element.lower()) == 'gene':
+        get_genes_by_ids(id_list)
+    payload = _construct_query_payload(id_list)
+    url = search_url(element)
+    response = requests.post(url, json=payload)
+    response.raise_for_status()
+    cls = get_class(element)
+    elements = [cls(**x) for x in response.json()['results']]
+    return elements
+
+
+def _construct_query_payload(id_list):
     queries = list()
     for element_id in id_list:
         query = {
@@ -283,17 +296,45 @@ def get_elements_by_ids(element, id_list):
         'operator': 'OR',
         'queries': queries
     }
-    url = search_url(element)
-    response = requests.post(url, json=payload)
-    response.raise_for_status()
-    cls = get_class(element)
-    elements = [cls(**x) for x in response.json()['results']]
-    return elements
+    return payload
 
 
 def get_assertions_by_ids(id_list):
-    return get_elements_by_ids('assertion', id_list)
+    print('Getting assertions...')
+    assertions = get_elements_by_ids('assertion', id_list)
+    print('loading variant details...')
+    variant_ids = [x.variant.id for x in assertions]    # Add variants to cache
+    get_variants_by_ids(variant_ids)
+    print('loading gene details...')
+    gene_ids = [x.gene.id for x in assertions]          # Add genes to cache
+    get_genes_by_ids(gene_ids)
+    for assertion in assertions:                        # Load from cache
+        assertion.variant.update()
+        assertion.gene.update()
+    return assertions
 
 
 def get_variants_by_ids(id_list):
     return get_elements_by_ids('variant', id_list)
+
+
+def get_genes_by_ids(id_list):
+    print('Getting genes...')
+    payload = _construct_query_payload(id_list)
+    url = search_url('gene')
+    response = requests.post(url, json=payload)
+    response.raise_for_status()
+    genes = list()
+    variant_ids = set()
+    for gene in response.json()['results']:
+        for variant in gene['variants']:
+            del (variant['evidence_items'])             # Remove overloaded attribute
+            variant_ids.add(variant['id'])
+        genes.append(Gene(partial=True, **gene))
+    if variant_ids:
+        print('Caching variant details...')
+        get_variants_by_ids(variant_ids)
+    for gene in genes:
+        for variant in gene.variants:
+            variant.update()
+    return genes
