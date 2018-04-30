@@ -13,12 +13,21 @@ CIVIC_TO_PYCLASS = {
     'evidence_items': 'evidence'
 }
 
-def pluralize(element_type):
-    if element_type in UNMARKED_PLURALS:
-        return element_type
-    if element_type.endswith('s'):
-        return element_type
-    return element_type + 's'
+
+def pluralize(string):
+    if string in UNMARKED_PLURALS:
+        return string
+    if string.endswith('s'):
+        return string
+    return string + 's'
+
+
+def singularize(string):
+    string = string.rstrip('s')
+    if string == 'evidence_item':
+        string = 'evidence'
+    return string
+
 
 def search_url(element):
     return '/'.join([API_URL, element, 'search'])
@@ -30,13 +39,6 @@ def snake_to_camel(snake_string):
     return ''.join(cap_words)
 
 
-def map_to_class_string(element_type):
-    x = CIVIC_TO_PYCLASS.get(element_type, element_type)
-    if x == 'evidence_item':
-        x = 'evidence'
-    return snake_to_camel(x)
-
-
 def element_lookup_by_id(element_type, element_id):
     e_string = pluralize(element_type.lower())
     if e_string == 'evidence':
@@ -46,6 +48,13 @@ def element_lookup_by_id(element_type, element_id):
     resp.raise_for_status()
     resp_dict = resp.json()
     return resp_dict
+
+
+def get_class(element_type):
+    e_string = singularize(element_type)
+    class_string = snake_to_camel(e_string)
+    cls = getattr(MODULE, class_string, Attribute)
+    return cls
 
 
 class CivicRecord:
@@ -80,9 +89,8 @@ class CivicRecord:
                 else:
                     raise AttributeError(f'Expected {field} attribute for {self.type}, none found.')
             is_compound = isinstance(v, list)
+            cls = get_class(field)
             if is_compound:
-                class_string = map_to_class_string(field.rstrip('s'))
-                cls = getattr(MODULE, class_string, Attribute)
                 result = list()
                 for data in v:
                     try:
@@ -93,7 +101,6 @@ class CivicRecord:
                         result.append(cls(partial=True, **data))
                 self.__setattr__(field, result)
             else:
-                cls = getattr(MODULE, map_to_class_string(field), Attribute)
                 v['type'] = v.get('type', field)
                 self.__setattr__(field, cls(partial=True, **v))
 
