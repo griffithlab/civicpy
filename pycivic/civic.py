@@ -97,12 +97,11 @@ class CivicRecord:
             if is_compound:
                 result = list()
                 for data in v:
-                    try:
+                    if isinstance(data, dict):
                         data['type'] = data.get('type', singularize(field))
-                    except AttributeError:  # if data has no 'get' method, i.e. not a Dict
-                        result.append(data)
-                    else:
                         result.append(cls(partial=True, **data))
+                    else:
+                        result.append(data)
                 self.__setattr__(field, result)
             else:
                 t = v.get('type', field)
