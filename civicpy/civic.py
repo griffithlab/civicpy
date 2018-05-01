@@ -4,7 +4,7 @@ import logging
 
 CACHE = dict()
 
-MODULE = importlib.import_module('pycivic.civic')
+MODULE = importlib.import_module('civicpy.civic')
 
 API_URL = 'https://civicdb.org/api'
 

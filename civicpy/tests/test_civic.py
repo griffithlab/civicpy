@@ -1,5 +1,5 @@
 import pytest
-from pycivic import civic
+from civicpy import civic
 
 ELEMENTS = [
     'Assertion'
