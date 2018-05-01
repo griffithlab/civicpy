@@ -1,5 +1,6 @@
 import requests
 import importlib
+import logging
 
 CACHE = dict()
 
@@ -135,7 +136,7 @@ class CivicRecord:
                 v = getattr(cached, field)
                 setattr(self, field, v)
             self.partial=False
-            print(f'Loading {str(self)} from cache')
+            logging.info(f'Loading {str(self)} from cache')
             return True
         resp_dict = element_lookup_by_id(self.type, self.id)
         self.__init__(partial=False, **resp_dict)
@@ -304,7 +305,7 @@ def get_elements_by_ids(element, id_list, allow_cached=True):
     if allow_cached:
         cached = [get_cached(element, element_id) for element_id in id_list]
         if all(cached):
-            print(f'Loading {pluralize(element)} from cache')
+            logging.info(f'Loading {pluralize(element)} from cache')
             return cached
     payload = _construct_query_payload(id_list)
     url = search_url(element)
@@ -336,12 +337,12 @@ def _construct_query_payload(id_list):
 
 
 def get_assertions_by_ids(id_list):
-    print('Getting assertions...')
+    logging.info('Getting assertions...')
     assertions = get_elements_by_ids('assertion', id_list)
-    print('Caching variant details...')
+    logging.info('Caching variant details...')
     variant_ids = [x.variant.id for x in assertions]    # Add variants to cache
     get_elements_by_ids('variant', variant_ids)
-    print('Caching gene details...')
+    logging.info('Caching gene details...')
     gene_ids = [x.gene.id for x in assertions]          # Add genes to cache
     get_elements_by_ids('gene', gene_ids)
     for assertion in assertions:                        # Load from cache
@@ -351,19 +352,19 @@ def get_assertions_by_ids(id_list):
 
 
 def get_variants_by_ids(id_list):
-    print('Getting variants...')
+    logging.info('Getting variants...')
     return get_elements_by_ids('variant', id_list)
 
 
 def get_genes_by_ids(id_list):
-    print('Getting genes...')
+    logging.info('Getting genes...')
     genes = get_elements_by_ids('gene', id_list)  # Advanced search results are incomplete
     variant_ids = set()
     for gene in genes:
         for variant in gene.variants:
             variant_ids.add(variant.id)
     if variant_ids:
-        print('Caching variant details...')
+        logging.info('Caching variant details...')
         get_elements_by_ids('variant', variant_ids)
     for gene in genes:
         for variant in gene.variants:
