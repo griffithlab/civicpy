@@ -178,6 +178,16 @@ class Variant(CivicRecord):
                 del(kwargs['evidence_items'])
         super().__init__(**kwargs)
 
+    @property
+    def source_ids(self):
+        ids = set()
+        for evidence in self.evidence_items:
+            if evidence.source.pubmed_id:
+                ids.add(f'PMID:{evidence.source.pubmed_id}')
+            else:
+                raise NotImplementedError('No method (yet) to support evidence other than PMID')
+        return ids
+
 
 class Gene(CivicRecord):
     SIMPLE_FIELDS = {'description', 'entrez_id', 'id', 'name', 'type'}
