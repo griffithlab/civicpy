@@ -189,6 +189,18 @@ class Variant(CivicRecord):
                 raise NotImplementedError('No method (yet) to support evidence other than PMID')
         return ids
 
+    @property
+    def aliases(self):
+        return self.variant_aliases
+
+    @property
+    def groups(self):
+        return self.variant_groups
+
+    @property
+    def types(self):
+        return self.variant_types
+
 
 class Gene(CivicRecord):
     SIMPLE_FIELDS = {'description', 'entrez_id', 'id', 'name', 'type'}
