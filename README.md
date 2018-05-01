@@ -1,2 +1,6 @@
-# civicpy
-A python interface for the CIViC db application
+# CIViCpy
+You have reached the code repository for CIViCpy, a python client and analysis toolkit for
+ the Clinical Interpretations of Variants in Cancer knowledgebase ([CIViC](https://civicdb.org)).
+ 
+ Please visit our [project homepage](docs.civicpy.org) to get started.
+
