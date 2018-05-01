@@ -99,7 +99,7 @@ class CivicRecord:
                     try:
                         data['type'] = data.get('type', singularize(field))
                     except AttributeError:  # if data has no 'get' method, i.e. not a Dict
-                        result.append(v)
+                        result.append(data)
                     else:
                         result.append(cls(partial=True, **data))
                 self.__setattr__(field, result)
