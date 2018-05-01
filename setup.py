@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='civicpy',
-    version='0.0.2.a1',
+    version='0.0.1.a4',
     packages=['civicpy'],
     url='https://github.com/griffithlab/civicpy',
     license='MIT',
@@ -18,8 +18,8 @@ setup(
         'Programming Language :: Python :: 3'
     ],
     install_requires=[
-        'pytest>=3.5',
-        'requests>=2.18'
+        'pytest',
+        'requests'
     ],
     python_requires='~=3.6',
     entry_points={},
