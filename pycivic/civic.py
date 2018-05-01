@@ -200,6 +200,10 @@ class Variant(CivicRecord):
     def types(self):
         return self.variant_types
 
+    @property
+    def evidence(self):
+        return self.evidence_items
+
 
 class Gene(CivicRecord):
     SIMPLE_FIELDS = {'description', 'entrez_id', 'id', 'name', 'type'}
@@ -275,6 +279,14 @@ class Assertion(CivicRecord):
         'phenotypes',
         'variant'
     })
+
+    @property
+    def evidence(self):
+        return self.evidence_items
+
+    @property
+    def hpo_ids(self):
+        return [x.hpo_id for x in self.phenotypes if x.hpo_id]
 
 
 class Attribute(CivicRecord):
