@@ -7,6 +7,8 @@ MODULE = importlib.import_module('pycivic.civic')
 
 API_URL = 'https://civicdb.org/api'
 
+LINKS_URL = 'https://civicdb.org/links'
+
 UNMARKED_PLURALS = {'evidence'}
 
 CIVIC_TO_PYCLASS = {
@@ -139,6 +141,10 @@ class CivicRecord:
         self.__init__(partial=False, **resp_dict)
         return True
 
+    @property
+    def site_link(self):
+        return '/'.join([LINKS_URL, self.type, str(self.id)])
+
 
 class Variant(CivicRecord):
     SIMPLE_FIELDS = {
@@ -265,6 +271,10 @@ class Attribute(CivicRecord):
 
     def __hash__(self):
         return object.__hash__(self)
+
+    @property
+    def site_link(self):
+        return None
 
 
 class Drug(Attribute):
