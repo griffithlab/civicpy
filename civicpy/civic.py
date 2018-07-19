@@ -45,8 +45,6 @@ def snake_to_camel(snake_string):
 
 def element_lookup_by_id(element_type, element_id):
     e_string = pluralize(element_type.lower())
-    if e_string == 'evidence':
-        e_string = 'evidence_items'
     url = '/'.join([API_URL, e_string, str(element_id)])
     resp = requests.get(url)
     resp.raise_for_status()
