@@ -244,6 +244,10 @@ class Evidence(CivicRecord):
         'phenotypes',
         'source'}
 
+    @property
+    def variant(self):
+        return get_variants_by_ids([self.variant_id])[0]
+
 
 class Assertion(CivicRecord):
     SIMPLE_FIELDS = {
