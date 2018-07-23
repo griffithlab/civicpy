@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='civicpy',
-    version='0.0.1.a4',
+    version='0.0.2',
     packages=['civicpy'],
     url='https://github.com/griffithlab/civicpy',
     license='MIT',
