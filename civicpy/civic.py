@@ -4,6 +4,8 @@ import logging
 
 CACHE = dict()
 
+HPO_TERMS = dict()
+
 MODULE = importlib.import_module('civicpy.civic')
 
 API_URL = 'https://civicdb.org/api'
@@ -391,3 +393,17 @@ def get_genes_by_ids(id_list):
         for variant in gene.variants:
             variant.update()
     return genes
+
+
+def get_HPO_by_ids(id_list):
+    if not HPO_TERMS:
+        _load_HPO()
+    return [HPO_TERMS[x] for x in id_list]
+
+
+def _load_HPO():
+    url = 'https://civicdb.org/api/phenotypes?count=100000'
+    resp = requests.get(url)
+    resp.raise_for_status()
+    for h in resp.json():
+        HPO_TERMS[h['id']] = h
