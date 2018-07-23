@@ -383,6 +383,13 @@ def get_variants_by_ids(id_list):
     return get_elements_by_ids('variant', id_list)
 
 
+def get_all_variant_ids():
+    url = 'https://civicdb.org/api/variants?count=100000'
+    resp = requests.get(url)
+    resp.raise_for_status()
+    return [x['id'] for x in resp.json()['records']]
+
+
 def get_genes_by_ids(id_list):
     logging.info('Getting genes...')
     genes = get_elements_by_ids('gene', id_list)  # Advanced search results are incomplete
