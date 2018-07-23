@@ -22,7 +22,7 @@ def get_variant_phenotypes_with_suggested_changes(variant_id_list):
             deleted = set(a) - set(b)
             rid = suggested_change['id']
             suggested_changes[rid] = {'added': added, 'deleted': deleted}
-        yield e, {'suggested_changes': suggested_changes, 'current': set(e.phenotypes)}
+        yield e, {'suggested_changes': suggested_changes, 'current': set([x.id for x in e.phenotypes])}
 
 
 def get_variant_phenotypes_with_suggested_changes_merged(variant_id_list):
