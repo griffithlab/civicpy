@@ -4,6 +4,8 @@ import logging
 
 CACHE = dict()
 
+HPO_TERMS = dict()
+
 MODULE = importlib.import_module('civicpy.civic')
 
 API_URL = 'https://civicdb.org/api'
@@ -45,8 +47,6 @@ def snake_to_camel(snake_string):
 
 def element_lookup_by_id(element_type, element_id):
     e_string = pluralize(element_type.lower())
-    if e_string == 'evidence':
-        e_string = 'evidence_items'
     url = '/'.join([API_URL, e_string, str(element_id)])
     resp = requests.get(url)
     resp.raise_for_status()
@@ -244,6 +244,10 @@ class Evidence(CivicRecord):
         'phenotypes',
         'source'}
 
+    @property
+    def variant(self):
+        return get_variants_by_ids([self.variant_id])[0]
+
 
 class Assertion(CivicRecord):
     SIMPLE_FIELDS = {
@@ -379,6 +383,13 @@ def get_variants_by_ids(id_list):
     return get_elements_by_ids('variant', id_list)
 
 
+def get_all_variant_ids():
+    url = 'https://civicdb.org/api/variants?count=100000'
+    resp = requests.get(url)
+    resp.raise_for_status()
+    return [x['id'] for x in resp.json()['records']]
+
+
 def get_genes_by_ids(id_list):
     logging.info('Getting genes...')
     genes = get_elements_by_ids('gene', id_list)  # Advanced search results are incomplete
@@ -393,3 +404,17 @@ def get_genes_by_ids(id_list):
         for variant in gene.variants:
             variant.update()
     return genes
+
+
+def get_HPO_by_ids(id_list):
+    if not HPO_TERMS:
+        _load_HPO()
+    return [HPO_TERMS[x] for x in id_list]
+
+
+def _load_HPO():
+    url = 'https://civicdb.org/api/phenotypes?count=100000'
+    resp = requests.get(url)
+    resp.raise_for_status()
+    for h in resp.json():
+        HPO_TERMS[h['id']] = h
