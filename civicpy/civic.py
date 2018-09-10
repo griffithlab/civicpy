@@ -422,6 +422,18 @@ def get_all_gene_ids():
     return _get_all_element_ids('genes')
 
 
+def get_all_evidence_ids():
+    return _get_all_element_ids('evidence_items')
+
+
+def get_all_variant_group_ids():
+    return _get_all_element_ids('variant_groups')
+
+
+def get_all_assertion_ids():
+    return _get_all_element_ids('assertions')
+
+
 def get_genes_by_ids(gene_id_list):
     logging.info('Getting genes...')
     genes = get_elements_by_ids('gene', gene_id_list)  # Advanced search results are incomplete
