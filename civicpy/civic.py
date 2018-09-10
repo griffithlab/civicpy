@@ -123,6 +123,9 @@ class CivicRecord:
     def __hash__(self):
         return hash(f'{self.type}:{self.id}')
 
+    def __eq__(self, other):
+        return hash(self) == hash(other)
+
     def update(self, allow_partial=True, **kwargs):
         """Updates record and returns True if record is complete after update, else False."""
         if kwargs:
