@@ -18,7 +18,6 @@ CIVIC_TO_PYCLASS = {
     'evidence_items': 'evidence'
 }
 
-
 def pluralize(string):
     if string in UNMARKED_PLURALS:
         return f'{string}_items'
@@ -408,11 +407,19 @@ def get_variant_by_id(variant_id):
     return get_variants_by_ids([variant_id])[0]
 
 
-def get_all_variant_ids():
-    url = 'https://civicdb.org/api/variants?count=100000'
+def _get_all_element_ids(element):
+    url = f'https://civicdb.org/api/{element}?count=100000'
     resp = requests.get(url)
     resp.raise_for_status()
     return [x['id'] for x in resp.json()['records']]
+
+
+def get_all_variant_ids():
+    return _get_all_element_ids('variants')
+
+
+def get_all_gene_ids():
+    return _get_all_element_ids('genes')
 
 
 def get_genes_by_ids(gene_id_list):
@@ -435,7 +442,7 @@ def get_gene_by_id(gene_id):
     return get_genes_by_ids([gene_id])[0]
 
 
-def get_HPO_by_ids(hpo_id_list):
+def get_HPO_terms_by_ids(hpo_id_list):
     if not HPO_TERMS:
         _load_HPO()
     return [HPO_TERMS[x] for x in hpo_id_list]
