@@ -12,10 +12,11 @@
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
-# import os
-# import sys
-# sys.path.insert(0, os.path.abspath('.'))
+import os
+import sys
+sys.path.insert(0, os.path.abspath('..'))
 
+from civicpy.__version__ import __version__
 
 # -- Project information -----------------------------------------------------
 
@@ -24,9 +25,9 @@ copyright = '2018, Alex H. Wagner, PhD'
 author = 'Alex H. Wagner, PhD'
 
 # The short X.Y version
-version = ''
+version = __version__
 # The full version, including alpha/beta/rc tags
-release = '0.0.2'
+release = __version__
 
 
 # -- General configuration ---------------------------------------------------
@@ -82,7 +83,14 @@ html_theme = 'alabaster'
 # further.  For a list of options available for each theme, see the
 # documentation.
 #
-# html_theme_options = {}
+html_theme_options = {
+    'show_powered_by': False,
+    'github_user': 'griffithlab',
+    'github_repo': 'civicpy',
+    'github_banner': True,
+    'show_related': False,
+    'note_bg': '#FFF59C'
+}
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
