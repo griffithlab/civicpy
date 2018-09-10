@@ -207,6 +207,10 @@ class Variant(CivicRecord):
     def evidence(self):
         return self.evidence_items
 
+    @property
+    def gene(self):
+        return get_element_by_id('gene', self.gene_id)
+
 
 class Gene(CivicRecord):
     SIMPLE_FIELDS = {'description', 'entrez_id', 'id', 'name', 'type'}
@@ -383,7 +387,14 @@ def get_assertions_by_ids(id_list):
 
 def get_variants_by_ids(id_list):
     logging.info('Getting variants...')
-    return get_elements_by_ids('variant', id_list)
+    variants = get_elements_by_ids('variant', id_list)
+    gene_ids = set()
+    for variant in variants:
+        gene_ids.add(variant.gene_id)
+    if gene_ids:
+        logging.info('Caching gene details...')
+        get_elements_by_ids('gene', gene_ids)
+    return variants
 
 
 def get_all_variant_ids():
