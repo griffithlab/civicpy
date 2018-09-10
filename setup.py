@@ -1,14 +1,15 @@
 from setuptools import setup
+from civicpy.__version__ import __version__, __author__, __author_email__, __description__, __url__
 
 setup(
     name='civicpy',
-    version='0.0.2',
+    version=__version__,
     packages=['civicpy'],
-    url='https://github.com/griffithlab/civicpy',
+    url=__url__,
     license='MIT',
-    author='Alex H. Wagner',
-    author_email='awagner24@wustl.edu',
-    description='a python wrapper and tools for the civic API',
+    author=__author__,
+    author_email=__author_email__,
+    description=__description__,
     classifiers=[
         'Development Status :: 3 - Alpha',
         'Intended Audience :: Science/Research',
