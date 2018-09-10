@@ -349,6 +349,9 @@ def get_elements_by_ids(element, id_list, allow_cached=True):
     elements = [cls(**x) for x in response.json()['results']]
     return elements
 
+def get_element_by_id(element, id, allow_cached=True):
+    return get_elements_by_ids(element, [id], allow_cached)[0]
+
 
 def _construct_query_payload(id_list):
     queries = list()
@@ -370,9 +373,9 @@ def _construct_query_payload(id_list):
     return payload
 
 
-def get_assertions_by_ids(id_list):
+def get_assertions_by_ids(assertion_id_list):
     logging.info('Getting assertions...')
-    assertions = get_elements_by_ids('assertion', id_list)
+    assertions = get_elements_by_ids('assertion', assertion_id_list)
     logging.info('Caching variant details...')
     variant_ids = [x.variant.id for x in assertions]    # Add variants to cache
     get_elements_by_ids('variant', variant_ids)
@@ -385,9 +388,13 @@ def get_assertions_by_ids(id_list):
     return assertions
 
 
-def get_variants_by_ids(id_list):
+def get_assertion_by_id(assertion_id):
+    return get_assertions_by_ids([assertion_id])[0]
+
+
+def get_variants_by_ids(variant_id_list):
     logging.info('Getting variants...')
-    variants = get_elements_by_ids('variant', id_list)
+    variants = get_elements_by_ids('variant', variant_id_list)
     gene_ids = set()
     for variant in variants:
         gene_ids.add(variant.gene_id)
@@ -397,6 +404,10 @@ def get_variants_by_ids(id_list):
     return variants
 
 
+def get_variant_by_id(variant_id):
+    return get_variants_by_ids([variant_id])[0]
+
+
 def get_all_variant_ids():
     url = 'https://civicdb.org/api/variants?count=100000'
     resp = requests.get(url)
@@ -404,9 +415,9 @@ def get_all_variant_ids():
     return [x['id'] for x in resp.json()['records']]
 
 
-def get_genes_by_ids(id_list):
+def get_genes_by_ids(gene_id_list):
     logging.info('Getting genes...')
-    genes = get_elements_by_ids('gene', id_list)  # Advanced search results are incomplete
+    genes = get_elements_by_ids('gene', gene_id_list)  # Advanced search results are incomplete
     variant_ids = set()
     for gene in genes:
         for variant in gene.variants:
@@ -420,10 +431,14 @@ def get_genes_by_ids(id_list):
     return genes
 
 
-def get_HPO_by_ids(id_list):
+def get_gene_by_id(gene_id):
+    return get_genes_by_ids([gene_id])[0]
+
+
+def get_HPO_by_ids(hpo_id_list):
     if not HPO_TERMS:
         _load_HPO()
-    return [HPO_TERMS[x] for x in id_list]
+    return [HPO_TERMS[x] for x in hpo_id_list]
 
 
 def _load_HPO():
