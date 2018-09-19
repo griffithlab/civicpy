@@ -3,6 +3,7 @@ from csv import DictWriter
 import datetime
 from civicpy.__version__ import __version__
 import obonet, networkx
+import logging
 
 
 class SequenceOntologyReader():
@@ -19,7 +20,7 @@ class SequenceOntologyReader():
     def get_parent_ids(self, id_):
         return [x for x in self.graph.successors(id_)]    # I know. It looks wrong, but its not.
 
-    def is_or_has_ancestor(self, id_, ancestor_id):
+    def same_or_has_ancestor(self, id_, ancestor_id):
         if id_ == ancestor_id:
             return True
         key = (id_, ancestor_id)
@@ -30,7 +31,22 @@ class SequenceOntologyReader():
         if not parents:
             self.ancestor_cache[key] = False
             return False
-        result = any([self.is_or_has_ancestor(parent, ancestor_id) for parent in parents])
+        result = any([self.same_or_has_ancestor(parent, ancestor_id) for parent in parents])
+        self.ancestor_cache[key] = result
+        return result
+
+    def same_or_has_descendant(self, id_, descendant_id):
+        if id_ == descendant_id:
+            return True
+        key = (id_, descendant_id)
+        cached = self.ancestor_cache.get(key, None)
+        if cached is not None:
+            return cached
+        children = self.get_child_ids(id_)
+        if not children:
+            self.ancestor_cache[key] = False
+            return False
+        result = any([self.same_or_has_descendant(child, descendant_id) for child in children])
         self.ancestor_cache[key] = result
         return result
 
@@ -123,27 +139,50 @@ class VCFWriter(DictWriter):
 
     def _validate_and_write_evidence_record(self, record):
         variant = record.variant
-        valid = self._validate_simple_variant(variant)
-
-    def _validate_simple_variant(self, variant):
         valid = self.VALID_VARIANTS.get(variant, None)
-        if valid is not None:
-            return valid
-        valid = True
+        if valid is None:
+            valid = self._validate_structural_variant(variant)
+        if not valid:
+            logging.info(f'Skipping {record}, invalid variant {variant}.')
+            return
 
-        # Requires the variant type to be specified by CIViC
+        raise NotImplementedError  # TODO: call write evidence method here
+
+    def _validate_structural_variant(self, variant):
+        # Requires all types to have SO_IDs
         types = variant.types
-        if not types:
-            valid = False
-
-        # Requires the variant type(s) to be a transcript variant (SO:0001576)
-        transcript_variant_type = 'SO:0001576'
         for variant_type in types:
-            if not self.SO_READER.is_or_has_ancestor(variant_type, transcript_variant_type):
-                valid = False
+            if not variant_type.so_id.startswith('SO:'):
+                return self._cache_variant_validation(variant, False)
 
-        # Currently requires exactly one coordinate set
+        # Filter types if multiple direct lineage to most specific, remove non-structural types
+        type_len = len(types)
+        simplified_types = list()
+        for i in range(type_len):
+            remove = False
+            try:
+                structural = self.SO_READER.same_or_has_ancestor(types[i].so_id, 'SO:0001537')
+            except networkx.NetworkXError as e:
+                logging.warning(f'Error for variant {variant}: {e.args[0]}')
+                return self._cache_variant_validation(variant, False)
+            if not structural:
+                continue
+            for j in range(type_len):
+                if i == j:
+                    continue
+                if types[i] == types[j] and i > j:
+                    remove = True
+                elif self.SO_READER.same_or_has_descendant(types[i].so_id, types[j].so_id):
+                    remove = True
+            if remove:
+                logging.warning(f'Simplifying redundant type {types[i].name} in {variant}')
+                continue
+            simplified_types.append(types[i])
+        types = simplified_types
 
-        # Cache validation result
-        self.VALID_VARIANTS[variant] = valid
-        return valid
+        # Requires at least one variant type (other than filtered types above) to be specified by CIViC
+        return self._cache_variant_validation(variant, bool(types))
+
+    def _cache_variant_validation(self, variant, result):
+        self.VALID_VARIANTS[variant] = result
+        return result
