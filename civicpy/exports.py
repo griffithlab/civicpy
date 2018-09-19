@@ -141,7 +141,8 @@ class VCFWriter(DictWriter):
         variant = record.variant
         valid = self.VALID_VARIANTS.get(variant, None)
         if valid is None:
-            valid = self._validate_structural_variant(variant)
+            # valid = self._validate_structural_variant(variant)
+            valid = self._validate_coordinates(variant)
         if not valid:
             logging.info(f'Skipping {record}, invalid variant {variant}.')
             return
@@ -182,6 +183,21 @@ class VCFWriter(DictWriter):
 
         # Requires at least one variant type (other than filtered types above) to be specified by CIViC
         return self._cache_variant_validation(variant, bool(types))
+
+    def _validate_coordinates(self, variant):
+        # Requires exactly one coordinate set with ref and alt
+        coordinates = variant.coordinates
+        valid = all([
+            coordinates.chromosome,
+            coordinates.start,
+            coordinates.stop,
+            coordinates.reference_bases,
+            coordinates.variant_bases,
+            not coordinates.chromosome2,
+            not coordinates.start2,
+            not coordinates.stop2
+        ])
+        return self._cache_variant_validation(variant, valid)
 
     def _cache_variant_validation(self, variant, result):
         self.VALID_VARIANTS[variant] = result
