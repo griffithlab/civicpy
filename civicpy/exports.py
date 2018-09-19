@@ -2,6 +2,37 @@ from civicpy import civic
 from csv import DictWriter
 import datetime
 from civicpy.__version__ import __version__
+import obonet, networkx
+
+
+class SequenceOntologyReader():
+
+    def __init__(self, url='https://raw.githubusercontent.com/The-Sequence-Ontology/SO-Ontologies/master/so.obo'):
+        self.url = url
+        self.graph = obonet.read_obo(url)
+        assert networkx.is_directed_acyclic_graph(self.graph)
+        self.ancestor_cache = dict()
+
+    def get_child_ids(self, id_):
+        return [x for x in self.graph.predecessors(id_)]  # I know. It looks wrong, but its not.
+
+    def get_parent_ids(self, id_):
+        return [x for x in self.graph.successors(id_)]    # I know. It looks wrong, but its not.
+
+    def is_or_has_ancestor(self, id_, ancestor_id):
+        if id_ == ancestor_id:
+            return True
+        key = (id_, ancestor_id)
+        cached = self.ancestor_cache.get(key, None)
+        if cached is not None:
+            return cached
+        parents = self.get_parent_ids(id_)
+        if not parents:
+            self.ancestor_cache[key] = False
+            return False
+        result = any([self.is_or_has_ancestor(parent, ancestor_id) for parent in parents])
+        self.ancestor_cache[key] = result
+        return result
 
 
 class VCFWriter(DictWriter):
@@ -17,20 +48,15 @@ class VCFWriter(DictWriter):
         'INFO'
     ]
 
-    SIMPLE_VARIANT_TYPES = [
-        'SO:0001583',
-        'SO:0001910',
-        'SO:0001587',
-        'SO:0001822',
-        'SO:0001818',
-        'SO:0001589',
-    ]
-
     VALID_VARIANTS = dict()
+
+    SUPPORTED_VERSIONS = [4.2]
+
+    SO_READER = SequenceOntologyReader()
 
     def __init__(self, f, version=4.2):
         self._f = f
-        assert version in [4.2]  # Supported VCF versions
+        assert version in VCFWriter.SUPPORTED_VERSIONS  # Supported VCF versions
         self.version = version
         super().__init__(f, delimiter='\t', fieldnames=self.HEADER)
         self.meta_info_fields = []
@@ -97,20 +123,27 @@ class VCFWriter(DictWriter):
 
     def _validate_and_write_evidence_record(self, record):
         variant = record.variant
-        valid = self.VALID_VARIANTS.get(variant, None)
-        if valid is None:
-            # Requires the variant type to be specified by CIViC
-            types = variant.types
-            if not types:
-                self.VALID_VARIANTS[variant] = False
-                return
-            # Requires the variant type(s) to be SNV/indels
-            if not all([x.so_id in self.SIMPLE_VARIANT_TYPES for x in types]):
-                self.VALID_VARIANTS[variant] = False
-                return
-            # Currently requires exactly one coordinate set
+        valid = self._validate_simple_variant(variant)
 
-            # Passes all above validations
-            self.VALID_VARIANTS[variant] = True
-        elif not valid:
-            return
+    def _validate_simple_variant(self, variant):
+        valid = self.VALID_VARIANTS.get(variant, None)
+        if valid is not None:
+            return valid
+        valid = True
+
+        # Requires the variant type to be specified by CIViC
+        types = variant.types
+        if not types:
+            valid = False
+
+        # Requires the variant type(s) to be a transcript variant (SO:0001576)
+        transcript_variant_type = 'SO:0001576'
+        for variant_type in types:
+            if not self.SO_READER.is_or_has_ancestor(variant_type, transcript_variant_type):
+                valid = False
+
+        # Currently requires exactly one coordinate set
+
+        # Cache validation result
+        self.VALID_VARIANTS[variant] = valid
+        return valid
