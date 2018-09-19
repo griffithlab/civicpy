@@ -76,6 +76,7 @@ class VCFWriter(DictWriter):
         self.version = version
         super().__init__(f, delimiter='\t', fieldnames=self.HEADER)
         self.meta_info_fields = []
+        self.evidence_records = set()
 
     def writeheader(self):
         # write meta lines
@@ -83,6 +84,30 @@ class VCFWriter(DictWriter):
         self._write_meta_info_lines()
         # write header line
         super().writeheader()
+
+    def addrecord(self, civic_record):
+        if isinstance(civic_record, civic.Variant) or isinstance(civic_record, civic.Assertion):
+            for evidence in civic_record.evidence:
+                self.addrecord(evidence)
+        elif isinstance(civic_record, civic.Evidence):
+            valid = self._validate_evidence_record(civic_record)
+            if valid:
+                self._add_evidence_record(civic_record)
+        else:
+            raise ValueError('Expected a CIViC Variant, Assertion or Evidence record.')
+
+    def addrecords(self, civic_records):
+        for record in civic_records:
+            self.addrecord(record)
+
+    def writerow(self, rowdict):
+        raise NotImplementedError('Not implemented for VCF. Please see documentation.')
+
+    def writerecords(self):
+        # sort records
+        raise NotImplementedError  # TODO: Implement this
+        # write them
+        raise NotImplementedError  # TODO: Implement this
 
     def _write_meta_file_lines(self):
         self._f.write(f'##fileformat=VCFv{self.version}\n')
@@ -130,24 +155,15 @@ class VCFWriter(DictWriter):
         out = ','.join(s)
         self._f.write(f'##INFO=<{out}>\n')
 
-    def writerow(self, civic_record):
-        if isinstance(civic_record, civic.Variant) or isinstance(civic_record, civic.Assertion):
-            for evidence in civic_record.evidence:
-                self.writerow(evidence)
-        elif isinstance(civic_record, civic.Evidence):
-            self._validate_and_write_evidence_record(civic_record)
-
-    def _validate_and_write_evidence_record(self, record):
+    def _validate_evidence_record(self, record):
         variant = record.variant
         valid = self.VALID_VARIANTS.get(variant, None)
         if valid is None:
             # valid = self._validate_structural_variant(variant)
             valid = self._validate_coordinates(variant)
         if not valid:
-            logging.info(f'Skipping {record}, invalid variant {variant}.')
-            return
-
-        raise NotImplementedError  # TODO: call write evidence method here
+            logging.info(f'{record} has invalid VCF variant {variant}.')
+        return valid
 
     def _validate_structural_variant(self, variant):
         # Requires all types to have SO_IDs
@@ -202,3 +218,6 @@ class VCFWriter(DictWriter):
     def _cache_variant_validation(self, variant, result):
         self.VALID_VARIANTS[variant] = result
         return result
+
+    def _add_evidence_record(self, evidence_record):
+        self.evidence_records.add(evidence_record)
