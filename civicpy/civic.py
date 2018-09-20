@@ -399,7 +399,7 @@ def _construct_query_payload(id_list):
 
 def get_assertions_by_ids(assertion_id_list=[], get_all=False):
     logging.info('Getting assertions...')
-    assertions = get_elements_by_ids('assertion', assertion_id_list, get_all)
+    assertions = get_elements_by_ids('assertion', assertion_id_list, get_all=get_all)
     logging.info('Caching variant details...')
     variant_ids = [x.variant.id for x in assertions]    # Add variants to cache
     get_elements_by_ids('variant', variant_ids)
@@ -477,7 +477,7 @@ def get_all_assertion_ids():
 
 
 def get_all_assertions():
-    return get_assertions_by_ids()
+    return get_assertions_by_ids(get_all=True)
 
 
 def get_genes_by_ids(gene_id_list):
