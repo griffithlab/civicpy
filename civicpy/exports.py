@@ -68,13 +68,34 @@ class VCFWriter(DictWriter):
 
     SUPPORTED_VERSIONS = [4.2]
 
+    VCF_RESERVED_FIELDS = {
+        'AA',
+        'AC',
+        'AF',
+        'AN',
+        'BQ',
+        'CIGAR',
+        'DB',
+        'DP',
+        'END',
+        'H2',
+        'H3',
+        'MQ',
+        'MQ0',
+        'NS',
+        'SB',
+        'SOMATIC',
+        'VALIDATED',
+        '1000G'
+    }
+
     SO_READER = SequenceOntologyReader()
 
     def __init__(self, f, version=4.2):
         self._f = f
         assert version in VCFWriter.SUPPORTED_VERSIONS  # Supported VCF versions
         self.version = version
-        super().__init__(f, delimiter='\t', fieldnames=self.HEADER)
+        super().__init__(f, delimiter='\t', fieldnames=self.HEADER, restval='.', lineterminator='\n')
         self.meta_info_fields = []
         self.evidence_records = set()
 
@@ -100,14 +121,58 @@ class VCFWriter(DictWriter):
         for record in civic_records:
             self.addrecord(record)
 
-    def writerow(self, rowdict):
-        raise NotImplementedError('Not implemented for VCF. Please see documentation.')
+    def writerecords(self, with_header=True):
+        # write header
+        if with_header:
+            self.writeheader()
 
-    def writerecords(self):
         # sort records
-        raise NotImplementedError  # TODO: Implement this
+        sorted_records = list(self.evidence_records)
+        sorted_records.sort(key=lambda x: x.id)
+        sorted_records.sort(key=lambda x: x.variant.coordinates.stop)
+        sorted_records.sort(key=lambda x: x.variant.coordinates.start)
+        sorted_records.sort(key=lambda x: x.variant.coordinates.chromosome)
+
         # write them
-        raise NotImplementedError  # TODO: Implement this
+        for evidence in sorted_records:
+            out_dict = {
+                '#CHROM': evidence.variant.coordinates.chromosome,
+                'POS':    evidence.variant.coordinates.start,
+                'ID':     f'EID{evidence.id}',
+                'REF':    evidence.variant.coordinates.reference_bases,
+                'ALT':    evidence.variant.coordinates.variant_bases
+            }
+            assert all([c.upper() in ['A', 'C', 'G', 'T', 'N'] for c in out_dict['REF']])
+            assert all([c.upper() in ['A', 'C', 'G', 'T', 'N', '*'] for c in out_dict['ALT']])
+
+            info_dict = {
+                'GN': evidence.variant.gene.name,
+                'VT': evidence.variant.name,
+                # 'ES': evidence.description,
+                'EL': evidence.evidence_level,
+                'ET': evidence.evidence_type,
+                'ED': evidence.evidence_direction,
+                'CS': evidence.clinical_significance,
+                'VO': evidence.variant_origin,
+                'DS': ','.join([evidence.disease.name, evidence.disease.doid]),
+                'DG': ','.join([d.name for d in evidence.drugs]),
+                'DI': evidence.drug_interaction_type,
+                'PM': evidence.source.pubmed_id,
+                'TR': evidence.rating,
+                'EU': evidence.site_link
+            }
+            out = list()
+            for field in self.meta_info_fields:
+                v = info_dict[field]
+                if isinstance(v, str):
+                    v = v.replace(' ', '_')
+                    assert ';' not in v
+                    assert '=' not in v
+                if v:
+                    out.append(f'{field}={v}')
+            out_dict['INFO'] = ';'.join(out)
+
+            super().writerow(out_dict)
 
     def _write_meta_file_lines(self):
         self._f.write(f'##fileformat=VCFv{self.version}\n')
@@ -122,8 +187,8 @@ class VCFWriter(DictWriter):
         self._write_meta_info_line('GN', 1, 'String', 'HGNC Gene Symbol')
         # Variant
         self._write_meta_info_line('VT', 1, 'String', 'CIViC Variant Name')
-        # Evidence statement
-        self._write_meta_info_line('ES', 1, 'String', 'CIViC Evidence Statement')
+        # # Evidence statement
+        # self._write_meta_info_line('ES', 1, 'String', 'CIViC Evidence Statement')
         # Evidence level
         self._write_meta_info_line('EL', 1, 'Character', 'CIViC Evidence Level')
         # Evidence type
@@ -149,6 +214,7 @@ class VCFWriter(DictWriter):
 
     def _write_meta_info_line(self, id_, number, type_, description, **kwargs):
         assert id_ not in self.meta_info_fields
+        assert id_ not in self.VCF_RESERVED_FIELDS
         self.meta_info_fields.append(id_)
         s = [f'ID={id_},Number={number},Type={type_},Description={description}']
         s.extend([f'{k}={v}' for k, v in kwargs])
