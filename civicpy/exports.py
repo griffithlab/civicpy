@@ -143,7 +143,8 @@ class VCFWriter(DictWriter):
                 'ALT':    evidence.variant.coordinates.variant_bases
             }
             assert all([c.upper() in ['A', 'C', 'G', 'T', 'N'] for c in out_dict['REF']])
-            assert all([c.upper() in ['A', 'C', 'G', 'T', 'N', '*'] for c in out_dict['ALT']])
+            assert all([c.upper() in ['A', 'C', 'G', 'T', 'N', '*'] for c in out_dict['ALT']]), \
+                f'observed incompatible alt allele in {evidence.variant}'
 
             info_dict = {
                 'GN': evidence.variant.gene.name,
@@ -154,13 +155,17 @@ class VCFWriter(DictWriter):
                 'ED': evidence.evidence_direction,
                 'CS': evidence.clinical_significance,
                 'VO': evidence.variant_origin,
-                'DS': ','.join([evidence.disease.name, evidence.disease.doid]),
                 'DG': ','.join([d.name for d in evidence.drugs]),
                 'DI': evidence.drug_interaction_type,
                 'PM': evidence.source.pubmed_id,
                 'TR': evidence.rating,
                 'EU': evidence.site_link
             }
+            doid = evidence.disease.doid
+            if doid is None:
+                doid = '.'
+            info_dict['DS'] = ','.join([evidence.disease.name, doid])
+
             out = list()
             for field in self.meta_info_fields:
                 v = info_dict[field]
@@ -278,7 +283,8 @@ class VCFWriter(DictWriter):
             not coordinates.chromosome2,
             not coordinates.start2,
             not coordinates.stop2
-        ])
+        ]) and all([c.upper() in ['A', 'C', 'G', 'T', 'N', '*'] for c in coordinates.variant_bases]) \
+           and all([c.upper() in ['A', 'C', 'G', 'T', 'N'] for c in coordinates.reference_bases])
         return self._cache_variant_validation(variant, valid)
 
     def _cache_variant_validation(self, variant, result):
