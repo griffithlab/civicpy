@@ -334,13 +334,18 @@ def get_cached(element_type, element_id):
     return CACHE.get(hash(r), False)
 
 
-def get_elements_by_ids(element, id_list, allow_cached=True):
-    if allow_cached:
+def get_elements_by_ids(element, id_list=[], allow_cached=True, get_all=False):
+    if allow_cached and not get_all:
         cached = [get_cached(element, element_id) for element_id in id_list]
         if all(cached):
             logging.info(f'Loading {pluralize(element)} from cache')
             return cached
-    payload = _construct_query_payload(id_list)
+    if id_list and get_all:
+        raise ValueError('Please pass list of ids or use the get_all flag, not both.')
+    if get_all:
+        payload = _construct_get_all_payload()
+    else:
+        payload = _construct_query_payload(id_list)
     url = search_url(element)
     response = requests.post(url, json=payload)
     response.raise_for_status()
@@ -348,8 +353,28 @@ def get_elements_by_ids(element, id_list, allow_cached=True):
     elements = [cls(**x) for x in response.json()['results']]
     return elements
 
+
 def get_element_by_id(element, id, allow_cached=True):
     return get_elements_by_ids(element, [id], allow_cached)[0]
+
+
+def _construct_get_all_payload():
+    queries = [
+        {
+            'field': 'id',
+            'condition': {
+                'name': 'is_greater_than',
+                'parameters': [
+                    -1
+                ]
+            }
+        }
+    ]
+    payload = {
+        'operator': 'OR',
+        'queries': queries
+    }
+    return payload
 
 
 def _construct_query_payload(id_list):
@@ -372,9 +397,9 @@ def _construct_query_payload(id_list):
     return payload
 
 
-def get_assertions_by_ids(assertion_id_list):
+def get_assertions_by_ids(assertion_id_list=[], get_all=False):
     logging.info('Getting assertions...')
-    assertions = get_elements_by_ids('assertion', assertion_id_list)
+    assertions = get_elements_by_ids('assertion', assertion_id_list, get_all=get_all)
     logging.info('Caching variant details...')
     variant_ids = [x.variant.id for x in assertions]    # Add variants to cache
     get_elements_by_ids('variant', variant_ids)
@@ -407,6 +432,15 @@ def get_variant_by_id(variant_id):
     return get_variants_by_ids([variant_id])[0]
 
 
+def _get_all_genes_and_variants():
+    logging.warning('Getting all genes or variants. This may take a couple of minutes...')
+    variants = get_elements_by_ids('variants', get_all=True)
+    genes = get_elements_by_ids('gene', get_all=True)
+    for variant in variants:
+        variant.gene.update()
+    return {'genes': genes, 'variants': variants}
+
+
 def _get_all_element_ids(element):
     url = f'https://civicdb.org/api/{element}?count=100000'
     resp = requests.get(url)
@@ -418,8 +452,16 @@ def get_all_variant_ids():
     return _get_all_element_ids('variants')
 
 
+def get_all_variants():
+    return _get_all_genes_and_variants()['variants']
+
+
 def get_all_gene_ids():
     return _get_all_element_ids('genes')
+
+
+def get_all_genes():
+    return _get_all_genes_and_variants()['genes']
 
 
 def get_all_evidence_ids():
@@ -432,6 +474,10 @@ def get_all_variant_group_ids():
 
 def get_all_assertion_ids():
     return _get_all_element_ids('assertions')
+
+
+def get_all_assertions():
+    return get_assertions_by_ids(get_all=True)
 
 
 def get_genes_by_ids(gene_id_list):
