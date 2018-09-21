@@ -1,4 +1,4 @@
-import civicpy.civic as civic
+from civicpy import civic, exports
 import requests
 
 
@@ -35,3 +35,10 @@ def get_variant_phenotypes_with_suggested_changes_merged(variant_id_list):
             final = final | changes['added']
         if final:
             yield evidence, final
+
+
+def export_all_variants_to_vcf(file):
+    w = exports.VCFWriter(file)
+    all_variants = civic.get_all_variants()
+    w.addrecords(all_variants)
+    w.writerecords()

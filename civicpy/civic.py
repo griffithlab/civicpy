@@ -433,7 +433,7 @@ def get_variant_by_id(variant_id):
 
 
 def _get_all_genes_and_variants():
-    logging.warning('Getting all genes or variants. This may take some time...')
+    logging.warning('Getting all genes or variants. This may take a couple of minutes...')
     variants = get_elements_by_ids('variants', get_all=True)
     genes = get_elements_by_ids('gene', get_all=True)
     for variant in variants:
