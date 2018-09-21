@@ -3,12 +3,12 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-CIViCpy: CIViCdb for Python
-===========================
+CIViCpy
+=======
 
 Release v\ |version|.
 
-Delicious **CIViCpy** is an analysis toolkit for extracting and analyzing knowledge from the `CIViC variant knowledgebase`_.
+Delicious **CIViCpy** is an analysis toolkit for extracting and analyzing knowledge from the `CIViC knowledgebase`_.
 
 .. note:: The use of **Python 3** is *mandatory* for CIViCpy. This is in anticipation of the Python 2 scheduled end-of-life date \
    of `January 1, 2020 <https://www.python.org/dev/peps/pep-0373/>`_.
@@ -73,6 +73,6 @@ Recipes
    :maxdepth: 2
 
    recipes/intro
-   recipes/revisions
+   recipes/exports
 
-.. _`CIViC variant knowledgebase`: https://civicdb.org
+.. _`CIViC knowledgebase`: https://civicdb.org
