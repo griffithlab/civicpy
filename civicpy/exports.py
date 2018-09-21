@@ -164,6 +164,8 @@ class VCFWriter(DictWriter):
             doid = evidence.disease.doid
             if doid is None:
                 doid = '.'
+            else:
+                doid = f'DOID{doid}'
             info_dict['DS'] = ','.join([evidence.disease.name, doid])
 
             out = list()
