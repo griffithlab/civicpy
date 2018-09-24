@@ -36,9 +36,8 @@ Delicious **CIViCpy** is an analysis toolkit for extracting and analyzing knowle
 
 **CIViCpy** lets you pull data from CIViC using the *civic* module and interact with records as dynamic objects.
 With the aid of caching, it is easy to explore relationships between CIViC records (e.g. assertions, genes, variants)
-without worrying about querying CIViC more than once for the same data. Scrumptious *recipes* allow for easy replication
-of common analysis tasks, such as reviewing pending revisions to a record or exporting variants to a .bed or .vcf format
-*(coming soon)*.
+without worrying about querying CIViC more than once for the same data. *Exports* allow for downstream analysis
+tasks, such as variant annotaiton through .bed *(coming soon)* or .vcf format.
 
 Features
 --------
@@ -53,7 +52,7 @@ Features
 The User Guide
 --------------
 
-This documentation describes how to get started with CIViCpy, the *CivicRecord* class, and making queries to the CIViC
+This documentation describes how to get started with CIViCpy, the ORM, and making queries to the CIViC
 knowledgebase.
 
 .. toctree::
@@ -64,15 +63,13 @@ knowledgebase.
    user/quickstart
    user/advanced
 
-Recipes
+Exports
 -------
-
-
 
 .. toctree::
    :maxdepth: 2
 
-   recipes/intro
-   recipes/exports
+   exports/intro
+   exports/vcf
 
 .. _`CIViC knowledgebase`: https://civicdb.org
