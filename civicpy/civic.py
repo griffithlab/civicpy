@@ -125,18 +125,18 @@ class CivicRecord:
     def __eq__(self, other):
         return hash(self) == hash(other)
 
-    def update(self, allow_partial=True, **kwargs):
+    def update(self, allow_partial=True, force=False, **kwargs):
         """Updates record and returns True if record is complete after update, else False."""
         if kwargs:
-            self.__init__(partial=allow_partial, **kwargs)
+            self.__init__(partial=allow_partial, force=force, **kwargs)
             return not self.partial
 
-        if CACHE.get(hash(self)):
+        if not force and CACHE.get(hash(self)):
             cached = CACHE[hash(self)]
             for field in self.SIMPLE_FIELDS | self.COMPLEX_FIELDS:
                 v = getattr(cached, field)
                 setattr(self, field, v)
-            self.partial=False
+            self.partial = False
             logging.info(f'Loading {str(self)} from cache')
             return True
         resp_dict = element_lookup_by_id(self.type, self.id)
@@ -314,11 +314,17 @@ class Attribute(CivicRecord):
         super().__init__(**kwargs)
 
     def __hash__(self):
-        return object.__hash__(self)
+        raise NotImplementedError
+
+    def __eq__(self, other):
+        raise NotImplementedError
 
     @property
     def site_link(self):
         return None
+
+    def update(self):
+        return NotImplementedError
 
 
 class Drug(Attribute):
