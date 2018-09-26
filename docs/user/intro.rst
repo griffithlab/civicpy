@@ -1,7 +1,7 @@
 Introduction
 ============
 
-CIViCpy is designed to be an elegant, straightforward API wrapper, local cache, and ORM for the
+CIViCpy is designed to be an intuitive SDK and analysis toolkit for the
 Clinical Interpretations of Variants in Cancer (`CIViC`_) knowledgebase.
 
 License
@@ -18,7 +18,7 @@ If you find CIViCpy useful, we request that you reference it in published works 
 
     CIViCpy (http://civicpy.org)
 
-for the analyses, ORM, and exports provided by the software and:
+for the SDK and analysis toolkit provided by the software and:
 
     Griffith, M. et al. CIViC is a community knowledgebase for expert crowdsourcing the clinical interpretation of variants in cancer.
     *Nat Genet* 49, 170-174, `doi:10.1038/ng.3774`_ (2017).

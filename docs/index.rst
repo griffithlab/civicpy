@@ -6,7 +6,7 @@
 CIViCpy
 =======
 
-Release v\ |version|.
+v\ |version|.
 
 Delicious **CIViCpy** is an analysis toolkit for extracting and analyzing knowledge from the `CIViC knowledgebase`_.
 
@@ -47,7 +47,7 @@ Features
 - Simplified API Requests
 - Sensible Pre-caching
 - Arbitrary-depth Record Nesting
-- Recipes For Common Analysis Tasks
+- Exports to VCF Files
 
 The User Guide
 --------------

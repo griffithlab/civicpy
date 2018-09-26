@@ -8,11 +8,13 @@ are all subclasses of :class:`CivicRecord`. While these object can be generated 
 The CivicRecord classes
 -----------------------
 
+As a base class, :class:`CivicRecord` is used to define the characteristic of all records in CIViC. This class is not
+intended to be invoked directly by the end user, but provided for documentation of shared methods and variables in
+child classes.
+
 .. class:: CivicRecord
 
-	As a base class, :class:`CivicRecord` is used to define the characteristic of all records in CIViC. This class is not
-	intended to be invoked directly by the end user, but provided for documentation of shared methods and variables in
-	child classes.
+	The following methods are provided for each :class:`CivicRecord`:
 
 	.. method:: update(allow_partial=True, force=False, **kwargs)
 
@@ -26,6 +28,8 @@ The CivicRecord classes
 
 		Returns a URL to the record on the CIViC web application.
 
+	Each class defines two sets of keys describing the record properties.
+
 .. class:: Gene
 
 .. class:: Variant
@@ -35,3 +39,11 @@ The CivicRecord classes
 .. class:: Assertion
 
 .. class:: Source
+
+Attributes
+----------
+
+The :class:`Attribute` class is a special type of CivicRecord that is not indexed, and is used as a base container
+class for additional complex records beyond those mentioned above (e.g. diseases, drugs). Attributes are not cached
+except as attached objects to non-:class:`Attribute` :class:`CivicRecord` objects, and cannot be retrieved
+independently.
