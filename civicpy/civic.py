@@ -67,7 +67,7 @@ class CivicRecord:
 
     def __init__(self, partial=False, **kwargs):
         self._incomplete = set()
-        self.partial = partial
+        self._partial = partial
         simple_fields = sorted(self.SIMPLE_FIELDS, reverse=True)
         simple_fields = sorted(simple_fields, key=lambda x: x in CivicRecord.SIMPLE_FIELDS, reverse=True)
         for field in simple_fields:
@@ -107,15 +107,15 @@ class CivicRecord:
                 v['type'] = CIVIC_TO_PYCLASS.get(t, t)
                 self.__setattr__(field, cls(partial=True, **v))
 
-        self.partial = bool(self._incomplete)
-        if not isinstance(self, Attribute) and not self.partial and self.__class__.__name__ != 'CivicRecord':
+        self._partial = bool(self._incomplete)
+        if not isinstance(self, Attribute) and not self._partial and self.__class__.__name__ != 'CivicRecord':
             CACHE[hash(self)] = self
 
     def __repr__(self):
         return f'<CIViC {self.type} {self.id}>'
 
     def __getattr__(self, item):
-        if self.partial and item in self._incomplete:
+        if self._partial and item in self._incomplete:
             self.update()
         return object.__getattribute__(self, item)
 
@@ -129,14 +129,14 @@ class CivicRecord:
         """Updates record and returns True if record is complete after update, else False."""
         if kwargs:
             self.__init__(partial=allow_partial, force=force, **kwargs)
-            return not self.partial
+            return not self._partial
 
         if not force and CACHE.get(hash(self)):
             cached = CACHE[hash(self)]
             for field in self.SIMPLE_FIELDS | self.COMPLEX_FIELDS:
                 v = getattr(cached, field)
                 setattr(self, field, v)
-            self.partial = False
+            self._partial = False
             logging.info(f'Loading {str(self)} from cache')
             return True
         resp_dict = element_lookup_by_id(self.type, self.id)

@@ -40,4 +40,4 @@ class TestElements(object):
             if isinstance(complex_value, list):
                 complex_value = complex_value[0]
             if isinstance(complex_value, civic.Attribute):
-                assert not complex_value.partial
+                assert not complex_value._partial
