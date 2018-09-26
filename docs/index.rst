@@ -8,7 +8,7 @@ CIViCpy
 
 v\ |version|.
 
-Delicious **CIViCpy** is an analysis toolkit for extracting and analyzing knowledge from the `CIViC knowledgebase`_.
+Delicious **CIViCpy** is an analysis toolkit and SDK for extracting and analyzing knowledge from the `CIViC knowledgebase`_.
 
 .. note:: The use of **Python 3** is *mandatory* for CIViCpy. This is in anticipation of the Python 2 scheduled end-of-life date \
    of `January 1, 2020 <https://www.python.org/dev/peps/pep-0373/>`_.
@@ -52,7 +52,7 @@ Features
 The User Guide
 --------------
 
-This documentation describes how to get started with CIViCpy, the ORM, and making queries to the CIViC
+This documentation describes how to get started with CIViCpy, the SDK, and making queries to the CIViC
 knowledgebase.
 
 .. toctree::
