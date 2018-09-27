@@ -56,7 +56,7 @@ def element_lookup_by_id(element_type, element_id):
 def get_class(element_type):
     e_string = singularize(element_type)
     class_string = snake_to_camel(e_string)
-    cls = getattr(MODULE, class_string, RecordAttribute)
+    cls = getattr(MODULE, class_string, CivicAttribute)
     return cls
 
 
@@ -108,7 +108,7 @@ class CivicRecord:
                 self.__setattr__(field, cls(partial=True, **v))
 
         self._partial = bool(self._incomplete)
-        if not isinstance(self, RecordAttribute) and not self._partial and self.__class__.__name__ != 'CivicRecord':
+        if not isinstance(self, CivicAttribute) and not self._partial and self.__class__.__name__ != 'CivicRecord':
             CACHE[hash(self)] = self
 
     def __repr__(self):
@@ -300,7 +300,7 @@ class Assertion(CivicRecord):
         return [x.hpo_id for x in self.phenotypes if x.hpo_id]
 
 
-class RecordAttribute(CivicRecord):
+class CivicAttribute(CivicRecord):
 
     _SIMPLE_FIELDS = {'type'}
     _COMPLEX_FIELDS = set()
@@ -328,11 +328,11 @@ class RecordAttribute(CivicRecord):
         return NotImplementedError
 
 
-class Drug(RecordAttribute):
+class Drug(CivicAttribute):
     _SIMPLE_FIELDS = CivicRecord._SIMPLE_FIELDS.union({'pubchem_id'})
 
 
-class Disease(RecordAttribute):
+class Disease(CivicAttribute):
     _SIMPLE_FIELDS = CivicRecord._SIMPLE_FIELDS.union({'display_name', 'doid', 'url'})
 
 

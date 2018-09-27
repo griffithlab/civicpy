@@ -39,5 +39,5 @@ class TestElements(object):
                 continue
             if isinstance(complex_value, list):
                 complex_value = complex_value[0]
-            if isinstance(complex_value, civic.RecordAttribute):
+            if isinstance(complex_value, civic.CivicAttribute):
                 assert not complex_value._partial

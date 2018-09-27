@@ -4,16 +4,15 @@ The **civic** module
 ======================
 
 CIViCpy is primarily designed to enable exploration of the content of CIViC through Python :class:`CivicRecord` objects.
-:class:`Gene`, :class:`Variant`, :class:`Assertion`, :class:`Source`, and :class:`Evidence`
-are all subclasses of :class:`CivicRecord`. While these object can be generated locally, the **civic** module provides
-several routines for `getting records`_.
+While these record objects can be initialized independently, the **civic** module also provides several routines for
+`getting records`_ directly from CIViC. Use of these routines is recommended.
 
 The **civic** module may be imported from **civicpy** at the top level::
 
 	>>>from civicpy import civic
 
-The CivicRecord classes
------------------------
+The CivicRecord class
+---------------------
 
 As a base class, :class:`CivicRecord` is used to define the characteristic of all records in CIViC. This class is not
 intended to be invoked directly by the end user, but provided for documentation of shared methods and variables in
@@ -21,7 +20,13 @@ child classes.
 
 .. class:: CivicRecord
 
-	The following methods are provided for each :class:`CivicRecord`:
+	.. method:: __init__(partial=False, **kwargs):
+		The record object may be initialized by the user, though the practice is discouraged. To do so, values for each
+		of the object attributes (except `type`) must be specified as keyword arguments, or the `partial` parameter must
+		be set to **True**. If `partial` is set to **True**, the `id` keyword argument is still required.
+
+		Users are encouraged to use the below functions for `getting records`_ in lieu of directly initializing record
+		objects.
 
 	.. method:: update(allow_partial=True, force=False, **kwargs)
 
@@ -35,24 +40,43 @@ child classes.
 
 		Returns a URL to the record on the CIViC web application.
 
-	Each class defines two sets of keys describing the record properties.
+	.. attribute:: type
 
-.. class:: Gene
+		The type of record. This field is set automatically by child classes and should not be changed.
 
-.. class:: Variant
+	.. attribute:: id
 
-.. class:: Evidence
+		The record ID. Must be set on initialization using the `id` keyword argument.
 
-.. class:: Assertion
+Primary CIViC Records
+~~~~~~~~~~~~~~~~~~~~~
 
-.. class:: Source
+The primary CIViC records are those found on
 
-Attributes
-----------
+.. class:: Gene(CivicRecord)
 
-The :class:`Attribute` class is a special type of CivicRecord that is not indexed, and is used as a base container
-class for additional complex records beyond those mentioned above (e.g. diseases, drugs). Attributes are not cached
-except as attached objects to non-:class:`Attribute` :class:`CivicRecord` objects, and cannot be retrieved
+	.. attribute:: description
+
+		A free-text description summarizing the known association between the gene and cancer.
+
+	.. attribute:: entrez_id
+
+		The `Entrez ID <https://www.ncbi.nlm.nih.gov/gene/>`_ associated with this gene.
+
+.. class:: Variant(CivicRecord)
+
+.. class:: Evidence(CivicRecord)
+
+.. class:: Assertion(CivicRecord)
+
+.. class:: Source(CivicRecord)
+
+The CivicAttributes Class
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The :class:`CivicAttribute` class is a special type of CivicRecord that is not indexed, and is used as a base container
+class for additional complex records beyond those mentioned above (e.g. diseases, drugs). CivicAttributes are not cached
+except as attached objects to non-:class:`CivicAttribute` :class:`CivicRecord` objects, and cannot be retrieved
 independently.
 
 Getting records
