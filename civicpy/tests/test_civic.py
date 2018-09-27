@@ -9,14 +9,14 @@ ELEMENTS = [
 @pytest.fixture(scope="module", params=ELEMENTS)
 def element(request):
     element_type = request.param
-    return civic.get_elements_by_ids(element_type, [1])[0]
+    return civic._get_elements_by_ids(element_type, [1])[0]
 
 
 class TestGetFunctions(object):
     
     def test_get_assertions(self):
         test_ids = [1, 2, 3]
-        results = civic.get_elements_by_ids('assertion', test_ids)
+        results = civic._get_elements_by_ids('assertion', test_ids)
         assert len(results) == 3
 
 

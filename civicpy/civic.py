@@ -208,7 +208,7 @@ class Variant(CivicRecord):
 
     @property
     def gene(self):
-        return get_element_by_id('gene', self.gene_id)
+        return _get_element_by_id('gene', self.gene_id)
 
 
 class Gene(CivicRecord):
@@ -340,7 +340,7 @@ def get_cached(element_type, element_id):
     return CACHE.get(hash(r), False)
 
 
-def get_elements_by_ids(element, id_list=[], allow_cached=True, get_all=False):
+def _get_elements_by_ids(element, id_list=[], allow_cached=True, get_all=False):
     if allow_cached and not get_all:
         cached = [get_cached(element, element_id) for element_id in id_list]
         if all(cached):
@@ -360,8 +360,8 @@ def get_elements_by_ids(element, id_list=[], allow_cached=True, get_all=False):
     return elements
 
 
-def get_element_by_id(element, id, allow_cached=True):
-    return get_elements_by_ids(element, [id], allow_cached)[0]
+def _get_element_by_id(element, id, allow_cached=True):
+    return _get_elements_by_ids(element, [id], allow_cached)[0]
 
 
 def _construct_get_all_payload():
@@ -405,13 +405,13 @@ def _construct_query_payload(id_list):
 
 def get_assertions_by_ids(assertion_id_list=[], get_all=False):
     logging.info('Getting assertions...')
-    assertions = get_elements_by_ids('assertion', assertion_id_list, get_all=get_all)
+    assertions = _get_elements_by_ids('assertion', assertion_id_list, get_all=get_all)
     logging.info('Caching variant details...')
     variant_ids = [x.variant.id for x in assertions]    # Add variants to cache
-    get_elements_by_ids('variant', variant_ids)
+    _get_elements_by_ids('variant', variant_ids)
     logging.info('Caching gene details...')
     gene_ids = [x.gene.id for x in assertions]          # Add genes to cache
-    get_elements_by_ids('gene', gene_ids)
+    _get_elements_by_ids('gene', gene_ids)
     for assertion in assertions:                        # Load from cache
         assertion.variant.update()
         assertion.gene.update()
@@ -422,15 +422,23 @@ def get_assertion_by_id(assertion_id):
     return get_assertions_by_ids([assertion_id])[0]
 
 
+def get_all_assertion_ids():
+    return _get_all_element_ids('assertions')
+
+
+def get_all_assertions():
+    return get_assertions_by_ids(get_all=True)
+
+
 def get_variants_by_ids(variant_id_list):
     logging.info('Getting variants...')
-    variants = get_elements_by_ids('variant', variant_id_list)
+    variants = _get_elements_by_ids('variant', variant_id_list)
     gene_ids = set()
     for variant in variants:
         gene_ids.add(variant.gene_id)
     if gene_ids:
         logging.info('Caching gene details...')
-        get_elements_by_ids('gene', gene_ids)
+        _get_elements_by_ids('gene', gene_ids)
     return variants
 
 
@@ -438,10 +446,18 @@ def get_variant_by_id(variant_id):
     return get_variants_by_ids([variant_id])[0]
 
 
+def get_all_variants():
+    return _get_all_genes_and_variants()['variants']
+
+
+def get_all_variant_ids():
+    return _get_all_element_ids('variants')
+
+
 def _get_all_genes_and_variants():
     logging.warning('Getting all genes or variants. This may take a couple of minutes...')
-    variants = get_elements_by_ids('variants', get_all=True)
-    genes = get_elements_by_ids('gene', get_all=True)
+    variants = _get_elements_by_ids('variants', get_all=True)
+    genes = _get_elements_by_ids('gene', get_all=True)
     for variant in variants:
         variant.gene.update()
     return {'genes': genes, 'variants': variants}
@@ -454,12 +470,24 @@ def _get_all_element_ids(element):
     return [x['id'] for x in resp.json()['records']]
 
 
-def get_all_variant_ids():
-    return _get_all_element_ids('variants')
+def get_genes_by_ids(gene_id_list):
+    logging.info('Getting genes...')
+    genes = _get_elements_by_ids('gene', gene_id_list)  # Advanced search results are incomplete
+    variant_ids = set()
+    for gene in genes:
+        for variant in gene.variants:
+            variant_ids.add(variant.id)
+    if variant_ids:
+        logging.info('Caching variant details...')
+        _get_elements_by_ids('variant', variant_ids)
+    for gene in genes:
+        for variant in gene.variants:
+            variant.update()
+    return genes
 
 
-def get_all_variants():
-    return _get_all_genes_and_variants()['variants']
+def get_gene_by_id(gene_id):
+    return get_genes_by_ids([gene_id])[0]
 
 
 def get_all_gene_ids():
@@ -472,38 +500,6 @@ def get_all_genes():
 
 def get_all_evidence_ids():
     return _get_all_element_ids('evidence_items')
-
-
-def get_all_variant_group_ids():
-    return _get_all_element_ids('variant_groups')
-
-
-def get_all_assertion_ids():
-    return _get_all_element_ids('assertions')
-
-
-def get_all_assertions():
-    return get_assertions_by_ids(get_all=True)
-
-
-def get_genes_by_ids(gene_id_list):
-    logging.info('Getting genes...')
-    genes = get_elements_by_ids('gene', gene_id_list)  # Advanced search results are incomplete
-    variant_ids = set()
-    for gene in genes:
-        for variant in gene.variants:
-            variant_ids.add(variant.id)
-    if variant_ids:
-        logging.info('Caching variant details...')
-        get_elements_by_ids('variant', variant_ids)
-    for gene in genes:
-        for variant in gene.variants:
-            variant.update()
-    return genes
-
-
-def get_gene_by_id(gene_id):
-    return get_genes_by_ids([gene_id])[0]
 
 
 def get_HPO_terms_by_ids(hpo_id_list):

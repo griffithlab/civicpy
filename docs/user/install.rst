@@ -1,7 +1,7 @@
 Installation
 ============
 
-Installation is easy as *PyPI* with the `pip` package manager.
+Installation is easy as `*PyPI*` with the `pip` package manager.
 
 pip
 ---
