@@ -1,4 +1,4 @@
-.. module:: civicpy.exports
+.. module:: exports
 
 The **exports** module
 ======================
@@ -6,7 +6,9 @@ The **exports** module
 CIViCpy supports exporting of CIViC records to Variant Call Format (VCF) files.
 This enables downstream analyses such as integrating with `IGV`_, `VEP`_, and
 other common bioinformatics tools. VCF exports are maintained via the :mod:`exports`
-module.
+module::
+
+	>>>from civicpy import exports
 
 Other file formats are planned for future releases. Suggestions are welcome on our
 `GitHub issues page <https://github.com/griffithlab/civicpy/issues>`_.
@@ -14,9 +16,9 @@ Other file formats are planned for future releases. Suggestions are welcome on o
 VCF
 ---
 
-VCFs are written using the :class:`VCFWriter` class, to which you add :class:`Assertion`,
-:class:`Variant`, or :class:`Evidence` records. The VCF output has one line per evidence.
-Passing :class:`Assertion` or :class:`Variant` objects will expand the record to all
+VCFs are written using the :class:`VCFWriter` class, to which you add :class:`civic.Assertion`,
+:class:`civic.Variant`, or :class:`civic.Evidence` records. The VCF output has one line per evidence.
+Passing :class:`civic.Assertion` or :class:`civic.Variant` objects will expand the record to all
 evidence describing it.
 
 VCFWriter

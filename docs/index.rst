@@ -34,10 +34,10 @@ Delicious **CIViCpy** is an analysis toolkit and SDK for extracting and analyzin
    >>> set(my_variants) & set(braf_variants)
    {<CIViC variant 12>}
 
-**CIViCpy** lets you pull data from CIViC using the *civic* module and interact with records as dynamic objects.
+**CIViCpy** lets you pull data from CIViC using the :mod:`civic` module and interact with records as dynamic objects.
 With the aid of caching, it is easy to explore relationships between CIViC records (e.g. assertions, genes, variants)
-without worrying about querying CIViC more than once for the same data. *Exports* allow for downstream analysis
-tasks, such as variant annotaiton through .bed *(coming soon)* or .vcf format.
+without worrying about querying CIViC more than once for the same data. The :mod:`exports` module enables downstream
+analysis tasks through exporting records to .vcf format.
 
 Features
 --------

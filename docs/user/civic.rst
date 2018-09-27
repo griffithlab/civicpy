@@ -1,4 +1,4 @@
-.. py:module:: civicpy.civic
+.. py:module:: civic
 
 The **civic** module
 ======================
