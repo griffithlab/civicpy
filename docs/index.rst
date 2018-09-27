@@ -61,13 +61,6 @@ knowledgebase.
    user/intro
    user/install
    user/usage
-
-Exports
--------
-
-.. toctree::
-   :maxdepth: 2
-
-   exports/all
+   user/exports
 
 .. _`CIViC knowledgebase`: https://civicdb.org

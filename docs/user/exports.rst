@@ -1,7 +1,7 @@
 .. module:: civicpy.exports
 
-Exporting
-=========
+The **exports** module
+======================
 
 CIViCpy supports exporting of CIViC records to Variant Call Format (VCF) files.
 This enables downstream analyses such as integrating with `IGV`_, `VEP`_, and
@@ -25,7 +25,7 @@ VCFWriter
 .. class:: VCFWriter
 
 Example
-~~~~~~~~~
+~~~~~~~
 
 Here's an example of how to export all variants from CIViC to VCF::
 
