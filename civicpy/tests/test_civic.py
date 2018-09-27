@@ -33,11 +33,11 @@ class TestElements(object):
             element.foo
 
     def test_completeness(self, element):
-        for complex_field in element.COMPLEX_FIELDS:
+        for complex_field in element._COMPLEX_FIELDS:
             complex_value = getattr(element, complex_field)
             if not complex_value:
                 continue
             if isinstance(complex_value, list):
                 complex_value = complex_value[0]
-            if isinstance(complex_value, civic.Attribute):
+            if isinstance(complex_value, civic.RecordAttribute):
                 assert not complex_value._partial

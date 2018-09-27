@@ -56,20 +56,20 @@ def element_lookup_by_id(element_type, element_id):
 def get_class(element_type):
     e_string = singularize(element_type)
     class_string = snake_to_camel(e_string)
-    cls = getattr(MODULE, class_string, Attribute)
+    cls = getattr(MODULE, class_string, RecordAttribute)
     return cls
 
 
 class CivicRecord:
 
-    SIMPLE_FIELDS = {'id', 'type'}
-    COMPLEX_FIELDS = set()
+    _SIMPLE_FIELDS = {'id', 'type'}
+    _COMPLEX_FIELDS = set()
 
     def __init__(self, partial=False, **kwargs):
         self._incomplete = set()
         self._partial = partial
-        simple_fields = sorted(self.SIMPLE_FIELDS, reverse=True)
-        simple_fields = sorted(simple_fields, key=lambda x: x in CivicRecord.SIMPLE_FIELDS, reverse=True)
+        simple_fields = sorted(self._SIMPLE_FIELDS, reverse=True)
+        simple_fields = sorted(simple_fields, key=lambda x: x in CivicRecord._SIMPLE_FIELDS, reverse=True)
         for field in simple_fields:
             try:
                 self.__setattr__(field, kwargs[field])
@@ -77,12 +77,12 @@ class CivicRecord:
                 try:
                     object.__getattribute__(self, field)
                 except AttributeError:
-                    if partial and field not in CivicRecord.SIMPLE_FIELDS:
+                    if partial and field not in CivicRecord._SIMPLE_FIELDS:
                         self._incomplete.add(field)     # Allow for incomplete data when partial flag set
                     else:
                         raise AttributeError(f'Expected {field} attribute for {self.type}, none found.')
 
-        for field in self.COMPLEX_FIELDS:
+        for field in self._COMPLEX_FIELDS:
             try:
                 v = kwargs[field]
             except KeyError:
@@ -108,7 +108,7 @@ class CivicRecord:
                 self.__setattr__(field, cls(partial=True, **v))
 
         self._partial = bool(self._incomplete)
-        if not isinstance(self, Attribute) and not self._partial and self.__class__.__name__ != 'CivicRecord':
+        if not isinstance(self, RecordAttribute) and not self._partial and self.__class__.__name__ != 'CivicRecord':
             CACHE[hash(self)] = self
 
     def __repr__(self):
@@ -133,7 +133,7 @@ class CivicRecord:
 
         if not force and CACHE.get(hash(self)):
             cached = CACHE[hash(self)]
-            for field in self.SIMPLE_FIELDS | self.COMPLEX_FIELDS:
+            for field in self._SIMPLE_FIELDS | self._COMPLEX_FIELDS:
                 v = getattr(cached, field)
                 setattr(self, field, v)
             self._partial = False
@@ -149,7 +149,7 @@ class CivicRecord:
 
 
 class Variant(CivicRecord):
-    SIMPLE_FIELDS = {
+    _SIMPLE_FIELDS = {
         'allele_registry_id',
         'civic_actionability_score',
         'description',
@@ -159,7 +159,7 @@ class Variant(CivicRecord):
         'id',
         'name',
         'type'}
-    COMPLEX_FIELDS = {
+    _COMPLEX_FIELDS = {
         'assertions',
         'clinvar_entries',
         'coordinates',
@@ -176,6 +176,7 @@ class Variant(CivicRecord):
     def __init__(self, **kwargs):
         # Handle overloaded evidence_items from some advanced search views
         evidence_items = kwargs.get('evidence_items')
+        kwargs['type'] = 'variant'
         if evidence_items and not isinstance(evidence_items, list):
                 del(kwargs['evidence_items'])
         super().__init__(**kwargs)
@@ -212,8 +213,8 @@ class Variant(CivicRecord):
 
 
 class Gene(CivicRecord):
-    SIMPLE_FIELDS = {'description', 'entrez_id', 'id', 'name', 'type'}
-    COMPLEX_FIELDS = {
+    _SIMPLE_FIELDS = {'description', 'entrez_id', 'id', 'name', 'type'}
+    _COMPLEX_FIELDS = {
         'aliases',
         # 'errors',                 # TODO: Add support for these fields in advanced search endpoint
         # 'lifecycle_actions',
@@ -224,7 +225,7 @@ class Gene(CivicRecord):
 
 
 class Evidence(CivicRecord):
-    SIMPLE_FIELDS = {
+    _SIMPLE_FIELDS = {
         'clinical_significance',
         'description',
         'drug_interaction_type',
@@ -240,7 +241,7 @@ class Evidence(CivicRecord):
         'type',
         'variant_id',
         'variant_origin'}
-    COMPLEX_FIELDS = {
+    _COMPLEX_FIELDS = {
         'assertions',
         'disease',
         'drugs',
@@ -256,7 +257,7 @@ class Evidence(CivicRecord):
 
 
 class Assertion(CivicRecord):
-    SIMPLE_FIELDS = {
+    _SIMPLE_FIELDS = {
         'allele_registry_id',
         'amp_level',
         'clinical_significance',
@@ -279,7 +280,7 @@ class Assertion(CivicRecord):
         'variant_origin'
     }
 
-    COMPLEX_FIELDS = CivicRecord.COMPLEX_FIELDS.union({
+    _COMPLEX_FIELDS = CivicRecord._COMPLEX_FIELDS.union({
         'acmg_codes',
         'disease',
         'drugs',
@@ -299,10 +300,10 @@ class Assertion(CivicRecord):
         return [x.hpo_id for x in self.phenotypes if x.hpo_id]
 
 
-class Attribute(CivicRecord):
+class RecordAttribute(CivicRecord):
 
-    SIMPLE_FIELDS = {'type'}
-    COMPLEX_FIELDS = set()
+    _SIMPLE_FIELDS = {'type'}
+    _COMPLEX_FIELDS = set()
 
     def __repr__(self):
         return f'<CIViC Attribute {self.type}>'
@@ -327,16 +328,17 @@ class Attribute(CivicRecord):
         return NotImplementedError
 
 
-class Drug(Attribute):
-    SIMPLE_FIELDS = CivicRecord.SIMPLE_FIELDS.union({'pubchem_id'})
+class Drug(RecordAttribute):
+    _SIMPLE_FIELDS = CivicRecord._SIMPLE_FIELDS.union({'pubchem_id'})
 
 
-class Disease(Attribute):
-    SIMPLE_FIELDS = CivicRecord.SIMPLE_FIELDS.union({'display_name', 'doid', 'url'})
+class Disease(RecordAttribute):
+    _SIMPLE_FIELDS = CivicRecord._SIMPLE_FIELDS.union({'display_name', 'doid', 'url'})
 
 
 def get_cached(element_type, element_id):
-    r = Variant(type=element_type, id=element_id, partial=True)
+    klass = get_class(element_type)
+    r = klass(type=element_type, id=element_id, partial=True)
     return CACHE.get(hash(r), False)
 
 
