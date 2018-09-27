@@ -68,7 +68,6 @@ Exports
 .. toctree::
    :maxdepth: 2
 
-   exports/intro
-   exports/vcf
+   exports/all
 
 .. _`CIViC knowledgebase`: https://civicdb.org
