@@ -60,7 +60,7 @@ knowledgebase.
 
    user/intro
    user/install
-   user/usage
+   user/civic
    user/exports
 
 .. _`CIViC knowledgebase`: https://civicdb.org
