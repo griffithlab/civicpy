@@ -21,6 +21,7 @@ child classes.
 .. class:: CivicRecord
 
 	.. method:: __init__(partial=False, **kwargs):
+
 		The record object may be initialized by the user, though the practice is discouraged. To do so, values for each
 		of the object attributes (except `type`) must be specified as keyword arguments, or the `partial` parameter must
 		be set to **True**. If `partial` is set to **True**, the `id` keyword argument is still required.
@@ -57,13 +58,53 @@ The primary CIViC records are those found on
 
 	.. attribute:: description
 
-		A free-text description summarizing the known association between the gene and cancer.
+		A curated summary of the clinical significance of this gene.
 
 	.. attribute:: entrez_id
 
-		The `Entrez ID <https://www.ncbi.nlm.nih.gov/gene/>`_ associated with this gene.
+		The `Entrez ID`_ associated with this gene.
+
+	.. attribute:: name
+
+		The `HGNC Gene Symbol`_ associated with this gene.
+
+	.. attribute:: aliases
+
+		A list of alternate gene symbols by which this gene is referenced.
+
+	.. attribute:: variants
+
+		A list of :class:`Variant` records associated with this gene.
+
+.. _Entrez ID: https://www.ncbi.nlm.nih.gov/gene/
+
+.. _HGNC Gene Symbol: https://www.genenames.org/
 
 .. class:: Variant(CivicRecord)
+
+	.. attribute:: allele_registry_id
+
+		The `allele registry id`_ associated with this variant.
+
+	.. attribute:: civic_actionability_score
+
+		The CIViC `actionability score`_ associated with this variant.
+
+	.. attribute:: description
+
+		A curated summary of the clinical significance of this variant.
+
+	.. attribute:: entrez_id
+
+		The `Entrez ID`_ of the gene this variant belongs to.
+
+	.. attribute:: entrez_name
+
+		The `HGNC Gene Symbol`_ of the gene this variant belongs to.
+
+.. _allele registry id: http://reg.clinicalgenome.org
+
+.. _actionability score: https://civicdb.org/help/variants/actionability-score
 
 .. class:: Evidence(CivicRecord)
 
