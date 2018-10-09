@@ -149,29 +149,27 @@ class CivicRecord:
 
 
 class Variant(CivicRecord):
-    _SIMPLE_FIELDS = {
+    _SIMPLE_FIELDS = CivicRecord._SIMPLE_FIELDS.union({
         'allele_registry_id',
         'civic_actionability_score',
         'description',
         'entrez_id',
         'entrez_name',
         'gene_id',
-        'id',
-        'name',
-        'type'}
-    _COMPLEX_FIELDS = {
+        'name'})
+    _COMPLEX_FIELDS = CivicRecord._COMPLEX_FIELDS.union({
         'assertions',
         'clinvar_entries',
         'coordinates',
-        'errors',
+        # 'errors',
         'evidence_items',
         'hgvs_expressions',
-        'lifecycle_actions',
-        'provisional_values',
+        # 'lifecycle_actions',
+        # 'provisional_values',
         'sources',
         'variant_aliases',
         'variant_groups',
-        'variant_types'}
+        'variant_types'})
 
     def __init__(self, **kwargs):
         # Handle overloaded evidence_items from some advanced search views
@@ -182,14 +180,12 @@ class Variant(CivicRecord):
         super().__init__(**kwargs)
 
     @property
-    def source_ids(self):
-        ids = set()
+    def evidence_sources(self):
+        sources = set()
         for evidence in self.evidence_items:
-            if evidence.source.pubmed_id:
-                ids.add(f'PMID:{evidence.source.pubmed_id}')
-            else:
-                raise NotImplementedError('No method (yet) to support evidence other than PMID')
-        return ids
+            if evidence.source:
+                sources.add(evidence.source)
+        return sources
 
     @property
     def aliases(self):
@@ -213,19 +209,20 @@ class Variant(CivicRecord):
 
 
 class Gene(CivicRecord):
-    _SIMPLE_FIELDS = {'description', 'entrez_id', 'id', 'name', 'type'}
-    _COMPLEX_FIELDS = {
+    _SIMPLE_FIELDS = CivicRecord._SIMPLE_FIELDS.union(
+        {'description', 'entrez_id', 'name'})
+    _COMPLEX_FIELDS = CivicRecord._COMPLEX_FIELDS.union({
         'aliases',
         # 'errors',                 # TODO: Add support for these fields in advanced search endpoint
         # 'lifecycle_actions',
         # 'provisional_values',
         # 'sources',
         'variants'
-    }
+    })
 
 
 class Evidence(CivicRecord):
-    _SIMPLE_FIELDS = {
+    _SIMPLE_FIELDS = CivicRecord._SIMPLE_FIELDS.union({
         'clinical_significance',
         'description',
         'drug_interaction_type',
@@ -233,15 +230,13 @@ class Evidence(CivicRecord):
         'evidence_level',
         'evidence_type',
         'gene_id',
-        'id',
         'name',
         'open_change_count',
         'rating',
         'status',
-        'type',
         'variant_id',
-        'variant_origin'}
-    _COMPLEX_FIELDS = {
+        'variant_origin'})
+    _COMPLEX_FIELDS = CivicRecord._COMPLEX_FIELDS.union({
         'assertions',
         'disease',
         'drugs',
@@ -249,7 +244,7 @@ class Evidence(CivicRecord):
         'fields_with_pending_changes',
         'lifecycle_actions',
         'phenotypes',
-        'source'}
+        'source'})
 
     @property
     def variant(self):
@@ -257,7 +252,7 @@ class Evidence(CivicRecord):
 
 
 class Assertion(CivicRecord):
-    _SIMPLE_FIELDS = {
+    _SIMPLE_FIELDS = CivicRecord._SIMPLE_FIELDS.union({
         'allele_registry_id',
         'amp_level',
         'clinical_significance',
@@ -268,7 +263,6 @@ class Assertion(CivicRecord):
         'evidence_type',
         'fda_companion_test',
         'fda_regulatory_approval',
-        'id',
         'name',
         'nccn_guideline',
         'nccn_guideline_version',
@@ -276,9 +270,8 @@ class Assertion(CivicRecord):
         'pending_evidence_count',
         'status',
         'summary',
-        'type',
         'variant_origin'
-    }
+    })
 
     _COMPLEX_FIELDS = CivicRecord._COMPLEX_FIELDS.union({
         'acmg_codes',

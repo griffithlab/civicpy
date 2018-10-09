@@ -47,12 +47,13 @@ child classes.
 
 	.. attribute:: id
 
-		The record ID. Must be set on initialization using the `id` keyword argument.
+		The record ID. This is set on initialization using the `id` keyword argument, and reflects the primary ID for
+		the record as stored in CIViC.
 
 Primary CIViC Records
 ~~~~~~~~~~~~~~~~~~~~~
 
-The primary CIViC records are those found on
+The primary CIViC records are found on the CIViC advanced search page, and are fully-formed
 
 .. class:: Gene(CivicRecord)
 
@@ -102,9 +103,78 @@ The primary CIViC records are those found on
 
 		The `HGNC Gene Symbol`_ of the gene this variant belongs to.
 
+	.. attribute:: gene
+
+		The :class:`Gene` this variant belongs to.
+
+	.. attribute:: gene_id
+
+		The :attr:`CivicRecord.id` of the gene this variant belongs to.
+
+	.. attribute:: name
+
+		The curated name given to this variant.
+
+	.. attribute:: assertions
+
+		A list of :class:`Assertion` records associated with this variant.
+
+	.. attribute:: clinvar_entries
+
+		A list of `clinvar ids`_ associated with this variant.
+
+	.. attribute:: coordinates
+
+		A :class:`CivicAttribute` object describing `CIViC coordinates`_.
+
+	.. attribute:: evidence_items
+		evidence
+
+		A list of :class:`Evidence` associated with this variant.
+
+	.. attribute:: evidence_sources
+
+		A list of :class:`Source` objects associated with the evidence from this variant.
+
+	.. attribute:: hgvs_expressions
+
+		Curated `HGVS expressions`_ describing this variant.
+
+	.. attribute:: sources
+
+		A list of :class:`Source` objects associated with the variant description.
+
+	.. attribute:: variant_aliases
+	   aliases
+
+		A curated list of aliases by which this variant is referenced.
+
+	.. attribute:: variant_groups
+		groups
+
+		A list of `variant groups`_ to which this variant belongs.
+
+	.. attribute:: variant_types
+		types
+
+		A list of :class:`CivicRecord` objects describing `variant types`_ from the
+		`Sequence Ontology`_.
+
 .. _allele registry id: http://reg.clinicalgenome.org
 
 .. _actionability score: https://civicdb.org/help/variants/actionability-score
+
+.. _clinvar ids: https://www.ncbi.nlm.nih.gov/clinvar
+
+.. _CIViC coordinates: https://civicdb.org/help/variants/variants-coordinates
+
+.. _HGVS expressions: https://varnomen.hgvs.org
+
+.. _variant groups: https://civicdb.org/help/variant-groups/overview
+
+.. _variant types: https://civicdb.org/help/variants/variants-type
+
+.. _Sequence Ontology: http://www.sequenceontology.org/
 
 .. class:: Evidence(CivicRecord)
 
