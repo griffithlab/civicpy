@@ -157,7 +157,7 @@ The primary CIViC records are found on the CIViC advanced search page, and are f
 	.. attribute:: variant_types
 		types
 
-		A list of :class:`CivicRecord` objects describing `variant types`_ from the
+		A list of :class:`CivicAttribute` objects describing `variant types`_ from the
 		`Sequence Ontology`_.
 
 .. _allele registry id: http://reg.clinicalgenome.org
