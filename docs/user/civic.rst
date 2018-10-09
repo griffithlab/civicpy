@@ -50,8 +50,8 @@ child classes.
 		The record ID. This is set on initialization using the `id` keyword argument, and reflects the primary ID for
 		the record as stored in CIViC.
 
-Primary CIViC Records
-~~~~~~~~~~~~~~~~~~~~~
+CIViC record types
+~~~~~~~~~~~~~~~~~~
 
 The primary CIViC records are found on the CIViC advanced search page, and are fully-formed
 
@@ -182,8 +182,8 @@ The primary CIViC records are found on the CIViC advanced search page, and are f
 
 .. class:: Source(CivicRecord)
 
-The CivicAttributes Class
-~~~~~~~~~~~~~~~~~~~~~~~~~~
+CIViC attributes
+~~~~~~~~~~~~~~~~
 
 The :class:`CivicAttribute` class is a special type of CivicRecord that is not indexed, and is used as a base container
 class for additional complex records beyond those mentioned above (e.g. diseases, drugs). CivicAttributes are not cached
