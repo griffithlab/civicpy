@@ -11,8 +11,8 @@ The **civic** module may be imported from **civicpy** at the top level::
 
 	>>>from civicpy import civic
 
-The CivicRecord class
----------------------
+CIViC records
+-------------
 
 As a base class, :class:`CivicRecord` is used to define the characteristic of all records in CIViC. This class is not
 intended to be invoked directly by the end user, but provided for documentation of shared methods and variables in
