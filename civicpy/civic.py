@@ -2,6 +2,7 @@ import requests
 import importlib
 import logging
 
+
 CACHE = dict()
 
 HPO_TERMS = dict()
@@ -293,7 +294,7 @@ class Assertion(CivicRecord):
         return [x.hpo_id for x in self.phenotypes if x.hpo_id]
 
 
-class CivicAttribute(CivicRecord):
+class CivicAttribute(CivicRecord, dict):
 
     _SIMPLE_FIELDS = {'type'}
     _COMPLEX_FIELDS = set()
