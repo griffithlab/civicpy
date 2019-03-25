@@ -145,7 +145,7 @@ The primary CIViC records are found on the CIViC advanced search page, and are f
 		A list of :class:`Source` objects associated with the variant description.
 
 	.. attribute:: variant_aliases
-	   aliases
+		aliases
 
 		A curated list of aliases by which this variant is referenced.
 

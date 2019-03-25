@@ -1,5 +1,6 @@
 import pytest
 from civicpy import civic
+from civicpy.tests.fixtures import *
 
 ELEMENTS = [
     'Assertion'
@@ -41,3 +42,13 @@ class TestElements(object):
                 complex_value = complex_value[0]
             if isinstance(complex_value, civic.CivicAttribute):
                 assert not complex_value._partial
+
+
+class TestEvidence(object):
+
+    def test_get_source_ids(self, v600e):
+        assert len(v600e.evidence)
+        assert len(v600e.evidence) / 2 <= len(v600e.evidence_sources)
+        for source in v600e.evidence_sources:
+            assert source.citation_id
+            assert source.source_type
