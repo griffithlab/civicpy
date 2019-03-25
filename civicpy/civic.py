@@ -184,7 +184,7 @@ class Variant(CivicRecord):
     def evidence_sources(self):
         sources = set()
         for evidence in self.evidence_items:
-            if evidence.source:
+            if evidence.source is not None:
                 sources.add(evidence.source)
         return sources
 
@@ -300,7 +300,12 @@ class CivicAttribute(CivicRecord, dict):
     _COMPLEX_FIELDS = set()
 
     def __repr__(self):
-        return f'<CIViC Attribute {self.type}>'
+        try:
+            _id = self.id
+        except AttributeError:
+            return f'<CIViC Attribute {self.type}>'
+        else:
+            return f'<CIViC Attribute {self.type} {self.id}>'
 
     def __init__(self, **kwargs):
         kwargs['partial'] = False
@@ -309,10 +314,14 @@ class CivicAttribute(CivicRecord, dict):
         super().__init__(**kwargs)
 
     def __hash__(self):
-        raise NotImplementedError
-
-    def __eq__(self, other):
-        raise NotImplementedError
+        try:
+            _id = self.id
+        except AttributeError:
+            raise NotImplementedError
+        if _id is not None:
+            return CivicRecord.__hash__(self)
+        else:
+            raise ValueError
 
     @property
     def site_link(self):
