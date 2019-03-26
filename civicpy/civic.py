@@ -2,9 +2,16 @@ import requests
 import importlib
 import logging
 import datetime
+import pandas as pd
+import pickle
+from civicpy import DATA_ROOT
 
 
 CACHE = dict()
+
+CACHE_FILE = DATA_ROOT / 'CACHE.pkl'
+
+COORDINATE_TABLE = None
 
 HPO_TERMS = dict()
 
@@ -21,6 +28,7 @@ UNMARKED_PLURALS = {'evidence'}
 CIVIC_TO_PYCLASS = {
     'evidence_items': 'evidence'
 }
+
 
 def pluralize(string):
     if string in UNMARKED_PLURALS:
@@ -63,6 +71,28 @@ def get_class(element_type):
     cls = getattr(MODULE, class_string, CivicAttribute)
     return cls
 
+
+def save_cache():
+    with open(CACHE_FILE, 'wb') as pf:
+        pickle.dump(CACHE, pf)
+
+
+def load_cache():
+    with open(CACHE_FILE, 'rb') as pf:
+        old_cache = pickle.load(pf)
+    c = dict()
+    variants = set()
+    for k, v in old_cache.items():
+        if isinstance(k, str):
+            c[k] = v
+        elif isinstance(k, int):
+            c[hash(v)] = v
+            if v.type == 'variant':
+                variants.add(v)
+        else:
+            raise ValueError
+    MODULE.CACHE = c
+    _build_coordinate_table(variants)
 
 class CivicRecord:
 
@@ -128,6 +158,9 @@ class CivicRecord:
 
     def __eq__(self, other):
         return hash(self) == hash(other)
+
+    def __setstate__(self, state):
+        self.__dict__ = state
 
     def update(self, allow_partial=True, force=False, **kwargs):
         """Updates record and returns True if record is complete after update, else False."""
@@ -349,9 +382,9 @@ def get_cached(element_type, element_id):
 
 
 def _has_all_cached_fresh(element):
-    s = '{}_all_cached'.format(element)
+    s = '{}_all_cached'.format(pluralize(element))
     if CACHE.get(s, False):
-        return CACHE[s] + FRESH_DELTA < datetime.datetime.now()
+        return CACHE[s] + FRESH_DELTA > datetime.datetime.now()
     return False
 
 
@@ -362,7 +395,7 @@ def _get_elements_by_ids(element, id_list=[], allow_cached=True, get_all=False):
             logging.info(f'Loading {pluralize(element)} from cache')
             return cached
     elif allow_cached and _has_all_cached_fresh(element):
-        cached = [get_cached(element, element_id) for element_id in CACHE['{}_all_ids'.format(element)]]
+        cached = [get_cached(element, element_id) for element_id in CACHE['{}_all_ids'.format(pluralize(element))]]
         logging.info(f'Loading {pluralize(element)} from cache')
         return cached
     if id_list and get_all:
@@ -376,8 +409,8 @@ def _get_elements_by_ids(element, id_list=[], allow_cached=True, get_all=False):
     response.raise_for_status()
     cls = get_class(element)
     elements = [cls(**x) for x in response.json()['results']]
-    CACHE['{}_all_cached'.format(element)] = datetime.datetime.now()
-    CACHE['{}_all_ids'.format(element)] = [x['id'] for x in response.json()['results']]
+    CACHE['{}_all_cached'.format(pluralize(element))] = datetime.datetime.now()
+    CACHE['{}_all_ids'.format(pluralize(element))] = [x['id'] for x in response.json()['results']]
     return elements
 
 

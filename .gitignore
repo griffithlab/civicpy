@@ -103,3 +103,5 @@ ENV/
 
 # notebooks
 *.ipynb
+
+civicpy/data/

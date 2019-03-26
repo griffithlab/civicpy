@@ -7,6 +7,18 @@ ELEMENTS = [
 ]
 
 
+def setup_module():
+    try:
+        civic.load_cache()
+    except FileNotFoundError:
+        pass
+    civic.get_all_variants()
+
+
+def teardown_module():
+    civic.save_cache()
+
+
 @pytest.fixture(scope="module", params=ELEMENTS)
 def element(request):
     element_type = request.param
