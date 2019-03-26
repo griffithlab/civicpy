@@ -1,11 +1,14 @@
 import requests
 import importlib
 import logging
+import datetime
 
 
 CACHE = dict()
 
 HPO_TERMS = dict()
+
+FRESH_DELTA = datetime.timedelta(days=7)
 
 MODULE = importlib.import_module('civicpy.civic')
 
@@ -345,12 +348,23 @@ def get_cached(element_type, element_id):
     return CACHE.get(hash(r), False)
 
 
+def _has_all_cached_fresh(element):
+    s = '{}_all_cached'.format(element)
+    if CACHE.get(s, False):
+        return CACHE[s] + FRESH_DELTA < datetime.datetime.now()
+    return False
+
+
 def _get_elements_by_ids(element, id_list=[], allow_cached=True, get_all=False):
     if allow_cached and not get_all:
         cached = [get_cached(element, element_id) for element_id in id_list]
         if all(cached):
             logging.info(f'Loading {pluralize(element)} from cache')
             return cached
+    elif allow_cached and _has_all_cached_fresh(element):
+        cached = [get_cached(element, element_id) for element_id in CACHE['{}_all_ids'.format(element)]]
+        logging.info(f'Loading {pluralize(element)} from cache')
+        return cached
     if id_list and get_all:
         raise ValueError('Please pass list of ids or use the get_all flag, not both.')
     if get_all:
@@ -362,6 +376,8 @@ def _get_elements_by_ids(element, id_list=[], allow_cached=True, get_all=False):
     response.raise_for_status()
     cls = get_class(element)
     elements = [cls(**x) for x in response.json()['results']]
+    CACHE['{}_all_cached'.format(element)] = datetime.datetime.now()
+    CACHE['{}_all_ids'.format(element)] = [x['id'] for x in response.json()['results']]
     return elements
 
 
