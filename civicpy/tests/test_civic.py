@@ -1,6 +1,5 @@
 import pytest
 from civicpy import civic
-from civicpy.tests.fixtures import *
 
 ELEMENTS = [
     'Assertion'
@@ -15,14 +14,15 @@ def setup_module():
     civic.get_all_variants()
 
 
-def teardown_module():
-    civic.save_cache()
-
-
 @pytest.fixture(scope="module", params=ELEMENTS)
 def element(request):
     element_type = request.param
     return civic._get_elements_by_ids(element_type, [1])[0]
+
+
+@pytest.fixture(scope="module")
+def v600e():
+    return civic.get_variant_by_id(12)
 
 
 class TestGetFunctions(object):

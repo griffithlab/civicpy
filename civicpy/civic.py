@@ -402,6 +402,7 @@ def _get_elements_by_ids(element, id_list=[], allow_cached=True, get_all=False):
         raise ValueError('Please pass list of ids or use the get_all flag, not both.')
     if get_all:
         payload = _construct_get_all_payload()
+        logging.warning('Getting all {}. This may take a couple of minutes...'.format(pluralize(element)))
     else:
         payload = _construct_query_payload(id_list)
     url = search_url(element)
@@ -500,18 +501,22 @@ def get_variant_by_id(variant_id):
     return get_variants_by_ids([variant_id])[0]
 
 
-def get_all_variants():
-    return _get_all_genes_and_variants()['variants']
+def get_all_variants(allow_cached=True):
+    precached = _has_all_cached_fresh('variants')
+    variants = _get_all_genes_and_variants(allow_cached)['variants']
+    if not (precached and allow_cached):
+        _build_coordinate_table(variants)
+    return variants
+
 
 
 def get_all_variant_ids():
     return _get_all_element_ids('variants')
 
 
-def _get_all_genes_and_variants():
-    logging.warning('Getting all genes or variants. This may take a couple of minutes...')
-    variants = _get_elements_by_ids('variants', get_all=True)
-    genes = _get_elements_by_ids('gene', get_all=True)
+def _get_all_genes_and_variants(allow_cached=True):
+    variants = _get_elements_by_ids('variants', get_all=True, allow_cached=allow_cached)
+    genes = _get_elements_by_ids('gene', get_all=True, allow_cached=allow_cached)
     for variant in variants:
         variant.gene.update()
     return {'genes': genes, 'variants': variants}
