@@ -64,3 +64,22 @@ class TestEvidence(object):
         for source in v600e.evidence_sources:
             assert source.citation_id
             assert source.source_type
+
+
+class TestCoordinateSearch(object):
+
+    def test_search_assertions(self):
+        coordinates = {
+            'chr': 7,
+            'start': 140453136,
+            'stop': 140453136,
+            'alt': 'T'
+        }
+        assertions = civic.search_assertions_by_coordinates(coordinates)
+        assertion_ids = [x.id for x in assertions]
+        v600e_assertion_ids = (7, 10, 12, 20)
+        v600k_assertion_ids = (11, 13)
+        assert set(assertion_ids) == set(v600e_assertion_ids + v600k_assertion_ids)
+        assertions = civic.search_assertions_by_coordinates(coordinates, search_mode='exact')
+        assertion_ids = [x.id for x in assertions]
+        assert set(assertion_ids) == set(v600e_assertion_ids)

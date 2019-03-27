@@ -485,6 +485,15 @@ def get_all_assertions():
     return get_assertions_by_ids(get_all=True)
 
 
+def search_assertions_by_coordinates(coordinates, search_mode='any'):
+    variants = search_variants_by_coordinates(coordinates, search_mode=search_mode)
+    assertions = set()
+    for v in variants:
+        if v.assertions:
+            assertions.update(v.assertions)
+    return list(assertions)
+
+
 def get_variants_by_ids(variant_id_list):
     logging.info('Getting variants...')
     variants = _get_elements_by_ids('variant', variant_id_list)
@@ -501,6 +510,29 @@ def get_variant_by_id(variant_id):
     return get_variants_by_ids([variant_id])[0]
 
 
+def _build_coordinate_table(variants):
+    variant_records = list()
+    for v in variants:
+        c = v.coordinates
+        start = getattr(c, 'start', None)
+        stop = getattr(c, 'stop', None)
+        chr = getattr(c, 'chromosome', None)
+        alt = getattr(c, 'variant_bases', None)
+        if all([start, stop, chr]):
+            variant_records.append([chr, start, stop, alt, hash(v)])
+        else:
+            continue
+        start = getattr(c, 'start2', None)
+        stop = getattr(c, 'stop2', None)
+        chr = getattr(c, 'chromosome2', None)
+        if all([start, stop, chr]):
+            variant_records.append([chr, start, stop, None, hash(v)])
+    MODULE.COORDINATE_TABLE = pd.DataFrame.from_records(
+        variant_records,
+        columns=['chr', 'start', 'stop', 'alt', 'v_hash']
+    )
+
+
 def get_all_variants(allow_cached=True):
     precached = _has_all_cached_fresh('variants')
     variants = _get_all_genes_and_variants(allow_cached)['variants']
@@ -509,6 +541,34 @@ def get_all_variants(allow_cached=True):
     return variants
 
 
+def search_variants_by_coordinates(coordinates, search_mode='any'):
+    """
+    Search the cache for variants matching provided coordinates using the corresponding search strategy.
+
+    :param coordinates: A dictionary comprised of 'start', 'stop', 'chr', and optional 'alt' keys
+                        start: the genomic start coordinate of the query
+                        stop: the genomic end coordinate of the query
+                        chr: the GRCh37 chromosome of the query (e.g. "7", "X")
+                        alt: the alternate allele at the coordinate [optional]
+
+    :param search_mode: ['any', 'include_smaller', 'include_larger', 'exact']
+                        any: any overlap between a query and a variant is a match
+                        include_smaller: variants must fit within the coordinates of the query
+                        include_larger: variants must encompass the coordinates of the query
+                        exact: variants must match coordinates precisely, as well as alternate
+                               allele, if provided
+                        search_mode is 'exact' by default
+
+    :return:            Returns a list of variants matching the coordinates and search_mode
+    """
+    get_all_variants()
+    ct = COORDINATE_TABLE
+    overlapping = (coordinates['start'] <= ct.stop) & (coordinates['stop'] >= ct.start)
+    if search_mode == 'any':
+        var_ids = ct[overlapping].v_hash
+    else:
+        raise NotImplementedError   # TODO: Implement other search modes
+    return [CACHE[v] for v in var_ids]
 
 def get_all_variant_ids():
     return _get_all_element_ids('variants')
