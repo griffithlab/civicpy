@@ -565,9 +565,18 @@ def search_variants_by_coordinates(coordinates, search_mode='any'):
     ct = COORDINATE_TABLE
     overlapping = (coordinates['start'] <= ct.stop) & (coordinates['stop'] >= ct.start)
     if search_mode == 'any':
-        var_ids = ct[overlapping].v_hash
+        match = overlapping
+    elif search_mode == 'include_smaller':
+        match = overlapping & (coordinates['start'] <= ct.start) & (coordinates['stop'] >= ct.stop)
+    elif search_mode == 'include_larger':
+        match = overlapping & (coordinates['start'] >= ct.start) & (coordinates['stop'] <= ct.stop)
+    elif search_mode == 'exact':
+        match = (coordinates['start'] == ct.stop) & (coordinates['stop'] == ct.start)
+        if coordinates.get('alt', False):
+            match = match & (coordinates['alt'] == ct.alt)
     else:
-        raise NotImplementedError   # TODO: Implement other search modes
+        raise ValueError("unexpected search mode")
+    var_ids = ct[match].v_hash
     return [CACHE[v] for v in var_ids]
 
 def get_all_variant_ids():
