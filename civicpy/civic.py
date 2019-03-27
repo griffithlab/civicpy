@@ -1,11 +1,21 @@
 import requests
 import importlib
 import logging
+import datetime
+import pandas as pd
+import pickle
+from civicpy import DATA_ROOT
 
 
 CACHE = dict()
 
+CACHE_FILE = DATA_ROOT / 'CACHE.pkl'
+
+COORDINATE_TABLE = None
+
 HPO_TERMS = dict()
+
+FRESH_DELTA = datetime.timedelta(days=7)
 
 MODULE = importlib.import_module('civicpy.civic')
 
@@ -18,6 +28,7 @@ UNMARKED_PLURALS = {'evidence'}
 CIVIC_TO_PYCLASS = {
     'evidence_items': 'evidence'
 }
+
 
 def pluralize(string):
     if string in UNMARKED_PLURALS:
@@ -60,6 +71,28 @@ def get_class(element_type):
     cls = getattr(MODULE, class_string, CivicAttribute)
     return cls
 
+
+def save_cache():
+    with open(CACHE_FILE, 'wb') as pf:
+        pickle.dump(CACHE, pf)
+
+
+def load_cache():
+    with open(CACHE_FILE, 'rb') as pf:
+        old_cache = pickle.load(pf)
+    c = dict()
+    variants = set()
+    for k, v in old_cache.items():
+        if isinstance(k, str):
+            c[k] = v
+        elif isinstance(k, int):
+            c[hash(v)] = v
+            if v.type == 'variant':
+                variants.add(v)
+        else:
+            raise ValueError
+    MODULE.CACHE = c
+    _build_coordinate_table(variants)
 
 class CivicRecord:
 
@@ -125,6 +158,9 @@ class CivicRecord:
 
     def __eq__(self, other):
         return hash(self) == hash(other)
+
+    def __setstate__(self, state):
+        self.__dict__ = state
 
     def update(self, allow_partial=True, force=False, **kwargs):
         """Updates record and returns True if record is complete after update, else False."""
@@ -345,16 +381,28 @@ def get_cached(element_type, element_id):
     return CACHE.get(hash(r), False)
 
 
+def _has_all_cached_fresh(element):
+    s = '{}_all_cached'.format(pluralize(element))
+    if CACHE.get(s, False):
+        return CACHE[s] + FRESH_DELTA > datetime.datetime.now()
+    return False
+
+
 def _get_elements_by_ids(element, id_list=[], allow_cached=True, get_all=False):
     if allow_cached and not get_all:
         cached = [get_cached(element, element_id) for element_id in id_list]
         if all(cached):
             logging.info(f'Loading {pluralize(element)} from cache')
             return cached
+    elif allow_cached and _has_all_cached_fresh(element):
+        cached = [get_cached(element, element_id) for element_id in CACHE['{}_all_ids'.format(pluralize(element))]]
+        logging.info(f'Loading {pluralize(element)} from cache')
+        return cached
     if id_list and get_all:
         raise ValueError('Please pass list of ids or use the get_all flag, not both.')
     if get_all:
         payload = _construct_get_all_payload()
+        logging.warning('Getting all {}. This may take a couple of minutes...'.format(pluralize(element)))
     else:
         payload = _construct_query_payload(id_list)
     url = search_url(element)
@@ -362,6 +410,8 @@ def _get_elements_by_ids(element, id_list=[], allow_cached=True, get_all=False):
     response.raise_for_status()
     cls = get_class(element)
     elements = [cls(**x) for x in response.json()['results']]
+    CACHE['{}_all_cached'.format(pluralize(element))] = datetime.datetime.now()
+    CACHE['{}_all_ids'.format(pluralize(element))] = [x['id'] for x in response.json()['results']]
     return elements
 
 
@@ -435,6 +485,15 @@ def get_all_assertions():
     return get_assertions_by_ids(get_all=True)
 
 
+def search_assertions_by_coordinates(coordinates, search_mode='any'):
+    variants = search_variants_by_coordinates(coordinates, search_mode=search_mode)
+    assertions = set()
+    for v in variants:
+        if v.assertions:
+            assertions.update(v.assertions)
+    return list(assertions)
+
+
 def get_variants_by_ids(variant_id_list):
     logging.info('Getting variants...')
     variants = _get_elements_by_ids('variant', variant_id_list)
@@ -451,18 +510,82 @@ def get_variant_by_id(variant_id):
     return get_variants_by_ids([variant_id])[0]
 
 
-def get_all_variants():
-    return _get_all_genes_and_variants()['variants']
+def _build_coordinate_table(variants):
+    variant_records = list()
+    for v in variants:
+        c = v.coordinates
+        start = getattr(c, 'start', None)
+        stop = getattr(c, 'stop', None)
+        chr = getattr(c, 'chromosome', None)
+        alt = getattr(c, 'variant_bases', None)
+        if all([start, stop, chr]):
+            variant_records.append([chr, start, stop, alt, hash(v)])
+        else:
+            continue
+        start = getattr(c, 'start2', None)
+        stop = getattr(c, 'stop2', None)
+        chr = getattr(c, 'chromosome2', None)
+        if all([start, stop, chr]):
+            variant_records.append([chr, start, stop, None, hash(v)])
+    MODULE.COORDINATE_TABLE = pd.DataFrame.from_records(
+        variant_records,
+        columns=['chr', 'start', 'stop', 'alt', 'v_hash']
+    )
 
+
+def get_all_variants(allow_cached=True):
+    precached = _has_all_cached_fresh('variants')
+    variants = _get_all_genes_and_variants(allow_cached)['variants']
+    if not (precached and allow_cached):
+        _build_coordinate_table(variants)
+    return variants
+
+
+def search_variants_by_coordinates(coordinates, search_mode='any'):
+    """
+    Search the cache for variants matching provided coordinates using the corresponding search strategy.
+
+    :param coordinates: A dictionary comprised of 'start', 'stop', 'chr', and optional 'alt' keys
+                        start: the genomic start coordinate of the query
+                        stop: the genomic end coordinate of the query
+                        chr: the GRCh37 chromosome of the query (e.g. "7", "X")
+                        alt: the alternate allele at the coordinate [optional]
+
+    :param search_mode: ['any', 'include_smaller', 'include_larger', 'exact']
+                        any: any overlap between a query and a variant is a match
+                        include_smaller: variants must fit within the coordinates of the query
+                        include_larger: variants must encompass the coordinates of the query
+                        exact: variants must match coordinates precisely, as well as alternate
+                               allele, if provided
+                        search_mode is 'exact' by default
+
+    :return:            Returns a list of variants matching the coordinates and search_mode
+    """
+    get_all_variants()
+    ct = COORDINATE_TABLE
+    overlapping = (coordinates['start'] <= ct.stop) & (coordinates['stop'] >= ct.start)
+    if search_mode == 'any':
+        match = overlapping
+    elif search_mode == 'include_smaller':
+        match = overlapping & (coordinates['start'] <= ct.start) & (coordinates['stop'] >= ct.stop)
+    elif search_mode == 'include_larger':
+        match = overlapping & (coordinates['start'] >= ct.start) & (coordinates['stop'] <= ct.stop)
+    elif search_mode == 'exact':
+        match = (coordinates['start'] == ct.stop) & (coordinates['stop'] == ct.start)
+        if coordinates.get('alt', False):
+            match = match & (coordinates['alt'] == ct.alt)
+    else:
+        raise ValueError("unexpected search mode")
+    var_ids = ct[match].v_hash
+    return [CACHE[v] for v in var_ids]
 
 def get_all_variant_ids():
     return _get_all_element_ids('variants')
 
 
-def _get_all_genes_and_variants():
-    logging.warning('Getting all genes or variants. This may take a couple of minutes...')
-    variants = _get_elements_by_ids('variants', get_all=True)
-    genes = _get_elements_by_ids('gene', get_all=True)
+def _get_all_genes_and_variants(allow_cached=True):
+    variants = _get_elements_by_ids('variants', get_all=True, allow_cached=allow_cached)
+    genes = _get_elements_by_ids('gene', get_all=True, allow_cached=allow_cached)
     for variant in variants:
         variant.gene.update()
     return {'genes': genes, 'variants': variants}
