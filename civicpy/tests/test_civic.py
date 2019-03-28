@@ -1,5 +1,6 @@
 import pytest
 from civicpy import civic
+from collections import defaultdict
 
 ELEMENTS = [
     'Assertion'
@@ -83,3 +84,30 @@ class TestCoordinateSearch(object):
         assertions = civic.search_assertions_by_coordinates(coordinates, search_mode='exact')
         assertion_ids = [x.id for x in assertions]
         assert set(assertion_ids) == set(v600e_assertion_ids)
+
+    def test_bulk_search_variants(self):
+        def coord_gen():
+            coordinate_sets = [
+                {
+                    'chr': '7',
+                    'start': 140453136,
+                    'stop': 140453136,
+                    'alt': 'T'
+                },
+                {
+                    'chr': '7',
+                    'start': 140453136,
+                    'stop': 140453137,
+                    'alt': 'TT'
+                },
+            ]
+            for c in coordinate_sets:
+                yield c
+        gen = coord_gen()
+        search_results = list(civic.bulk_search_variants_by_coordinates(gen))
+        results_dict = defaultdict(list)
+        for q, r in search_results:
+            k = (q['chr'], q['start'], q['stop'], q['alt'])
+            results_dict[k].append(civic.CACHE[r['v_hash']])
+        active_variants = [v for v in results_dict[('7', 140453136, 140453136, 'T')] if len(v.evidence_items)]
+        assert len(active_variants) >= 12

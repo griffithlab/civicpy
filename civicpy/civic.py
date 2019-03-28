@@ -537,7 +537,7 @@ def _build_coordinate_table(variants):
     df = pd.DataFrame.from_records(
         variant_records,
         columns=['chr', 'start', 'stop', 'alt', 'v_hash']
-    )
+    ).sort_values(by=['chr', 'start', 'stop', 'alt'])
     MODULE.COORDINATE_TABLE = df
     MODULE.COORDINATE_TABLE_START = df.start.sort_values()
     MODULE.COORDINATE_TABLE_STOP = df.stop.sort_values()
@@ -554,7 +554,7 @@ def get_all_variants(allow_cached=True):
 
 def search_variants_by_coordinates(coordinates, search_mode='any'):
     """
-    Search the cache for variants matching provided coordinates using the corresponding search strategy.
+    Search the cache for variants matching provided coordinates using the corresponding search mode.
 
     :param coordinates: A dictionary comprised of 'start', 'stop', 'chr', and optional 'alt' keys
                         start: the genomic start coordinate of the query
@@ -605,6 +605,97 @@ def search_variants_by_coordinates(coordinates, search_mode='any'):
         raise ValueError("unexpected search mode")
     var_digests = m_df.loc[match_idx,].v_hash.to_list()
     return [CACHE[v] for v in var_digests]
+
+
+# TODO: Refactor this method
+def bulk_search_variants_by_coordinates(sorted_query_generator, search_mode='any'):
+    """
+    An interator to search the cache for variants matching the set of sorted coordinates and yield
+    matches corresponding to the search mode.
+
+    :param coordinates: A dictionary comprised of 'start', 'stop', 'chr', and optional 'alt' keys
+                        start: the genomic start coordinate of the query
+                        stop: the genomic end coordinate of the query
+                        chr: the GRCh37 chromosome of the query (e.g. "7", "X")
+                        alt: the alternate allele at the coordinate [optional]
+
+    :param search_mode: ['any', 'include_smaller', 'include_larger', 'exact']
+                        any: any overlap between a query and a variant is a match
+                        include_smaller: variants must fit within the coordinates of the query
+                        include_larger: variants must encompass the coordinates of the query
+                        exact: variants must match coordinates precisely, as well as alternate
+                               allele, if provided
+                        search_mode is 'exact' by default
+
+    :yield:            Yields (query, match) tuples for each identified match
+    """
+    def iter_sorted_cache():
+        generator = MODULE.COORDINATE_TABLE.iterrows()
+        for row in generator:
+            yield row[1].to_dict()
+
+    sorted_cache_generator = iter_sorted_cache()
+    current_query_coords = next(sorted_query_generator)
+    current_cache_coords = next(sorted_cache_generator)
+    new_query = False
+    review = []
+    while True:
+        if new_query and review:
+            review.append(current_cache_coords)
+            current_cache_coords = review.pop(0)
+        q_chr = str(current_query_coords['chr'])
+        c_chr = current_cache_coords['chr']
+        if q_chr < c_chr:
+            current_query_coords = next(sorted_query_generator)
+            continue
+        if q_chr > c_chr:
+            current_cache_coords = next(sorted_cache_generator)
+            continue
+        q_start = int(current_query_coords['start'])
+        c_start = current_cache_coords['start']
+        q_stop = int(current_query_coords['stop'])
+        c_stop = current_cache_coords['stop']
+        if q_start > c_stop:
+            if review:
+                current_cache_coords = review.pop(0)
+            else:
+                current_cache_coords = next(sorted_cache_generator)
+            continue
+        if q_stop < c_start:
+            current_query_coords = next(sorted_query_generator)
+            new_query = True
+            continue
+        if search_mode == 'any':
+            yield (current_query_coords, current_cache_coords)
+            review.append(current_cache_coords)
+            current_cache_coords = next(sorted_cache_generator)
+            continue
+        q_alt = current_query_coords.get('alt', None)
+        c_alt = current_cache_coords.get('alt', None)
+        if q_start == c_start and q_stop == c_stop:
+            if search_mode == 'exact' and q_alt:
+                if q_alt > c_alt:
+                    if review:
+                        current_cache_coords = review.pop(0)
+                    else:
+                        current_cache_coords = next(sorted_cache_generator)
+                    continue
+                elif q_alt < c_alt:
+                    current_query_coords = next(sorted_query_generator)
+                    new_query = True
+                    continue
+            yield (current_query_coords, current_cache_coords)
+            review.append(current_cache_coords)
+            current_cache_coords = next(sorted_cache_generator)
+            continue
+        if search_mode == 'include_smaller':
+            raise NotImplementedError
+        if search_mode == 'include_larger':
+            raise NotImplementedError
+        if review:
+            current_cache_coords = review.pop(0)
+        else:
+            current_cache_coords = next(sorted_cache_generator)
 
 
 def get_all_variant_ids():
