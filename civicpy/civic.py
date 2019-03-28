@@ -12,6 +12,9 @@ CACHE = dict()
 CACHE_FILE = DATA_ROOT / 'CACHE.pkl'
 
 COORDINATE_TABLE = None
+COORDINATE_TABLE_START = None
+COORDINATE_TABLE_STOP = None
+COORDINATE_TABLE_CHR = None
 
 HPO_TERMS = dict()
 
@@ -92,6 +95,10 @@ def load_cache():
         else:
             raise ValueError
     MODULE.CACHE = c
+    for k, v in MODULE.CACHE.items():
+        if isinstance(k, str):
+            continue
+        v.update()
     _build_coordinate_table(variants)
 
 class CivicRecord:
@@ -527,10 +534,14 @@ def _build_coordinate_table(variants):
         chr = getattr(c, 'chromosome2', None)
         if all([start, stop, chr]):
             variant_records.append([chr, start, stop, None, hash(v)])
-    MODULE.COORDINATE_TABLE = pd.DataFrame.from_records(
+    df = pd.DataFrame.from_records(
         variant_records,
         columns=['chr', 'start', 'stop', 'alt', 'v_hash']
     )
+    MODULE.COORDINATE_TABLE = df
+    MODULE.COORDINATE_TABLE_START = df.start.sort_values()
+    MODULE.COORDINATE_TABLE_STOP = df.stop.sort_values()
+    MODULE.COORDINATE_TABLE_CHR = df.chr.sort_values()
 
 
 def get_all_variants(allow_cached=True):
@@ -559,25 +570,42 @@ def search_variants_by_coordinates(coordinates, search_mode='any'):
                                allele, if provided
                         search_mode is 'exact' by default
 
-    :return:            Returns a list of variants matching the coordinates and search_mode
+    :return:            Returns a list of variant hashes matching the coordinates and search_mode
     """
     get_all_variants()
     ct = COORDINATE_TABLE
-    overlapping = (coordinates['start'] <= ct.stop) & (coordinates['stop'] >= ct.start)
+    start_idx = COORDINATE_TABLE_START
+    stop_idx = COORDINATE_TABLE_STOP
+    chr_idx = COORDINATE_TABLE_CHR
+    start = int(coordinates['start'])
+    stop = int(coordinates['stop'])
+    chromosome = str(coordinates['chr'])
+    # overlapping = (start <= ct.stop) & (stop >= ct.start)
+    left_idx = chr_idx.searchsorted(chromosome)
+    right_idx = chr_idx.searchsorted(chromosome, side='right')
+    chr_ct_idx = chr_idx[left_idx:right_idx].index
+    right_idx = start_idx.searchsorted(stop, side='right')
+    start_ct_idx = start_idx[:right_idx].index
+    left_idx = stop_idx.searchsorted(start)
+    stop_ct_idx = stop_idx[left_idx:].index
+    match_idx = chr_ct_idx & start_ct_idx & stop_ct_idx
+    m_df = ct.loc[match_idx, ]
     if search_mode == 'any':
-        match = overlapping
+        var_digests = m_df.v_hash.to_list()
+        return [CACHE[v] for v in var_digests]
     elif search_mode == 'include_smaller':
-        match = overlapping & (coordinates['start'] <= ct.start) & (coordinates['stop'] >= ct.stop)
+        match_idx = (start <= m_df.start) & (stop >= m_df.stop)
     elif search_mode == 'include_larger':
-        match = overlapping & (coordinates['start'] >= ct.start) & (coordinates['stop'] <= ct.stop)
+        match_idx = (start >= m_df.start) & (stop <= m_df.stop)
     elif search_mode == 'exact':
-        match = (coordinates['start'] == ct.stop) & (coordinates['stop'] == ct.start)
+        match_idx = (start == m_df.stop) & (stop == m_df.start)
         if coordinates.get('alt', False):
-            match = match & (coordinates['alt'] == ct.alt)
+            match_idx = match_idx & (coordinates['alt'] == m_df.alt)
     else:
         raise ValueError("unexpected search mode")
-    var_ids = ct[match].v_hash
-    return [CACHE[v] for v in var_ids]
+    var_digests = m_df.loc[match_idx,].v_hash.to_list()
+    return [CACHE[v] for v in var_digests]
+
 
 def get_all_variant_ids():
     return _get_all_element_ids('variants')
