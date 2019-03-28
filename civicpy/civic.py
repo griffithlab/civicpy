@@ -634,19 +634,40 @@ def bulk_search_variants_by_coordinates(sorted_query_generator, search_mode='any
         for row in generator:
             yield row[1].to_dict()
 
+    def is_sorted(prev_q, current_q):
+        if prev_q['chr'] < current_q['chr']:
+            return True
+        if prev_q['chr'] > current_q['chr']:
+            return False
+        if prev_q['start'] < current_q['start']:
+            return True
+        if prev_q['start'] > current_q['start']:
+            return False
+        if prev_q['stop'] < current_q['stop']:
+            return True
+        if prev_q['stop'] > current_q['stop']:
+            return False
+        return True
+
     sorted_cache_generator = iter_sorted_cache()
     current_query_coords = next(sorted_query_generator)
     current_cache_coords = next(sorted_cache_generator)
+    previous_query = None
     new_query = False
     review = []
     while True:
         if new_query and review:
             review.append(current_cache_coords)
             current_cache_coords = review.pop(0)
+        if new_query:
+            assert is_sorted(previous_query, current_query_coords), (previous_query, current_query_coords)
+            new_query = False
         q_chr = str(current_query_coords['chr'])
         c_chr = current_cache_coords['chr']
         if q_chr < c_chr:
+            previous_query = current_query_coords
             current_query_coords = next(sorted_query_generator)
+            new_query = True
             continue
         if q_chr > c_chr:
             current_cache_coords = next(sorted_cache_generator)
@@ -662,6 +683,7 @@ def bulk_search_variants_by_coordinates(sorted_query_generator, search_mode='any
                 current_cache_coords = next(sorted_cache_generator)
             continue
         if q_stop < c_start:
+            previous_query = current_query_coords
             current_query_coords = next(sorted_query_generator)
             new_query = True
             continue
@@ -674,13 +696,14 @@ def bulk_search_variants_by_coordinates(sorted_query_generator, search_mode='any
         c_alt = current_cache_coords.get('alt', None)
         if q_start == c_start and q_stop == c_stop:
             if search_mode == 'exact' and q_alt:
-                if q_alt > c_alt:
+                if c_alt is None or q_alt > c_alt:
                     if review:
                         current_cache_coords = review.pop(0)
                     else:
                         current_cache_coords = next(sorted_cache_generator)
                     continue
                 elif q_alt < c_alt:
+                    previous_query = current_query_coords
                     current_query_coords = next(sorted_query_generator)
                     new_query = True
                     continue
