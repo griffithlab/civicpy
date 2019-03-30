@@ -1,6 +1,6 @@
 import pytest
 from civicpy import civic
-from collections import defaultdict
+from civicpy.civic import CoordinateQuery
 
 ELEMENTS = [
     'Assertion'
@@ -70,44 +70,21 @@ class TestEvidence(object):
 class TestCoordinateSearch(object):
 
     def test_search_assertions(self):
-        coordinates = {
-            'chr': 7,
-            'start': 140453136,
-            'stop': 140453136,
-            'alt': 'T'
-        }
-        assertions = civic.search_assertions_by_coordinates(coordinates)
+        query = CoordinateQuery('7', 140453136, 140453136, 'T')
+        assertions = civic.search_assertions_by_coordinates(query)
         assertion_ids = [x.id for x in assertions]
         v600e_assertion_ids = (7, 10, 12, 20)
         v600k_assertion_ids = (11, 13)
         assert set(assertion_ids) == set(v600e_assertion_ids + v600k_assertion_ids)
-        assertions = civic.search_assertions_by_coordinates(coordinates, search_mode='exact')
+        assertions = civic.search_assertions_by_coordinates(query, search_mode='exact')
         assertion_ids = [x.id for x in assertions]
         assert set(assertion_ids) == set(v600e_assertion_ids)
 
     def test_bulk_search_variants(self):
-        def coord_gen():
-            coordinate_sets = [
-                {
-                    'chr': '7',
-                    'start': 140453136,
-                    'stop': 140453136,
-                    'alt': 'T'
-                },
-                {
-                    'chr': '7',
-                    'start': 140453136,
-                    'stop': 140453137,
-                    'alt': 'TT'
-                },
-            ]
-            for c in coordinate_sets:
-                yield c
-        gen = coord_gen()
-        search_results = list(civic.bulk_search_variants_by_coordinates(gen))
-        results_dict = defaultdict(list)
-        for q, r in search_results:
-            k = (q['chr'], q['start'], q['stop'], q['alt'])
-            results_dict[k].append(civic.CACHE[r['v_hash']])
-        active_variants = [v for v in results_dict[('7', 140453136, 140453136, 'T')] if len(v.evidence_items)]
-        assert len(active_variants) >= 12
+        sorted_queries = [
+            CoordinateQuery('7', 140453136, 140453136, 'T'),
+            CoordinateQuery('7', 140453136, 140453137, 'TT')
+        ]
+        search_results = civic.bulk_search_variants_by_coordinates(sorted_queries)
+        assert len(search_results[sorted_queries[0]]) >= 12
+        assert len(search_results[sorted_queries[1]]) >= len(search_results[sorted_queries[0]])
