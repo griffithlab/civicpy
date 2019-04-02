@@ -232,35 +232,34 @@ class VCFWriter(DictWriter):
         variant = record.variant
         valid = self.VALID_VARIANTS.get(variant, None)
         if valid is None:
-            # valid = self._validate_structural_variant(variant)
-            valid = self._validate_coordinates(variant)
+            valid = self._validate_sequence_variant(variant)
         if not valid:
             logging.info(f'{record} has invalid VCF variant {variant}.')
         return valid
 
-    def _validate_structural_variant(self, variant):
+    def _validate_sequence_variant(self, variant):
         # Requires all types to have SO_IDs
         types = variant.types
         for variant_type in types:
             if not variant_type.so_id.startswith('SO:'):
                 return self._cache_variant_validation(variant, False)
 
-        # Filter types if multiple direct lineage to most specific, remove non-structural types
+        # Filter types if multiple direct lineage to most specific, remove non-variant types
         type_len = len(types)
         simplified_types = list()
         for i in range(type_len):
             remove = False
             try:
-                structural = self.SO_READER.same_or_has_ancestor(types[i].so_id, 'SO:0001537')
+                sequence_variant = self.SO_READER.same_or_has_ancestor(types[i].so_id, 'SO:0001060')
             except networkx.NetworkXError as e:
                 logging.warning(f'Error for variant {variant}: {e.args[0]}')
                 return self._cache_variant_validation(variant, False)
-            if not structural:
+            if not sequence_variant:
                 continue
             for j in range(type_len):
                 if i == j:
                     continue
-                if types[i] == types[j] and i > j:
+                if types[i].id == types[j].id and i > j:
                     remove = True
                 elif self.SO_READER.same_or_has_descendant(types[i].so_id, types[j].so_id):
                     remove = True
@@ -270,24 +269,68 @@ class VCFWriter(DictWriter):
             simplified_types.append(types[i])
         types = simplified_types
 
-        # Requires at least one variant type (other than filtered types above) to be specified by CIViC
-        return self._cache_variant_validation(variant, bool(types))
+        valid = self._validate_coordinates(variant, types)
 
-    def _validate_coordinates(self, variant):
-        # Requires exactly one coordinate set with ref and alt
-        coordinates = variant.coordinates
-        valid = all([
-            coordinates.chromosome,
-            coordinates.start,
-            coordinates.stop,
-            coordinates.reference_bases,
-            coordinates.variant_bases,
-            not coordinates.chromosome2,
-            not coordinates.start2,
-            not coordinates.stop2
-        ]) and all([c.upper() in ['A', 'C', 'G', 'T', 'N', '*'] for c in coordinates.variant_bases]) \
-           and all([c.upper() in ['A', 'C', 'G', 'T', 'N'] for c in coordinates.reference_bases])
+        # Requires at least one variant type (other than filtered types above) to be specified by CIViC
         return self._cache_variant_validation(variant, valid)
+
+    def _validate_coordinates(self, variant, types):
+        # If multiple types, requires exactly one to be structural type.
+        if not types:
+            return False
+
+        if len(types) > 1:
+            structural_types = [t for t in types if self.SO_READER.same_or_has_ancestor(t.so_id, 'SO:0001537')]
+            if len(structural_types) == 1:
+                types = structural_types
+            elif len(structural_types) > 1:
+                logging.warning(f'Variant {variant} has multiple structural types. Skipping.')
+                return False
+            else:
+                logging.warning(f'Variant {variant} has multiple types, none structural. Skipping.')
+                return False
+
+        variant_type = types[0]
+
+        # If type is a transcript variant, requires exactly one coordinate set with ref and alt
+        if self.SO_READER.same_or_has_ancestor(variant_type.so_id, 'SO:0001576'):
+            coordinates = variant.coordinates
+            valid_array = [bool(x) for x in [
+                coordinates.chromosome,
+                coordinates.start,
+                coordinates.stop,
+                coordinates.reference_bases,
+                coordinates.variant_bases,
+                not coordinates.chromosome2,
+                not coordinates.start2,
+                not coordinates.stop2
+            ]]
+            valid = all(valid_array) \
+                    and all([c.upper() in ['A', 'C', 'G', 'T'] for c in coordinates.variant_bases]) \
+                    and all([c.upper() in ['A', 'C', 'G', 'T'] for c in coordinates.reference_bases])
+            if not valid:
+                if sum(valid_array[:5]) == 0:
+                    # Nothing to do here. No inference is to be performed, and no coordinates are provided.
+                    logging.warning(f'Variant {variant} has a structural type but no coordinates. Skipping.')
+                elif sum(valid_array[:3]) + sum(valid_array[-3:]) == 6:
+                    if sum(valid_array[3:5]) == 0:
+                        # Here, neither ref nor alt is specified, as in ambiguous mutations for an amino acid.
+                        logging.warning(f'Variant {variant} has a structural type but no ref or alt. Skipping.')
+                    elif self.SO_READER.same_or_has_ancestor(variant_type.so_id, 'SO:0001589') or \
+                        self.SO_READER.same_or_has_ancestor(variant_type.so_id, 'SO:0001820') or \
+                        self.SO_READER.same_or_has_ancestor(variant_type.so_id, 'SO:0001587') or \
+                        self.SO_READER.same_or_has_ancestor(variant_type.so_id, 'SO:0002012'):
+                        # Here, one of ref or alt is specified, and is of a compatible variant type for an indel
+                        # These are allowed.
+                        valid = True
+                    else:
+                        raise ValueError(f'Unexpected type ({variant_type.name}) for variant ( {variant.site_link} ).')
+                else:
+                    raise ValueError(f'Unexpected coordinates for ( {variant.site_link} ).')
+            return self._cache_variant_validation(variant, valid)
+        else:
+            raise NotImplementedError(f'No logic to handle {variant_type.name} {variant}')
+            # TODO: handle non-transcript variants here. Currently aren't any that meet other criteria.
 
     def _cache_variant_validation(self, variant, result):
         self.VALID_VARIANTS[variant] = result

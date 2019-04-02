@@ -145,7 +145,7 @@ The primary CIViC records are found on the CIViC advanced search page, and are f
 		A list of :class:`Source` objects associated with the variant description.
 
 	.. attribute:: variant_aliases
-	   aliases
+		aliases
 
 		A curated list of aliases by which this variant is referenced.
 
@@ -197,18 +197,22 @@ Records can be obtained by ID through a collection of functions provided in the 
 objects can be queried by the following methods:
 
 .. function:: get_genes_by_ids(gene_id_list)
+
 	A list of CIViC gene IDs are provided as `gene_id_list` and queried against the cache and (as needed) CIViC.
 	Returns a list of :class:`Gene` objects.
 
 .. function:: get_gene_by_id(gene_id)
+
 	Similar to :func:`get_genes_by_ids`, but only one ID is passed (not a list) and only one
 	:class:`Gene` returned.
 
 .. function:: get_all_genes()
+
 	Queries CIViC for all genes and returns as list of :class:`Gene` objects.
 	The cache is not considered by this function.
 
 .. function:: get_all_gene_ids()
+
 	Queries CIViC for a list of all gene IDs. Useful for passing to :func:`get_genes_by_id` to
 	first check cache for any previously queried genes.
 

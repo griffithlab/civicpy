@@ -101,5 +101,6 @@ ENV/
 # mypy
 .mypy_cache/
 
-# notebooks
-*.ipynb
+# data folders
+civicpy/data/
+analysis/data/
