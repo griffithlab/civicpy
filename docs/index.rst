@@ -8,7 +8,7 @@ CIViCpy
 
 v\ |version|.
 
-Delicious **CIViCpy** is an analysis toolkit and SDK for extracting and analyzing knowledge from the `CIViC knowledgebase`_.
+**CIViCpy** is an analysis toolkit and SDK for extracting and analyzing knowledge from the `CIViC knowledgebase`_.
 
 .. note:: The use of **Python 3** is *mandatory* for CIViCpy. This is in anticipation of the Python 2 scheduled end-of-life date \
    of `January 1, 2020 <https://www.python.org/dev/peps/pep-0373/>`_.
@@ -36,8 +36,7 @@ Delicious **CIViCpy** is an analysis toolkit and SDK for extracting and analyzin
 
 **CIViCpy** lets you pull data from CIViC using the :mod:`civic` module and interact with records as dynamic objects.
 With the aid of caching, it is easy to explore relationships between CIViC records (e.g. assertions, genes, variants)
-without worrying about querying CIViC more than once for the same data. The :mod:`exports` module enables downstream
-analysis tasks through exporting records to .vcf format.
+without worrying about querying CIViC more than once for the same data.
 
 Features
 --------
@@ -47,7 +46,6 @@ Features
 - Simplified API Requests
 - Sensible Pre-caching
 - Arbitrary-depth Record Nesting
-- Exports to VCF Files
 
 The User Guide
 --------------
@@ -61,6 +59,5 @@ knowledgebase.
    user/intro
    user/install
    user/civic
-   user/exports
 
 .. _`CIViC knowledgebase`: https://civicdb.org
