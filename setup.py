@@ -20,7 +20,10 @@ setup(
     ],
     install_requires=[
         'pytest',
-        'requests'
+        'requests',
+		'obonet',
+		'networkx',
+		'pandas'
     ],
     python_requires='>=3.7',
     entry_points={},
