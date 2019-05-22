@@ -78,7 +78,7 @@ class TestCoordinateSearch(object):
         assert set(assertion_ids) >= set(v600e_assertion_ids + v600k_assertion_ids)
         assertions = civic.search_assertions_by_coordinates(query, search_mode='exact')
         assertion_ids = [x.id for x in assertions]
-        assert set(assertion_ids) == set(v600e_assertion_ids)
+        assert set(assertion_ids) >= set(v600e_assertion_ids)
 
     def test_bulk_search_variants(self):
         sorted_queries = [
