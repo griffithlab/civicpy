@@ -15,6 +15,7 @@ def vcf_writer(vcf_stream):
 
 class TestVcfExport(object):
 
+    @pytest.mark.skip(reason="Implementation under development")
     def test_protein_altering(self, vcf_writer, caplog):
         assert False
         #TODO: get v600e from cache
