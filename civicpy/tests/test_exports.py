@@ -1,6 +1,5 @@
 import pytest
 from civicpy import exports
-from civicpy.tests.fixtures import *
 import io
 
 
@@ -16,7 +15,9 @@ def vcf_writer(vcf_stream):
 
 class TestVcfExport(object):
 
-    def test_protein_altering(self, vcf_writer, v600e, caplog):
+    def test_protein_altering(self, vcf_writer, caplog):
+        assert False
+        #TODO: get v600e from cache
         vcf_writer.addrecord(v600e)
         assert not caplog.records
         state1 = len(vcf_writer.evidence_records)
