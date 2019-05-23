@@ -5,4 +5,6 @@ python:
 install:
   - pip install -e .
 script:
-  - pytest
+  - pytest --cov civicpy --cov-report term-missing
+after_success:
+  - coveralls

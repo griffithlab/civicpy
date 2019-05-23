@@ -20,6 +20,8 @@ setup(
     ],
     install_requires=[
         'pytest',
+        'pytest-cov',
+        'python-coveralls',
         'requests',
         'obonet',
         'networkx',
