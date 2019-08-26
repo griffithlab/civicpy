@@ -4,13 +4,12 @@ import logging
 import datetime
 import pandas as pd
 import pickle
+import os
 from collections import defaultdict, namedtuple
-from civicpy import DATA_ROOT
+from civicpy import REMOTE_MASTER_CACHE
 
 
 CACHE = dict()
-
-CACHE_FILE = DATA_ROOT / 'CACHE.pkl'
 
 COORDINATE_TABLE = None
 COORDINATE_TABLE_START = None
@@ -79,13 +78,21 @@ def get_class(element_type):
     return cls
 
 
+def read_cache_file_location():
+    if 'CIVICPY_CACHE_FILE' in os.environ and os.environ['CIVICPY_CACHE_FILE'] is not None:
+        return os.environ['CIVICPY_CACHE_FILE']
+    else:
+        return REMOTE_MASTER_CACHE
+
+
 def save_cache():
-    with open(CACHE_FILE, 'wb') as pf:
-        pickle.dump(CACHE, pf)
+    if 'CIVICPY_CACHE_FILE' in os.environ and os.environ['CIVICPY_CACHE_FILE'] is not None:
+        with open(os.environ['CIVICPY_CACHE_FILE'], 'wb') as pf:
+            pickle.dump(CACHE, pf)
 
 
-def load_cache():
-    with open(CACHE_FILE, 'rb') as pf:
+def load_cache(update_delta=FRESH_DELTA):
+    with open(read_cache_file_location(), 'rb') as pf:
         old_cache = pickle.load(pf)
     c = dict()
     variants = set()
