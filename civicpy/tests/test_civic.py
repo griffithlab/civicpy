@@ -8,11 +8,7 @@ ELEMENTS = [
 
 
 def setup_module():
-    try:
-        civic.load_cache()
-    except FileNotFoundError:
-        pass
-    civic.get_all_variants()
+    civic.get_all_variants(allow_cached=False)
 
 
 @pytest.fixture(scope="module", params=ELEMENTS)

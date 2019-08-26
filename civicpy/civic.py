@@ -105,6 +105,16 @@ def load_cache():
         v.update()
     _build_coordinate_table(variants)
 
+
+def update_cache():
+    _get_elements_by_ids('evidence', allow_cached=False, get_all=True)
+    _get_elements_by_ids('gene', allow_cached=False, get_all=True)
+    _get_elements_by_ids('variant', allow_cached=False, get_all=True)
+    _get_elements_by_ids('assertion', allow_cached=False, get_all=True)
+    CACHE['full_cached'] = datetime.datetime.now()
+    save_cache()
+
+
 class CivicRecord:
 
     _SIMPLE_FIELDS = {'id', 'type'}
@@ -392,23 +402,28 @@ def get_cached(element_type, element_id):
     return CACHE.get(hash(r), False)
 
 
-def _has_all_cached_fresh(element):
-    s = '{}_all_cached'.format(pluralize(element))
+def _has_full_cached_fresh(delta=FRESH_DELTA):
+    s = 'full_cached'
     if CACHE.get(s, False):
-        return CACHE[s] + FRESH_DELTA > datetime.datetime.now()
+        return CACHE[s] + delta > datetime.datetime.now()
     return False
 
 
 def _get_elements_by_ids(element, id_list=[], allow_cached=True, get_all=False):
-    if allow_cached and not get_all:
-        cached = [get_cached(element, element_id) for element_id in id_list]
-        if all(cached):
+    if allow_cached:
+        if not CACHE:
+            load_cache()
+        if not _has_full_cached_fresh():
+            update_cache()
+        if not get_all:
+            cached = [get_cached(element, element_id) for element_id in id_list]
+            if all(cached):
+                logging.info(f'Loading {pluralize(element)} from cache')
+                return cached
+        else:
+            cached = [get_cached(element, element_id) for element_id in CACHE['{}_all_ids'.format(pluralize(element))]]
             logging.info(f'Loading {pluralize(element)} from cache')
             return cached
-    elif allow_cached and _has_all_cached_fresh(element):
-        cached = [get_cached(element, element_id) for element_id in CACHE['{}_all_ids'.format(pluralize(element))]]
-        logging.info(f'Loading {pluralize(element)} from cache')
-        return cached
     if id_list and get_all:
         raise ValueError('Please pass list of ids or use the get_all flag, not both.')
     if get_all:
@@ -421,7 +436,6 @@ def _get_elements_by_ids(element, id_list=[], allow_cached=True, get_all=False):
     response.raise_for_status()
     cls = get_class(element)
     elements = [cls(**x) for x in response.json()['results']]
-    CACHE['{}_all_cached'.format(pluralize(element))] = datetime.datetime.now()
     CACHE['{}_all_ids'.format(pluralize(element))] = [x['id'] for x in response.json()['results']]
     return elements
 
@@ -549,7 +563,7 @@ def _build_coordinate_table(variants):
 
 
 def get_all_variants(allow_cached=True):
-    precached = _has_all_cached_fresh('variants')
+    precached = _has_full_cached_fresh()
     variants = _get_all_genes_and_variants(allow_cached)['variants']
     if not (precached and allow_cached):
         _build_coordinate_table(variants)
