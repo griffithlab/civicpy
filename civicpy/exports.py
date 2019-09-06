@@ -149,24 +149,7 @@ class VCFWriter(DictWriter):
             info_dict = {
                 'GN': evidence.variant.gene.name,
                 'VT': evidence.variant.name,
-                # 'ES': evidence.description,
-                'EL': evidence.evidence_level,
-                'ET': evidence.evidence_type,
-                'ED': evidence.evidence_direction,
-                'CS': evidence.clinical_significance,
-                'VO': evidence.variant_origin,
-                'DG': ','.join([d.name for d in evidence.drugs]),
-                'DI': evidence.drug_interaction_type,
-                'PM': evidence.source.pubmed_id,
-                'TR': evidence.rating,
-                'EU': evidence.site_link
             }
-            doid = evidence.disease.doid
-            if doid is None:
-                doid = '.'
-            else:
-                doid = f'DOID{doid}'
-            info_dict['DS'] = ','.join([evidence.disease.name, doid])
 
             out = list()
             for field in self.meta_info_fields:
@@ -194,30 +177,6 @@ class VCFWriter(DictWriter):
         self._write_meta_info_line('GN', 1, 'String', 'HGNC Gene Symbol')
         # Variant
         self._write_meta_info_line('VT', 1, 'String', 'CIViC Variant Name')
-        # # Evidence statement
-        # self._write_meta_info_line('ES', 1, 'String', 'CIViC Evidence Statement')
-        # Evidence level
-        self._write_meta_info_line('EL', 1, 'Character', 'CIViC Evidence Level')
-        # Evidence type
-        self._write_meta_info_line('ET', 1, 'String', 'CIViC Evidence Type')
-        # Evidence direction
-        self._write_meta_info_line('ED', 1, 'String', 'CIViC Evidence Direction')
-        # Clinical significance
-        self._write_meta_info_line('CS', 1, 'String', 'CIViC Clinical Significance')
-        # Variant origin
-        self._write_meta_info_line('VO', 1, 'String', 'CIViC Variant Origin')
-        # Disease
-        self._write_meta_info_line('DS', 2, 'String', 'Disease Name, DOID')
-        # Drug
-        self._write_meta_info_line('DG', '.', 'String', 'Drugs')
-        # Drug interaction type
-        self._write_meta_info_line('DI', 1, 'String', 'Interaction Between Drugs')
-        # Pubmed ID
-        self._write_meta_info_line('PM', 1, 'String', 'Pubmed Identifier')
-        # Evidence trust rating
-        self._write_meta_info_line('TR', 1, 'Integer', 'Trust rating (stars)')
-        # Evidence URL
-        self._write_meta_info_line('EU', 1, 'String', 'Evidence Record URL')
 
     def _write_meta_info_line(self, id_, number, type_, description, **kwargs):
         assert id_ not in self.meta_info_fields
