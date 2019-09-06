@@ -97,7 +97,7 @@ class VCFWriter(DictWriter):
         self.version = version
         super().__init__(f, delimiter='\t', fieldnames=self.HEADER, restval='.', lineterminator='\n')
         self.meta_info_fields = []
-        self.evidence_records = set()
+        self.variant_records = set()
 
     def writeheader(self):
         # write meta lines
@@ -107,13 +107,16 @@ class VCFWriter(DictWriter):
         super().writeheader()
 
     def addrecord(self, civic_record):
-        if isinstance(civic_record, civic.Variant) or isinstance(civic_record, civic.Assertion):
-            for evidence in civic_record.evidence:
-                self.addrecord(evidence)
-        elif isinstance(civic_record, civic.Evidence):
-            valid = self._validate_evidence_record(civic_record)
-            if valid:
-                self._add_evidence_record(civic_record)
+        if isinstance(civic_record, civic.Evidence) or isinstance(civic_record, civic.Assertion):
+            self._validate_variant(civic_record.variant)
+            self._add_variant_record(civic_record.variant)
+        elif isinstance(civic_record, civic.Gene):
+            for variant in civic_record.variants:
+                self._validate_variant(variant)
+                self._add_variant_record(variant)
+        elif isinstance(civic_record, civic.Variant):
+            self._validate_variant(civic_record)
+            self._add_variant_record(civic_record)
         else:
             raise ValueError('Expected a CIViC Variant, Assertion or Evidence record.')
 
@@ -127,28 +130,27 @@ class VCFWriter(DictWriter):
             self.writeheader()
 
         # sort records
-        sorted_records = list(self.evidence_records)
-        sorted_records.sort(key=lambda x: x.id)
-        sorted_records.sort(key=lambda x: x.variant.coordinates.stop)
-        sorted_records.sort(key=lambda x: x.variant.coordinates.start)
-        sorted_records.sort(key=lambda x: x.variant.coordinates.chromosome)
+        sorted_records = list(self.variant_records)
+        sorted_records.sort(key=lambda x: int(x.coordinates.stop))
+        sorted_records.sort(key=lambda x: int(x.coordinates.start))
+        sorted_records.sort(key=lambda x: int(x.coordinates.chromosomes))
 
         # write them
-        for evidence in sorted_records:
+        for variant in sorted_records:
             out_dict = {
-                '#CHROM': evidence.variant.coordinates.chromosome,
-                'POS':    evidence.variant.coordinates.start,
-                'ID':     f'EID{evidence.id}',
-                'REF':    evidence.variant.coordinates.reference_bases,
-                'ALT':    evidence.variant.coordinates.variant_bases
+                '#CHROM': variant.coordinates.chromosome,
+                'POS':    variant.coordinates.start,
+                'ID':     variant.id,
+                'REF':    variant.coordinates.reference_bases,
+                'ALT':    variant.coordinates.variant_bases
             }
             assert all([c.upper() in ['A', 'C', 'G', 'T', 'N'] for c in out_dict['REF']])
             assert all([c.upper() in ['A', 'C', 'G', 'T', 'N', '*'] for c in out_dict['ALT']]), \
                 f'observed incompatible alt allele in {evidence.variant}'
 
             info_dict = {
-                'GN': evidence.variant.gene.name,
-                'VT': evidence.variant.name,
+                'GN': variant.gene.name,
+                'VT': variant.name,
             }
 
             out = list()
@@ -187,13 +189,12 @@ class VCFWriter(DictWriter):
         out = ','.join(s)
         self._f.write(f'##INFO=<{out}>\n')
 
-    def _validate_evidence_record(self, record):
-        variant = record.variant
+    def _validate_variant(self, variant):
         valid = self.VALID_VARIANTS.get(variant, None)
         if valid is None:
             valid = self._validate_sequence_variant(variant)
         if not valid:
-            logging.info(f'{record} has invalid VCF variant {variant}.')
+            logging.info(f'{variant} is invalid for VCF.')
         return valid
 
     def _validate_sequence_variant(self, variant):
@@ -295,5 +296,5 @@ class VCFWriter(DictWriter):
         self.VALID_VARIANTS[variant] = result
         return result
 
-    def _add_evidence_record(self, evidence_record):
-        self.evidence_records.add(evidence_record)
+    def _add_variant_record(self, variant_record):
+        self.variant_records.add(variant_record)
