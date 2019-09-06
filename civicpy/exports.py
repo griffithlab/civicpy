@@ -133,7 +133,11 @@ class VCFWriter(DictWriter):
         sorted_records = list(self.variant_records)
         sorted_records.sort(key=lambda x: int(x.coordinates.stop))
         sorted_records.sort(key=lambda x: int(x.coordinates.start))
-        sorted_records.sort(key=lambda x: int(x.coordinates.chromosomes))
+        int_chromosomes = [i for i in sorted_records if i.coordinates.chromosome.isdigit()]
+        string_chromosomes = [i for i in sorted_records if not i.coordinates.chromosome.isdigit()]
+        int_chromosomes.sort(key=lambda x: int(x.coordinates.chromosome))
+        string_chromosomes.sort(key=lambda x: x.coordinates.chromosome)
+        sorted_records = int_chromosomes + string_chromosomes
 
         # write them
         for variant in sorted_records:
