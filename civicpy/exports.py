@@ -156,6 +156,48 @@ class VCFWriter(DictWriter):
                 'GN': variant.gene.name,
                 'VT': variant.name,
             }
+            csq = []
+            for evidence in variant.evidence:
+                csq.append('|'.join([
+                    out_dict['ALT'],
+                    variant.gene.name,
+                    str(variant.gene.entrez_id),
+                    str(variant.coordinates.representative_transcript),
+                    variant.name,
+                    str(variant.id),
+                    '&'.join(variant.variant_aliases),
+                    '&'.join(map(lambda t: t.name, variant.variant_types)),
+                    '&'.join(variant.hgvs_expressions),
+                    str(variant.allele_registry_id),
+                    '&'.join(variant.clinvar_entries),
+                    str(variant.civic_actionability_score),
+                    "evidence",
+                    str(evidence.id),
+                    "https://civicdb.org/links/evidence/{}".format(evidence.id),
+                    "{} ({})".format(evidence.source.citation_id, evidence.source.source_type),
+                    str(evidence.variant_origin),
+                ]))
+            for assertion in variant.assertions:
+                csq.append('|'.join([
+                    out_dict['ALT'],
+                    variant.gene.name,
+                    str(variant.gene.entrez_id),
+                    str(variant.coordinates.representative_transcript),
+                    variant.name,
+                    str(variant.id),
+                    '&'.join(variant.variant_aliases),
+                    '&'.join(map(lambda t: t.name, variant.variant_types)),
+                    '&'.join(variant.hgvs_expressions),
+                    str(variant.allele_registry_id),
+                    '&'.join(variant.clinvar_entries),
+                    str(variant.civic_actionability_score),
+                    "assertion",
+                    str(assertion.id),
+                    "https://civicdb.org/links/assertion/{}".format(assertion.id),
+                    "",
+                    str(assertion.variant_origin),
+                ]))
+            info_dict['CSQ'] = ','.join(csq)
 
             out = list()
             for field in self.meta_info_fields:
@@ -183,6 +225,26 @@ class VCFWriter(DictWriter):
         self._write_meta_info_line('GN', 1, 'String', 'HGNC Gene Symbol')
         # Variant
         self._write_meta_info_line('VT', 1, 'String', 'CIViC Variant Name')
+        # CSQ
+        self._write_meta_info_line('CSQ', '.', 'String', 'Consequence annotations from CIViC. Format: {}'.format('|'.join([
+            'Allele',
+            'HGNC Gene Symbol',
+            'Entrez Gene ID',
+            'CIViC Representative Transcript',
+            'CIViC Variant Name',
+            'CIViC Variant ID',
+            'CIViC Variant Aliases',
+            'CIViC Variant Type',
+            'CIViC HGVS',
+            'Allele Registry ID',
+            'ClinVar IDs',
+            'CIViC Variant Evidence Score',
+            'CIViC Entity Type',
+            'CIViC Entity ID',
+            'CIViC Entity URL',
+            'CIViC Entity Source',
+            'CIViC Entity Variant Origin',
+        ])))
 
     def _write_meta_info_line(self, id_, number, type_, description, **kwargs):
         assert id_ not in self.meta_info_fields
