@@ -149,7 +149,7 @@ class VCFWriter(DictWriter):
                 'ALT':    variant.coordinates.variant_bases
             }
             assert all([c.upper() in ['A', 'C', 'G', 'T', 'N'] for c in out_dict['REF']])
-            assert all([c.upper() in ['A', 'C', 'G', 'T', 'N', '*'] for c in out_dict['ALT']]), \
+            assert all([c.upper() in ['A', 'C', 'G', 'T', 'N', '*', '-'] for c in out_dict['ALT']]), \
                 f'observed incompatible alt allele in {evidence.variant}'
 
             info_dict = {
