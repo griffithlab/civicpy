@@ -97,7 +97,7 @@ class VCFWriter(DictWriter):
         self.version = version
         super().__init__(f, delimiter='\t', fieldnames=self.HEADER, restval='.', lineterminator='\n')
         self.meta_info_fields = []
-        self.evidence_records = set()
+        self.variant_records = set()
 
     def writeheader(self):
         # write meta lines
@@ -107,13 +107,16 @@ class VCFWriter(DictWriter):
         super().writeheader()
 
     def addrecord(self, civic_record):
-        if isinstance(civic_record, civic.Variant) or isinstance(civic_record, civic.Assertion):
-            for evidence in civic_record.evidence:
-                self.addrecord(evidence)
-        elif isinstance(civic_record, civic.Evidence):
-            valid = self._validate_evidence_record(civic_record)
-            if valid:
-                self._add_evidence_record(civic_record)
+        if isinstance(civic_record, civic.Evidence) or isinstance(civic_record, civic.Assertion):
+            self._validate_variant(civic_record.variant)
+            self._add_variant_record(civic_record.variant)
+        elif isinstance(civic_record, civic.Gene):
+            for variant in civic_record.variants:
+                self._validate_variant(variant)
+                self._add_variant_record(variant)
+        elif isinstance(civic_record, civic.Variant):
+            self._validate_variant(civic_record)
+            self._add_variant_record(civic_record)
         else:
             raise ValueError('Expected a CIViC Variant, Assertion or Evidence record.')
 
@@ -127,46 +130,74 @@ class VCFWriter(DictWriter):
             self.writeheader()
 
         # sort records
-        sorted_records = list(self.evidence_records)
-        sorted_records.sort(key=lambda x: x.id)
-        sorted_records.sort(key=lambda x: x.variant.coordinates.stop)
-        sorted_records.sort(key=lambda x: x.variant.coordinates.start)
-        sorted_records.sort(key=lambda x: x.variant.coordinates.chromosome)
+        sorted_records = list(self.variant_records)
+        sorted_records.sort(key=lambda x: int(x.coordinates.stop))
+        sorted_records.sort(key=lambda x: int(x.coordinates.start))
+        int_chromosomes = [i for i in sorted_records if i.coordinates.chromosome.isdigit()]
+        string_chromosomes = [i for i in sorted_records if not i.coordinates.chromosome.isdigit()]
+        int_chromosomes.sort(key=lambda x: int(x.coordinates.chromosome))
+        string_chromosomes.sort(key=lambda x: x.coordinates.chromosome)
+        sorted_records = int_chromosomes + string_chromosomes
 
         # write them
-        for evidence in sorted_records:
+        for variant in sorted_records:
             out_dict = {
-                '#CHROM': evidence.variant.coordinates.chromosome,
-                'POS':    evidence.variant.coordinates.start,
-                'ID':     f'EID{evidence.id}',
-                'REF':    evidence.variant.coordinates.reference_bases,
-                'ALT':    evidence.variant.coordinates.variant_bases
+                '#CHROM': variant.coordinates.chromosome,
+                'POS':    variant.coordinates.start,
+                'ID':     variant.id,
+                'REF':    variant.coordinates.reference_bases,
+                'ALT':    variant.coordinates.variant_bases
             }
             assert all([c.upper() in ['A', 'C', 'G', 'T', 'N'] for c in out_dict['REF']])
-            assert all([c.upper() in ['A', 'C', 'G', 'T', 'N', '*'] for c in out_dict['ALT']]), \
+            assert all([c.upper() in ['A', 'C', 'G', 'T', 'N', '*', '-'] for c in out_dict['ALT']]), \
                 f'observed incompatible alt allele in {evidence.variant}'
 
             info_dict = {
-                'GN': evidence.variant.gene.name,
-                'VT': evidence.variant.name,
-                # 'ES': evidence.description,
-                'EL': evidence.evidence_level,
-                'ET': evidence.evidence_type,
-                'ED': evidence.evidence_direction,
-                'CS': evidence.clinical_significance,
-                'VO': evidence.variant_origin,
-                'DG': ','.join([d.name for d in evidence.drugs]),
-                'DI': evidence.drug_interaction_type,
-                'PM': evidence.source.pubmed_id,
-                'TR': evidence.rating,
-                'EU': evidence.site_link
+                'GN': variant.gene.name,
+                'VT': variant.name,
             }
-            doid = evidence.disease.doid
-            if doid is None:
-                doid = '.'
-            else:
-                doid = f'DOID{doid}'
-            info_dict['DS'] = ','.join([evidence.disease.name, doid])
+            csq = []
+            for evidence in variant.evidence:
+                csq.append('|'.join([
+                    out_dict['ALT'],
+                    variant.gene.name,
+                    str(variant.gene.entrez_id),
+                    str(variant.coordinates.representative_transcript),
+                    variant.name,
+                    str(variant.id),
+                    #'&'.join(variant.variant_aliases),
+                    '&'.join(map(lambda t: t.name, variant.variant_types)),
+                    #'&'.join(variant.hgvs_expressions),
+                    str(variant.allele_registry_id),
+                    '&'.join(variant.clinvar_entries),
+                    str(variant.civic_actionability_score),
+                    "evidence",
+                    str(evidence.id),
+                    "https://civicdb.org/links/evidence/{}".format(evidence.id),
+                    "{} ({})".format(evidence.source.citation_id, evidence.source.source_type),
+                    str(evidence.variant_origin),
+                ]))
+            for assertion in variant.assertions:
+                csq.append('|'.join([
+                    out_dict['ALT'],
+                    variant.gene.name,
+                    str(variant.gene.entrez_id),
+                    str(variant.coordinates.representative_transcript),
+                    variant.name,
+                    str(variant.id),
+                    #'&'.join(variant.variant_aliases),
+                    '&'.join(map(lambda t: t.name, variant.variant_types)),
+                    #'&'.join(variant.hgvs_expressions),
+                    str(variant.allele_registry_id),
+                    '&'.join(variant.clinvar_entries),
+                    str(variant.civic_actionability_score),
+                    "assertion",
+                    str(assertion.id),
+                    "https://civicdb.org/links/assertion/{}".format(assertion.id),
+                    "",
+                    str(assertion.variant_origin),
+                ]))
+            info_dict['CSQ'] = ','.join(csq)
 
             out = list()
             for field in self.meta_info_fields:
@@ -194,30 +225,26 @@ class VCFWriter(DictWriter):
         self._write_meta_info_line('GN', 1, 'String', 'HGNC Gene Symbol')
         # Variant
         self._write_meta_info_line('VT', 1, 'String', 'CIViC Variant Name')
-        # # Evidence statement
-        # self._write_meta_info_line('ES', 1, 'String', 'CIViC Evidence Statement')
-        # Evidence level
-        self._write_meta_info_line('EL', 1, 'Character', 'CIViC Evidence Level')
-        # Evidence type
-        self._write_meta_info_line('ET', 1, 'String', 'CIViC Evidence Type')
-        # Evidence direction
-        self._write_meta_info_line('ED', 1, 'String', 'CIViC Evidence Direction')
-        # Clinical significance
-        self._write_meta_info_line('CS', 1, 'String', 'CIViC Clinical Significance')
-        # Variant origin
-        self._write_meta_info_line('VO', 1, 'String', 'CIViC Variant Origin')
-        # Disease
-        self._write_meta_info_line('DS', 2, 'String', 'Disease Name, DOID')
-        # Drug
-        self._write_meta_info_line('DG', '.', 'String', 'Drugs')
-        # Drug interaction type
-        self._write_meta_info_line('DI', 1, 'String', 'Interaction Between Drugs')
-        # Pubmed ID
-        self._write_meta_info_line('PM', 1, 'String', 'Pubmed Identifier')
-        # Evidence trust rating
-        self._write_meta_info_line('TR', 1, 'Integer', 'Trust rating (stars)')
-        # Evidence URL
-        self._write_meta_info_line('EU', 1, 'String', 'Evidence Record URL')
+        # CSQ
+        self._write_meta_info_line('CSQ', '.', 'String', 'Consequence annotations from CIViC. Format: {}'.format('|'.join([
+            'Allele',
+            'HGNC Gene Symbol',
+            'Entrez Gene ID',
+            'CIViC Representative Transcript',
+            'CIViC Variant Name',
+            'CIViC Variant ID',
+            #'CIViC Variant Aliases',
+            'CIViC Variant Type',
+            #'CIViC HGVS',
+            'Allele Registry ID',
+            'ClinVar IDs',
+            'CIViC Variant Evidence Score',
+            'CIViC Entity Type',
+            'CIViC Entity ID',
+            'CIViC Entity URL',
+            'CIViC Entity Source',
+            'CIViC Entity Variant Origin',
+        ])))
 
     def _write_meta_info_line(self, id_, number, type_, description, **kwargs):
         assert id_ not in self.meta_info_fields
@@ -228,13 +255,12 @@ class VCFWriter(DictWriter):
         out = ','.join(s)
         self._f.write(f'##INFO=<{out}>\n')
 
-    def _validate_evidence_record(self, record):
-        variant = record.variant
+    def _validate_variant(self, variant):
         valid = self.VALID_VARIANTS.get(variant, None)
         if valid is None:
             valid = self._validate_sequence_variant(variant)
         if not valid:
-            logging.info(f'{record} has invalid VCF variant {variant}.')
+            logging.info(f'{variant} is invalid for VCF.')
         return valid
 
     def _validate_sequence_variant(self, variant):
@@ -336,5 +362,5 @@ class VCFWriter(DictWriter):
         self.VALID_VARIANTS[variant] = result
         return result
 
-    def _add_evidence_record(self, evidence_record):
-        self.evidence_records.add(evidence_record)
+    def _add_variant_record(self, variant_record):
+        self.variant_records.add(variant_record)
