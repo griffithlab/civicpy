@@ -16,7 +16,7 @@ import os
 import sys
 sys.path.insert(0, os.path.abspath('..'))
 
-from civicpy.__version__ import __version__
+from civicpy.__version__ import __version__,__short_version__
 
 # -- Project information -----------------------------------------------------
 
@@ -25,7 +25,7 @@ copyright = '2018, Alex H. Wagner, PhD'
 author = 'Alex H. Wagner, PhD'
 
 # The short X.Y version
-version = __version__
+version = __short_version__
 # The full version, including alpha/beta/rc tags
 release = __version__
 
