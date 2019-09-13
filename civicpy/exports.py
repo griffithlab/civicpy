@@ -52,6 +52,41 @@ class SequenceOntologyReader():
 
 
 class VCFWriter(DictWriter):
+    SPECIAL_CHARACTERS = {
+        " ": r'\x20',
+        "!": r'\x21',
+        '"': r'\x22',
+        '#': r'\x23',
+        '$': r'\x24',
+        '%': r'\x25',
+        '&': r'\x26',
+        "'": r'\x27',
+        '(': r'\x28',
+        ')': r'\x29',
+        '*': r'\x2A',
+        '+': r'\x2B',
+        ',': r'\x2C',
+        '-': r'\x2D',
+        '.': r'\x2E',
+        '/': r'\x2F',
+        ':': r'\x3A',
+        ';': r'\x3B',
+        '<': r'\x3C',
+        '=': r'\x3D',
+        '>': r'\x3E',
+        '?': r'\x3F',
+        '@': r'\x40',
+        '[': r'\x5B',
+        '\\': r'\x5C',
+        ']': r'\x5D',
+        '^': r'\x5E',
+        '_': r'\x5F',
+        '`': r'\x60',
+        '{': r'\x7B',
+        '|': r'\x7C',
+        '}': r'\x7D',
+        '~': r'\x7E',
+    }
 
     HEADER = [
         '#CHROM',
@@ -158,6 +193,7 @@ class VCFWriter(DictWriter):
             }
             csq = []
             for evidence in variant.evidence:
+                special_character_table = str.maketrans(VCFWriter.SPECIAL_CHARACTERS)
                 csq.append('|'.join([
                     out_dict['ALT'],
                     variant.gene.name,
@@ -165,9 +201,9 @@ class VCFWriter(DictWriter):
                     str(variant.coordinates.representative_transcript),
                     variant.name,
                     str(variant.id),
-                    #'&'.join(variant.variant_aliases),
+                    '&'.join(map(lambda a: a.translate(special_character_table), variant.variant_aliases)),
                     '&'.join(map(lambda t: t.name, variant.variant_types)),
-                    #'&'.join(variant.hgvs_expressions),
+                    '&'.join(map(lambda e: e.translate(special_character_table), variant.hgvs_expressions)),
                     str(variant.allele_registry_id),
                     '&'.join(variant.clinvar_entries),
                     str(variant.civic_actionability_score),
@@ -186,9 +222,9 @@ class VCFWriter(DictWriter):
                     str(variant.coordinates.representative_transcript),
                     variant.name,
                     str(variant.id),
-                    #'&'.join(variant.variant_aliases),
+                    '&'.join(map(lambda a: a.translate(special_character_table), variant.variant_aliases)),
                     '&'.join(map(lambda t: t.name, variant.variant_types)),
-                    #'&'.join(variant.hgvs_expressions),
+                    '&'.join(map(lambda e: e.translate(special_character_table), variant.hgvs_expressions)),
                     str(variant.allele_registry_id),
                     '&'.join(variant.clinvar_entries),
                     str(variant.civic_actionability_score),
@@ -235,9 +271,9 @@ class VCFWriter(DictWriter):
             'CIViC Representative Transcript',
             'CIViC Variant Name',
             'CIViC Variant ID',
-            #'CIViC Variant Aliases',
+            'CIViC Variant Aliases',
             'CIViC Variant Type',
-            #'CIViC HGVS',
+            'CIViC HGVS',
             'Allele Registry ID',
             'ClinVar IDs',
             'CIViC Variant Evidence Score',
