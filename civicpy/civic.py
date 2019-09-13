@@ -140,9 +140,10 @@ def update_cache(from_remote_cache=True):
     else:
         _get_elements_by_ids('evidence', allow_cached=False, get_all=True)
         _get_elements_by_ids('gene', allow_cached=False, get_all=True)
-        _get_elements_by_ids('variant', allow_cached=False, get_all=True)
+        variants = _get_elements_by_ids('variant', allow_cached=False, get_all=True)
         _get_elements_by_ids('assertion', allow_cached=False, get_all=True)
         CACHE['full_cached'] = datetime.datetime.now()
+        _build_coordinate_table(variants)
     save_cache()
 
 
