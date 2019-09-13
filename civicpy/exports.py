@@ -176,6 +176,7 @@ class VCFWriter(DictWriter):
                     "https://civicdb.org/links/evidence/{}".format(evidence.id),
                     "{} ({})".format(evidence.source.citation_id, evidence.source.source_type),
                     str(evidence.variant_origin),
+                    evidence.status,
                 ]))
             for assertion in variant.assertions:
                 csq.append('|'.join([
@@ -196,6 +197,7 @@ class VCFWriter(DictWriter):
                     "https://civicdb.org/links/assertion/{}".format(assertion.id),
                     "",
                     str(assertion.variant_origin),
+                    assertion.status,
                 ]))
             info_dict['CSQ'] = ','.join(csq)
 
@@ -244,6 +246,7 @@ class VCFWriter(DictWriter):
             'CIViC Entity URL',
             'CIViC Entity Source',
             'CIViC Entity Variant Origin',
+            'CIViC Entity Status',
         ])))
 
     def _write_meta_info_line(self, id_, number, type_, description, **kwargs):
