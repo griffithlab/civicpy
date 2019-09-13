@@ -65,6 +65,10 @@ class TestEvidence(object):
             assert source.citation_id
             assert source.source_type
 
+    def test_get_all_evidence(self):
+        evidence = civic.get_all_evidence()
+        assert len(evidence) > 6400
+
 
 class TestCoordinateSearch(object):
 
