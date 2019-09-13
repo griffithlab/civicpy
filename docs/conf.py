@@ -22,7 +22,7 @@ from civicpy.__version__ import __version__,__short_version__
 
 project = 'civicpy'
 copyright = '2018, Alex H. Wagner, PhD'
-author = 'Alex H. Wagner, PhD'
+author = 'Alex H. Wagner, PhD, Susanna Kiwala'
 
 # The short X.Y version
 version = __short_version__
