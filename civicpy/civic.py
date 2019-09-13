@@ -7,6 +7,7 @@ import pickle
 import os
 from collections import defaultdict, namedtuple
 from civicpy import REMOTE_MASTER_CACHE
+from civicpy.__version__ import __short_version__
 
 
 CACHE = dict()
@@ -89,6 +90,14 @@ def save_cache():
     if 'CIVICPY_CACHE_FILE' in os.environ and os.environ['CIVICPY_CACHE_FILE'] is not None:
         with open(os.environ['CIVICPY_CACHE_FILE'], 'wb') as pf:
             pickle.dump(CACHE, pf)
+    else:
+        logging.warning(
+            'No cache location specified, cache will not persist in local environment. '
+            'Please see http://docs.civicpy.org/en/{}/user/install.html#config-cache for '
+            'details on configuring cache save location'.format(
+                __short_version__
+            )
+        )
 
 
 def load_cache(update_delta=FRESH_DELTA):
