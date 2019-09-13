@@ -5,11 +5,14 @@ import datetime
 import pandas as pd
 import pickle
 import os
+import tempfile
 from collections import defaultdict, namedtuple
 from civicpy import REMOTE_MASTER_CACHE
 
 
 CACHE = dict()
+
+CACHE_TMPFILE = None
 
 COORDINATE_TABLE = None
 COORDINATE_TABLE_START = None
@@ -78,21 +81,38 @@ def get_class(element_type):
     return cls
 
 
+def cachefile_exists():
+    filepath = os.environ.get('CIVICPY_CACHE_FILE', None)
+    return bool(filepath and os.path.isfile(filepath))
+
 def read_cache_file_location():
-    if 'CIVICPY_CACHE_FILE' in os.environ and os.environ['CIVICPY_CACHE_FILE'] is not None:
+    if cachefile_exists():
         return os.environ['CIVICPY_CACHE_FILE']
     else:
-        return REMOTE_MASTER_CACHE
+        return _get_remote_cache()
+
+
+def _get_remote_cache(url=REMOTE_MASTER_CACHE):
+    global CACHE_TMPFILE
+    if CACHE_TMPFILE is None:
+        r = requests.get(url)
+        r.raise_for_status()
+        d = tempfile.TemporaryDirectory()
+        CACHE_TMPFILE = '{}/cache.pkl'.format(d.name)
+        with open(CACHE_TMPFILE, 'wb') as tmpcache:
+            tmpcache.write(r.content)
+    return CACHE_TMPFILE
 
 
 def save_cache():
-    if 'CIVICPY_CACHE_FILE' in os.environ and os.environ['CIVICPY_CACHE_FILE'] is not None:
+    if os.environ.get('CIVICPY_CACHE_FILE', None):
         with open(os.environ['CIVICPY_CACHE_FILE'], 'wb') as pf:
             pickle.dump(CACHE, pf)
 
 
-def load_cache(update_delta=FRESH_DELTA):
-    with open(read_cache_file_location(), 'rb') as pf:
+def load_cache(cache_path=None):
+    filepath = cache_path or read_cache_file_location()
+    with open(filepath, 'rb') as pf:
         old_cache = pickle.load(pf)
     c = dict()
     variants = set()
@@ -113,12 +133,16 @@ def load_cache(update_delta=FRESH_DELTA):
     _build_coordinate_table(variants)
 
 
-def update_cache():
-    _get_elements_by_ids('evidence', allow_cached=False, get_all=True)
-    _get_elements_by_ids('gene', allow_cached=False, get_all=True)
-    _get_elements_by_ids('variant', allow_cached=False, get_all=True)
-    _get_elements_by_ids('assertion', allow_cached=False, get_all=True)
-    CACHE['full_cached'] = datetime.datetime.now()
+def update_cache(from_remote_cache=True):
+    if from_remote_cache:
+        remote_cache_file = _get_remote_cache()
+        load_cache(remote_cache_file)
+    else:
+        _get_elements_by_ids('evidence', allow_cached=False, get_all=True)
+        _get_elements_by_ids('gene', allow_cached=False, get_all=True)
+        _get_elements_by_ids('variant', allow_cached=False, get_all=True)
+        _get_elements_by_ids('assertion', allow_cached=False, get_all=True)
+        CACHE['full_cached'] = datetime.datetime.now()
     save_cache()
 
 
@@ -416,12 +440,12 @@ def _has_full_cached_fresh(delta=FRESH_DELTA):
     return False
 
 
-def _get_elements_by_ids(element, id_list=[], allow_cached=True, get_all=False):
+def _get_elements_by_ids(element, id_list=[], allow_cached=True, get_all=False, use_remote_cache_on_update=True):
     if allow_cached:
         if not CACHE:
             load_cache()
         if not _has_full_cached_fresh():
-            update_cache()
+            update_cache(from_remote_cache=use_remote_cache_on_update)
         if not get_all:
             cached = [get_cached(element, element_id) for element_id in id_list]
             if all(cached):
