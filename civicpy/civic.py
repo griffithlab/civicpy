@@ -5,14 +5,11 @@ import datetime
 import pandas as pd
 import pickle
 import os
-import tempfile
 from collections import defaultdict, namedtuple
-from civicpy import REMOTE_MASTER_CACHE
+from civicpy import REMOTE_CACHE_URL, LOCAL_CACHE_PATH
 
 
 CACHE = dict()
-
-CACHE_TMPFILE = None
 
 COORDINATE_TABLE = None
 COORDINATE_TABLE_START = None
@@ -81,38 +78,66 @@ def get_class(element_type):
     return cls
 
 
-def cachefile_exists():
-    filepath = os.environ.get('CIVICPY_CACHE_FILE', None)
-    return bool(filepath and os.path.isfile(filepath))
+def download_remote_cache(url=REMOTE_CACHE_URL, cache_path=LOCAL_CACHE_PATH):
+    """
+    Retrieve a remote cache file from URL and save to local filepath.
 
-def read_cache_file_location():
-    if cachefile_exists():
-        return os.environ['CIVICPY_CACHE_FILE']
-    else:
-        return _get_remote_cache()
+    :param url:         A URL string to a remote cache for retrieval.
+                        This parameter defaults to REMOTE_CACHE_URL.
 
+    :param cache_path:  A filepath destination string for the retrieved remote cache.
+                        This parameter defaults to LOCAL_CACHE_PATH.
 
-def _get_remote_cache(url=REMOTE_MASTER_CACHE):
-    global CACHE_TMPFILE
-    if CACHE_TMPFILE is None:
-        r = requests.get(url)
-        r.raise_for_status()
-        d = tempfile.TemporaryDirectory()
-        CACHE_TMPFILE = '{}/cache.pkl'.format(d.name)
-        with open(CACHE_TMPFILE, 'wb') as tmpcache:
-            tmpcache.write(r.content)
-    return CACHE_TMPFILE
+    :return:            Returns True on success.
+    """
+    r = requests.get(url)
+    r.raise_for_status()
+    with open(cache_path, 'wb') as local_cache:
+        local_cache.write(r.content)
+    return True
 
 
-def save_cache():
-    if os.environ.get('CIVICPY_CACHE_FILE', None):
-        with open(os.environ['CIVICPY_CACHE_FILE'], 'wb') as pf:
-            pickle.dump(CACHE, pf)
+def save_cache(cache_path=LOCAL_CACHE_PATH):
+    """
+    Save in-memory cache to local file.
+
+    :param cache_path:  A filepath destination string for storing the cache.
+                        This parameter defaults to LOCAL_CACHE_PATH.
+
+    :return:            Returns True on success.
+    """
+    with open(cache_path, 'wb') as pf:
+        pickle.dump(CACHE, pf)
+    return True
 
 
-def load_cache(cache_path=None):
-    filepath = cache_path or read_cache_file_location()
-    with open(filepath, 'rb') as pf:
+def cache_file_present(cache_path=LOCAL_CACHE_PATH):
+    """
+    Determines if a file exists at a given path.
+
+    :param cache_path:  A filepath where cache is expected.
+                        This parameter defaults to LOCAL_CACHE_PATH.
+
+    :return:            Returns True on success.
+    """
+    return os.path.isfile(cache_path)
+
+
+def load_cache(cache_path=LOCAL_CACHE_PATH):
+    """
+    Load local file to in-memory cache.
+
+    :param cache_path:  A filepath destination string for loading the cache.
+                        This parameter defaults to LOCAL_CACHE_PATH.
+
+    :return:            Returns True on success.
+    """
+    if cache_path == LOCAL_CACHE_PATH:
+        if not cache_file_present():
+            download_remote_cache()
+    elif not cache_file_present(cache_path):
+        raise FileNotFoundError("No cache found at {}".format(cache_path))
+    with open(cache_path, 'rb') as pf:
         old_cache = pickle.load(pf)
     c = dict()
     variants = set()
@@ -131,12 +156,24 @@ def load_cache(cache_path=None):
             continue
         v.update()
     _build_coordinate_table(variants)
+    return True
 
 
 def update_cache(from_remote_cache=True):
+    """
+    Load local file to in-memory cache.
+
+    :param from_remote_cache:   If set to True, update_cache will first download the
+                                remote cache designated by REMOTE_CACHE_URL, store it
+                                to LOCAL_CACHE_PATH, and then load the downloaded cache
+                                into memory.
+                                This parameter defaults to True.
+
+    :return:            Returns True on success.
+    """
     if from_remote_cache:
-        remote_cache_file = _get_remote_cache()
-        load_cache(remote_cache_file)
+        download_remote_cache()
+        load_cache()
     else:
         _get_elements_by_ids('evidence', allow_cached=False, get_all=True)
         _get_elements_by_ids('gene', allow_cached=False, get_all=True)

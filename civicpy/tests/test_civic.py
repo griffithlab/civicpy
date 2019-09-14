@@ -8,7 +8,7 @@ ELEMENTS = [
 
 
 def setup_module():
-    if civic.cachefile_exists():
+    if civic.cache_file_present():
         civic.load_cache()
     else:
         civic.update_cache(from_remote_cache=False)
