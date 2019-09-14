@@ -5,6 +5,7 @@ import datetime
 import pandas as pd
 import pickle
 import os
+from pathlib import Path
 from collections import defaultdict, namedtuple
 from civicpy import REMOTE_CACHE_URL, LOCAL_CACHE_PATH
 
@@ -106,6 +107,9 @@ def save_cache(cache_path=LOCAL_CACHE_PATH):
 
     :return:            Returns True on success.
     """
+    p = Path(cache_path)
+    if not p.parent.is_dir():
+        os.makedirs(p.parent)
     with open(cache_path, 'wb') as pf:
         pickle.dump(CACHE, pf)
     return True
