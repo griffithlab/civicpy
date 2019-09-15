@@ -6,7 +6,7 @@
 CIViCpy
 =======
 
-v\ |version|.
+v\ |release|.
 
 **CIViCpy** is an analysis toolkit and SDK for extracting and analyzing knowledge from the `CIViC knowledgebase`_.
 
