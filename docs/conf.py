@@ -16,13 +16,13 @@ import os
 import sys
 sys.path.insert(0, os.path.abspath('..'))
 
-from civicpy.__version__ import __version__,__short_version__
+from civicpy.__version__ import __version__, __short_version__, __authors__, __copyright__
 
 # -- Project information -----------------------------------------------------
 
 project = 'civicpy'
-copyright = '2018, Alex H. Wagner, PhD'
-author = 'Alex H. Wagner, PhD, Susanna Kiwala'
+copyright = __copyright__
+author = ', '.join(__authors__)
 
 # The short X.Y version
 version = __short_version__
@@ -139,7 +139,7 @@ latex_elements = {
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
     (master_doc, 'civicpy.tex', 'civicpy Documentation',
-     'Alex H. Wagner, PhD', 'manual'),
+     author, 'manual'),
 ]
 
 

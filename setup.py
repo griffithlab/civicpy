@@ -1,5 +1,5 @@
 from setuptools import setup
-from civicpy.__version__ import __version__, __author__, __author_email__, __description__, __url__
+from civicpy.__version__ import __version__, __authors__, __author_email__, __description__, __url__
 
 setup(
     name='civicpy',
@@ -7,7 +7,7 @@ setup(
     packages=['civicpy'],
     url=__url__,
     license='MIT',
-    author=__author__,
+    author=', '.join(__authors__),
     author_email=__author_email__,
     description=__description__,
     classifiers=[
