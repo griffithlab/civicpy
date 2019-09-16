@@ -189,7 +189,7 @@ def load_cache(local_cache_path=LOCAL_CACHE_PATH, on_stale='auto'):
 def update_cache(from_remote_cache=True, remote_cache_url=REMOTE_CACHE_URL,
                  local_cache_path=LOCAL_CACHE_PATH):
     """
-    Load local file to in-memory cache.
+    Update local cache file.
 
     :param from_remote_cache:   If set to True, update_cache will first download the
                                 remote cache designated by REMOTE_CACHE_URL, store it
