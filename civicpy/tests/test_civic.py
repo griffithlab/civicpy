@@ -8,7 +8,10 @@ ELEMENTS = [
 
 
 def setup_module():
-    civic.get_all_variants(allow_cached=False)
+    if civic.cache_file_present():
+        civic.load_cache()
+    else:
+        civic.update_cache(from_remote_cache=False)
 
 
 @pytest.fixture(scope="module", params=ELEMENTS)
@@ -61,6 +64,10 @@ class TestEvidence(object):
         for source in v600e.evidence_sources:
             assert source.citation_id
             assert source.source_type
+
+    def test_get_all_evidence(self):
+        evidence = civic.get_all_evidence()
+        assert len(evidence) > 6400
 
 
 class TestCoordinateSearch(object):

@@ -5,8 +5,9 @@ import datetime
 import pandas as pd
 import pickle
 import os
+from pathlib import Path
 from collections import defaultdict, namedtuple
-from civicpy import REMOTE_MASTER_CACHE
+from civicpy import REMOTE_CACHE_URL, LOCAL_CACHE_PATH
 
 
 CACHE = dict()
@@ -78,21 +79,79 @@ def get_class(element_type):
     return cls
 
 
-def read_cache_file_location():
-    if 'CIVICPY_CACHE_FILE' in os.environ and os.environ['CIVICPY_CACHE_FILE'] is not None:
-        return os.environ['CIVICPY_CACHE_FILE']
-    else:
-        return REMOTE_MASTER_CACHE
+def download_remote_cache(remote_cache_url=REMOTE_CACHE_URL, local_cache_path=LOCAL_CACHE_PATH):
+    """
+    Retrieve a remote cache file from URL and save to local filepath.
+
+    :param remote_cache_url:    A URL string to a remote cache for retrieval.
+                                This parameter defaults to REMOTE_CACHE_URL.
+
+    :param local_cache_path:    A filepath destination string for the retrieved remote cache.
+                                This parameter defaults to LOCAL_CACHE_PATH.
+
+    :return:                    Returns True on success.
+    """
+    r = requests.get(remote_cache_url)
+    r.raise_for_status()
+    with open(local_cache_path, 'wb') as local_cache:
+        local_cache.write(r.content)
+    return True
 
 
-def save_cache():
-    if 'CIVICPY_CACHE_FILE' in os.environ and os.environ['CIVICPY_CACHE_FILE'] is not None:
-        with open(os.environ['CIVICPY_CACHE_FILE'], 'wb') as pf:
-            pickle.dump(CACHE, pf)
+def save_cache(local_cache_path=LOCAL_CACHE_PATH):
+    """
+    Save in-memory cache to local file.
+
+    :param local_cache_path:    A filepath destination string for storing the cache.
+                                This parameter defaults to LOCAL_CACHE_PATH.
+
+    :return:                    Returns True on success.
+    """
+    p = Path(local_cache_path)
+    if not p.parent.is_dir():
+        os.makedirs(p.parent)
+    with open(local_cache_path, 'wb') as pf:
+        pickle.dump(CACHE, pf)
+    return True
 
 
-def load_cache(update_delta=FRESH_DELTA):
-    with open(read_cache_file_location(), 'rb') as pf:
+def cache_file_present(local_cache_path=LOCAL_CACHE_PATH):
+    """
+    Determines if a file exists at a given path.
+
+    :param local_cache_path:    A filepath where cache is expected.
+                                This parameter defaults to LOCAL_CACHE_PATH.
+
+    :return:                    Returns True on success.
+    """
+    return os.path.isfile(local_cache_path)
+
+
+def load_cache(local_cache_path=LOCAL_CACHE_PATH, on_stale='auto'):
+    """
+    Load local file to in-memory cache.
+
+    :param local_cache_path:    A filepath destination string for loading the cache.
+                                This parameter defaults to LOCAL_CACHE_PATH.
+
+    :param on_stale:    ['auto', 'reject', 'ignore', 'update']
+                        auto:   If cache_path matches the filepath in
+                                LOCAL_CACHE_PATH, follows 'update' behavior.
+                                Otherwise, follows 'reject' behavior.
+                        reject: Clear loaded cache from memory if stale.
+                        ignore: Keep loaded cache in memory if stale.
+                        update: Run update_cache and save fresh cache to
+                                cache_path.
+                        This parameter defaults to 'auto'.
+
+    :return:            Returns True on success.
+    """
+    if local_cache_path == LOCAL_CACHE_PATH:
+        if not cache_file_present():
+            download_remote_cache()
+    elif not cache_file_present(local_cache_path):
+        raise FileNotFoundError("No cache found at {}".format(local_cache_path))
+    with open(local_cache_path, 'rb') as pf:
         old_cache = pickle.load(pf)
     c = dict()
     variants = set()
@@ -110,15 +169,52 @@ def load_cache(update_delta=FRESH_DELTA):
         if isinstance(k, str):
             continue
         v.update()
-    _build_coordinate_table(variants)
+    if _has_full_cached_fresh() or on_stale == 'ignore':
+        _build_coordinate_table(variants)
+        return True
+    elif (on_stale == 'auto' and local_cache_path == LOCAL_CACHE_PATH) or on_stale == 'update':
+        logging.warning(
+            'Cache at {} is stale, updating.'.format(local_cache_path)
+        )
+        update_cache(local_cache_path=local_cache_path)
+        return True
+    elif on_stale == 'reject' or on_stale == 'auto':
+        logging.warning(
+            'Cache at {} is stale, cleared from memory. Run update_cache or '
+            'set on_stale parameter to desired behavior.'.format(local_cache_path)
+        )
+        MODULE.CACHE = dict()
 
 
-def update_cache():
-    _get_elements_by_ids('evidence', allow_cached=False, get_all=True)
-    _get_elements_by_ids('gene', allow_cached=False, get_all=True)
-    _get_elements_by_ids('variant', allow_cached=False, get_all=True)
-    _get_elements_by_ids('assertion', allow_cached=False, get_all=True)
-    CACHE['full_cached'] = datetime.datetime.now()
+def update_cache(from_remote_cache=True, remote_cache_url=REMOTE_CACHE_URL,
+                 local_cache_path=LOCAL_CACHE_PATH):
+    """
+    Update local cache file.
+
+    :param from_remote_cache:   If set to True, update_cache will first download the
+                                remote cache designated by REMOTE_CACHE_URL, store it
+                                to LOCAL_CACHE_PATH, and then load the downloaded cache
+                                into memory.
+                                This parameter defaults to True.
+
+    :param remote_cache_url:    A URL string to a remote cache for retrieval.
+                                This parameter defaults to REMOTE_CACHE_URL.
+
+    :param local_cache_path:    A filepath destination string for the retrieved remote cache.
+                                This parameter defaults to LOCAL_CACHE_PATH.
+
+    :return:                    Returns True on success.
+    """
+    if from_remote_cache:
+        download_remote_cache(local_cache_path=local_cache_path, remote_cache_url=remote_cache_url)
+        load_cache(local_cache_path=local_cache_path)
+    else:
+        _get_elements_by_ids('evidence', allow_cached=False, get_all=True)
+        _get_elements_by_ids('gene', allow_cached=False, get_all=True)
+        variants = _get_elements_by_ids('variant', allow_cached=False, get_all=True)
+        _get_elements_by_ids('assertion', allow_cached=False, get_all=True)
+        CACHE['full_cached'] = datetime.datetime.now()
+        _build_coordinate_table(variants)
     save_cache()
 
 
@@ -420,8 +516,6 @@ def _get_elements_by_ids(element, id_list=[], allow_cached=True, get_all=False):
     if allow_cached:
         if not CACHE:
             load_cache()
-        if not _has_full_cached_fresh():
-            update_cache()
         if not get_all:
             cached = [get_cached(element, element_id) for element_id in id_list]
             if all(cached):
@@ -570,10 +664,7 @@ def _build_coordinate_table(variants):
 
 
 def get_all_variants(allow_cached=True):
-    precached = _has_full_cached_fresh()
     variants = _get_all_genes_and_variants(allow_cached)['variants']
-    if not (precached and allow_cached):
-        _build_coordinate_table(variants)
     return variants
 
 
@@ -769,6 +860,10 @@ def get_all_genes():
 
 def get_all_evidence_ids():
     return _get_all_element_ids('evidence_items')
+
+
+def get_all_evidence():
+    return _get_elements_by_ids('evidence_items', get_all=True)
 
 
 def get_HPO_terms_by_ids(hpo_id_list):
