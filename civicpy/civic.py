@@ -409,7 +409,7 @@ class Evidence(CivicRecord):
 
     @property
     def variant(self):
-        return get_variants_by_ids([self.variant_id])[0]
+        return get_variant_by_id(self.variant_id)
 
 
 class Assertion(CivicRecord):
