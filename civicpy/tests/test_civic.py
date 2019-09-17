@@ -11,7 +11,7 @@ def setup_module():
     if civic.cache_file_present():
         civic.load_cache()
     else:
-        civic.update_cache(from_remote_cache=False)
+        civic.update_cache(from_remote_cache=True)
 
 
 @pytest.fixture(scope="module", params=ELEMENTS)
