@@ -91,6 +91,7 @@ def download_remote_cache(remote_cache_url=REMOTE_CACHE_URL, local_cache_path=LO
 
     :return:                    Returns True on success.
     """
+    _make_local_cache_path_if_missing(local_cache_path)
     r = requests.get(remote_cache_url)
     r.raise_for_status()
     with open(local_cache_path, 'wb') as local_cache:
@@ -107,9 +108,6 @@ def save_cache(local_cache_path=LOCAL_CACHE_PATH):
 
     :return:                    Returns True on success.
     """
-    p = Path(local_cache_path)
-    if not p.parent.is_dir():
-        os.makedirs(p.parent)
     with open(local_cache_path, 'wb') as pf:
         pickle.dump(CACHE, pf)
     return True
@@ -205,6 +203,7 @@ def update_cache(from_remote_cache=True, remote_cache_url=REMOTE_CACHE_URL,
 
     :return:                    Returns True on success.
     """
+    _make_local_cache_path_if_missing(local_cache_path)
     if from_remote_cache:
         download_remote_cache(local_cache_path=local_cache_path, remote_cache_url=remote_cache_url)
         load_cache(local_cache_path=local_cache_path)
@@ -215,7 +214,13 @@ def update_cache(from_remote_cache=True, remote_cache_url=REMOTE_CACHE_URL,
         _get_elements_by_ids('assertion', allow_cached=False, get_all=True)
         CACHE['full_cached'] = datetime.datetime.now()
         _build_coordinate_table(variants)
-    save_cache()
+    save_cache(local_cache_path=local_cache_path)
+
+
+def _make_local_cache_path_if_missing(local_cache_path):
+    p = Path(local_cache_path)
+    if not p.parent.is_dir():
+        os.makedirs(p.parent)
 
 
 class CivicRecord:
