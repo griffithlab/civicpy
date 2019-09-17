@@ -7,7 +7,7 @@ import pickle
 import os
 from pathlib import Path
 from collections import defaultdict, namedtuple
-from civicpy import REMOTE_CACHE_URL, LOCAL_CACHE_PATH
+from civicpy import REMOTE_CACHE_URL, LOCAL_CACHE_PATH, CACHE_TIMEOUT_DAYS
 
 
 CACHE = dict()
@@ -19,7 +19,7 @@ COORDINATE_TABLE_CHR = None
 
 HPO_TERMS = dict()
 
-FRESH_DELTA = datetime.timedelta(days=7)
+FRESH_DELTA = datetime.timedelta(days=CACHE_TIMEOUT_DAYS)
 
 MODULE = importlib.import_module('civicpy.civic')
 
