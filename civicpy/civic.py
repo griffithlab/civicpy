@@ -683,10 +683,10 @@ def search_variants_by_coordinates(coordinate_query, search_mode='any'):
                         chr: the GRCh37 chromosome of the query (e.g. "7", "X")
                         alt: the alternate allele at the coordinate [optional]
 
-    :param search_mode: ['any', 'include_smaller', 'include_larger', 'exact']
+    :param search_mode: ['any', 'query_encompassing', 'variant_encompassing', 'exact']
                         any: any overlap between a query and a variant is a match
-                        include_smaller: variants must fit within the coordinates of the query
-                        include_larger: variants must encompass the coordinates of the query
+                        query_encompassing: variants must fit within the coordinates of the query
+                        variant_encompassing: variants must encompass the coordinates of the query
                         exact: variants must match coordinates precisely, as well as alternate
                                allele, if provided
                         search_mode is 'exact' by default
@@ -714,9 +714,9 @@ def search_variants_by_coordinates(coordinate_query, search_mode='any'):
     if search_mode == 'any':
         var_digests = m_df.v_hash.to_list()
         return [CACHE[v] for v in var_digests]
-    elif search_mode == 'include_smaller':
+    elif search_mode == 'query_encompassing':
         match_idx = (start <= m_df.start) & (stop >= m_df.stop)
-    elif search_mode == 'include_larger':
+    elif search_mode == 'variant_encompassing':
         match_idx = (start >= m_df.start) & (stop <= m_df.stop)
     elif search_mode == 'exact':
         match_idx = (start == m_df.stop) & (stop == m_df.start)
@@ -740,10 +740,10 @@ def bulk_search_variants_by_coordinates(sorted_queries, search_mode='any'):
                             chr: the GRCh37 chromosome of the query (e.g. "7", "X")
                             alt: the alternate allele at the coordinate [optional]
 
-    :param search_mode: ['any', 'include_smaller', 'include_larger', 'exact']
+    :param search_mode: ['any', 'query_encompassing', 'variant_encompassing', 'exact']
                         any: any overlap between a query and a variant is a match
-                        include_smaller: variants must fit within the coordinates of the query
-                        include_larger: variants must encompass the coordinates of the query
+                        query_encompassing: variants must fit within the coordinates of the query
+                        variant_encompassing: variants must encompass the coordinates of the query
                         exact: variants must match coordinates precisely, as well as alternate
                                allele, if provided
                         search_mode is 'exact' by default
@@ -806,9 +806,9 @@ def bulk_search_variants_by_coordinates(sorted_queries, search_mode='any'):
             c_alt = c.alt
             if not (q_alt and c_alt and q_alt != c_alt):
                 matches[q].append(Match(**c.to_dict()))
-        elif search_mode == 'include_smaller':
+        elif search_mode == 'query_encompassing':
             raise NotImplementedError
-        elif search_mode == 'include_larger':
+        elif search_mode == 'variant_encompassing':
             raise NotImplementedError
         if match_start is None:
             match_start = ct_pointer
