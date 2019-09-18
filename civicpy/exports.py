@@ -192,6 +192,11 @@ class VCFWriter(DictWriter):
                 'VT': variant.name,
             }
             csq = []
+            if variant.coordinates.representative_transcript:
+                hgvs_cs = [e for e in variant.hgvs_expressions if (':c.' in e) and (variant.coordinates.representative_transcript in e)]
+                hgvs_ps = [e for e in variant.hgvs_expressions if (':p.' in e) and (variant.coordinates.representative_transcript in e)]
+            hgvs_c = hgvs_cs[0] if len(hgvs_cs) == 1 else ''
+            hgvs_p = hgvs_ps[0] if len(hgvs_ps) == 1 else ''
             for evidence in variant.evidence:
                 special_character_table = str.maketrans(VCFWriter.SPECIAL_CHARACTERS)
                 csq.append('|'.join([
@@ -201,6 +206,8 @@ class VCFWriter(DictWriter):
                     str(variant.gene.entrez_id),
                     'transcript',
                     str(variant.coordinates.representative_transcript),
+                    hgvs_c,
+                    hgvs_p,
                     variant.name,
                     str(variant.id),
                     '&'.join(map(lambda a: a.translate(special_character_table), variant.variant_aliases)),
@@ -223,6 +230,8 @@ class VCFWriter(DictWriter):
                     str(variant.gene.entrez_id),
                     'transcript',
                     str(variant.coordinates.representative_transcript),
+                    hgvs_c,
+                    hgvs_p,
                     variant.name,
                     str(variant.id),
                     '&'.join(map(lambda a: a.translate(special_character_table), variant.variant_aliases)),
@@ -273,6 +282,8 @@ class VCFWriter(DictWriter):
             'Entrez Gene ID',
             'Feature_type',
             'Feature',
+            'HGVSc',
+            'HGVSp',
             'CIViC Variant Name',
             'CIViC Variant ID',
             'CIViC Variant Aliases',
