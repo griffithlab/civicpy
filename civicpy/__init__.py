@@ -6,6 +6,7 @@ REMOTE_CACHE_URL = os.getenv('CIVICPY_REMOTE_CACHE_URL', False) or \
                    "https://civicdb.org/downloads/civicpy_cache.pkl"
 LOCAL_CACHE_PATH = os.getenv('CIVICPY_CACHE_FILE', False) or \
                    str(Path.home() / '.civicpy' / 'cache.pkl')
+CACHE_TIMEOUT_DAYS = os.getenv('CIVICPY_CACHE_TIMEOUT_DAYS', False) or 7
 
 def version():
     return __version__
