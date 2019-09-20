@@ -868,7 +868,7 @@ def get_all_evidence_ids():
 
 
 def get_all_evidence():
-    return _get_elements_by_ids('evidence_items', get_all=True)
+    return _get_elements_by_ids('evidence', get_all=True)
 
 
 def get_HPO_terms_by_ids(hpo_id_list):
