@@ -109,15 +109,15 @@ class TestGenes(object):
 
     def test_get_all(self):
         genes = civic.get_all_genes()
-        assert len(genes) == 28
+        assert len(genes) == 401
 
     def test_get_non_rejected(self):
         genes = civic.get_all_genes(status_filters=['rejected'])
-        assert len(genes) == 24
+        assert len(genes) == 396
 
     def test_get_accepted_only(self):
         genes = civic.get_all_genes(status_filters=['rejected', 'submitted'])
-        assert len(genes) == 16
+        assert len(genes) == 313
 
 
 class TestCoordinateSearch(object):

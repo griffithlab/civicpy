@@ -125,6 +125,18 @@ def cache_file_present(local_cache_path=LOCAL_CACHE_PATH):
     return os.path.isfile(local_cache_path)
 
 
+def delete_local_cache(local_cache_path=LOCAL_CACHE_PATH):
+    """
+    Deletes local cache file.
+
+    :param local_cache_path:    A filepath destination string for the cache to be deleted.
+                                This parameter defaults to LOCAL_CACHE_PATH.
+
+    :return:            Returns True on success.
+    """
+    return os.unlink(local_cache_path)
+
+
 def load_cache(local_cache_path=LOCAL_CACHE_PATH, on_stale='auto'):
     """
     Load local file to in-memory cache.
@@ -209,8 +221,11 @@ def update_cache(from_remote_cache=True, remote_cache_url=REMOTE_CACHE_URL,
         load_cache(local_cache_path=local_cache_path)
     else:
         _get_elements_by_ids('evidence', allow_cached=False, get_all=True)
-        _get_elements_by_ids('gene', allow_cached=False, get_all=True)
         variants = _get_elements_by_ids('variant', allow_cached=False, get_all=True)
+        genes = _get_elements_by_ids('gene', allow_cached=False, get_all=True)
+        for g in genes:
+            for v in g._variants:
+                v.update()
         _get_elements_by_ids('assertion', allow_cached=False, get_all=True)
         CACHE['full_cached'] = datetime.datetime.now()
         _build_coordinate_table(variants)
@@ -637,8 +652,9 @@ def get_all_assertion_ids():
     return _get_all_element_ids('assertions')
 
 
-def get_all_assertions(status_filters=[]):
-    return [a for a in get_assertions_by_ids(get_all=True) if a.status not in status_filters]
+def get_all_assertions(status_filters=[], allow_cached=True):
+    assertions = _get_elements_by_ids('assertion', allow_cached=allow_cached, get_all=True)
+    return [a for a in assertions if a.status not in status_filters]
 
 
 def search_assertions_by_coordinates(coordinates, search_mode='any'):
@@ -693,11 +709,18 @@ def _build_coordinate_table(variants):
     MODULE.COORDINATE_TABLE_CHR = df.chr.sort_values()
 
 
-def get_all_variants(status_filters=[]):
-    variants = _get_all_genes_and_variants()['variants']
-    for v in variants:
-        v._status_filters = status_filters
-    return [v for v in variants if v.evidence]
+def get_all_variants(status_filters=[], allow_cached=True):
+    variants = _get_elements_by_ids('variant', allow_cached=allow_cached, get_all=True)
+    if status_filters:
+        assert CACHE.get('evidence_items_all_ids', False)
+        resp = list()
+        for v in variants:
+            v._status_filters = status_filters
+            if v.evidence:
+                resp.append(v)
+        return resp
+    else:
+        return variants
 
 
 def search_variants_by_coordinates(coordinate_query, search_mode='any'):
@@ -847,16 +870,6 @@ def get_all_variant_ids():
     return _get_all_element_ids('variants')
 
 
-def _get_all_genes_and_variants(allow_cached=True, status_filters=[]):
-    variants = _get_elements_by_ids('variants', get_all=True, allow_cached=allow_cached)
-    for v in variants:
-        v._status_filters = status_filters
-    genes = _get_elements_by_ids('gene', get_all=True, allow_cached=allow_cached)
-    for variant in variants:
-        variant.gene.update()
-    return {'genes': genes, 'variants': variants}
-
-
 def _get_all_element_ids(element):
     url = f'https://civicdb.org/api/{element}?count=100000'
     resp = requests.get(url)
@@ -888,17 +901,27 @@ def get_all_gene_ids():
     return _get_all_element_ids('genes')
 
 
-def get_all_genes(status_filters=[]):
-    genes = _get_all_genes_and_variants(status_filters=status_filters)['genes']
-    return [g for g in genes if g.variants]
+def get_all_genes(status_filters=[], allow_cached=True):
+    genes = _get_elements_by_ids('gene', get_all=True, allow_cached=allow_cached)
+    if status_filters:
+        assert CACHE.get('variants_all_ids', False)
+        assert CACHE.get('evidence_items_all_ids', False)
+        resp = list()
+        for g in genes:
+            g._status_filters = status_filters
+            if g.variants:
+                resp.append(g)
+        return resp
+    else:
+        return genes
 
 
 def get_all_evidence_ids():
     return _get_all_element_ids('evidence_items')
 
 
-def get_all_evidence(status_filters=[]):
-    evidence = _get_elements_by_ids('evidence', get_all=True)
+def get_all_evidence(status_filters=[], allow_cached=True):
+    evidence = _get_elements_by_ids('evidence', get_all=True, allow_cached=allow_cached)
     return [e for e in evidence if e.status not in status_filters]
 
 
