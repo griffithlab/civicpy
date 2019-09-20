@@ -192,17 +192,25 @@ class VCFWriter(DictWriter):
                 'VT': variant.name,
             }
             csq = []
+            if variant.coordinates.representative_transcript:
+                hgvs_cs = [e for e in variant.hgvs_expressions if (':c.' in e) and (variant.coordinates.representative_transcript in e)]
+                hgvs_ps = [e for e in variant.hgvs_expressions if (':p.' in e) and (variant.coordinates.representative_transcript in e)]
+            hgvs_c = hgvs_cs[0] if len(hgvs_cs) == 1 else ''
+            hgvs_p = hgvs_ps[0] if len(hgvs_ps) == 1 else ''
             for evidence in variant.evidence:
                 special_character_table = str.maketrans(VCFWriter.SPECIAL_CHARACTERS)
                 csq.append('|'.join([
                     out_dict['ALT'],
+                    '&'.join(map(lambda t: t.name, variant.variant_types)),
                     variant.gene.name,
                     str(variant.gene.entrez_id),
+                    'transcript',
                     str(variant.coordinates.representative_transcript),
+                    hgvs_c,
+                    hgvs_p,
                     variant.name,
                     str(variant.id),
                     '&'.join(map(lambda a: a.translate(special_character_table), variant.variant_aliases)),
-                    '&'.join(map(lambda t: t.name, variant.variant_types)),
                     '&'.join(map(lambda e: e.translate(special_character_table), variant.hgvs_expressions)),
                     str(variant.allele_registry_id),
                     '&'.join(variant.clinvar_entries),
@@ -217,13 +225,16 @@ class VCFWriter(DictWriter):
             for assertion in variant.assertions:
                 csq.append('|'.join([
                     out_dict['ALT'],
+                    '&'.join(map(lambda t: t.name, variant.variant_types)),
                     variant.gene.name,
                     str(variant.gene.entrez_id),
+                    'transcript',
                     str(variant.coordinates.representative_transcript),
+                    hgvs_c,
+                    hgvs_p,
                     variant.name,
                     str(variant.id),
                     '&'.join(map(lambda a: a.translate(special_character_table), variant.variant_aliases)),
-                    '&'.join(map(lambda t: t.name, variant.variant_types)),
                     '&'.join(map(lambda e: e.translate(special_character_table), variant.hgvs_expressions)),
                     str(variant.allele_registry_id),
                     '&'.join(variant.clinvar_entries),
@@ -266,13 +277,16 @@ class VCFWriter(DictWriter):
         # CSQ
         self._write_meta_info_line('CSQ', '.', 'String', 'Consequence annotations from CIViC. Format: {}'.format('|'.join([
             'Allele',
-            'HGNC Gene Symbol',
+            'Consequence',
+            'SYMBOL',
             'Entrez Gene ID',
-            'CIViC Representative Transcript',
+            'Feature_type',
+            'Feature',
+            'HGVSc',
+            'HGVSp',
             'CIViC Variant Name',
             'CIViC Variant ID',
             'CIViC Variant Aliases',
-            'CIViC Variant Type',
             'CIViC HGVS',
             'Allele Registry ID',
             'ClinVar IDs',
