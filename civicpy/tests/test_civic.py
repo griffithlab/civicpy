@@ -1,5 +1,5 @@
 import pytest
-from civicpy import civic
+from civicpy import civic, TEST_CACHE_PATH
 from civicpy.civic import CoordinateQuery
 
 ELEMENTS = [
@@ -8,11 +8,7 @@ ELEMENTS = [
 
 
 def setup_module():
-    # if civic.cache_file_present():
-    #     civic.load_cache()
-    # else:
-    #     civic.update_cache(from_remote_cache=True)
-    civic.update_cache(from_remote_cache=False)
+    civic.load_cache(local_cache_path=TEST_CACHE_PATH, on_stale='ignore')
 
 
 @pytest.fixture(scope="module", params=ELEMENTS)
