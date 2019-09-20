@@ -8,10 +8,11 @@ ELEMENTS = [
 
 
 def setup_module():
-    if civic.cache_file_present():
-        civic.load_cache()
-    else:
-        civic.update_cache(from_remote_cache=True)
+    # if civic.cache_file_present():
+    #     civic.load_cache()
+    # else:
+    #     civic.update_cache(from_remote_cache=True)
+    civic.update_cache(from_remote_cache=False)
 
 
 @pytest.fixture(scope="module", params=ELEMENTS)
