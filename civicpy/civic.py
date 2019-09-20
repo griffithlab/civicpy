@@ -274,6 +274,8 @@ class CivicRecord:
         if not isinstance(self, CivicAttribute) and not self._partial and self.__class__.__name__ != 'CivicRecord':
             CACHE[hash(self)] = self
 
+        self._status_filters = []
+
     def __repr__(self):
         return f'<CIViC {self.type} {self.id}>'
 
@@ -341,6 +343,7 @@ class Variant(CivicRecord):
         # Handle overloaded evidence_items from some advanced search views
         evidence_items = kwargs.get('evidence_items')
         kwargs['type'] = 'variant'
+        self._evidence_items = []
         if evidence_items and not isinstance(evidence_items, list):
                 del(kwargs['evidence_items'])
         super().__init__(**kwargs)
@@ -370,6 +373,14 @@ class Variant(CivicRecord):
         return self.evidence_items
 
     @property
+    def evidence_items(self):
+        return [e for e in self._evidence_items if e.status not in self._status_filters]
+
+    @evidence_items.setter
+    def evidence_items(self, value):
+        self._evidence_items = value
+
+    @property
     def gene(self):
         return _get_element_by_id('gene', self.gene_id)
 
@@ -385,6 +396,20 @@ class Gene(CivicRecord):
         # 'sources',
         'variants'
     })
+
+    def __init__(self, **kwargs):
+        self._variants = []
+        super().__init__(**kwargs)
+
+    @property
+    def variants(self):
+        for variant in self._variants:
+            variant._status_filters = self._status_filters
+        return [v for v in self._variants if v.evidence]
+
+    @variants.setter
+    def variants(self, value):
+        self._variants = value
 
 
 class Evidence(CivicRecord):
@@ -612,8 +637,8 @@ def get_all_assertion_ids():
     return _get_all_element_ids('assertions')
 
 
-def get_all_assertions():
-    return get_assertions_by_ids(get_all=True)
+def get_all_assertions(status_filters=[]):
+    return [a for a in get_assertions_by_ids(get_all=True) if a.status not in status_filters]
 
 
 def search_assertions_by_coordinates(coordinates, search_mode='any'):
@@ -668,9 +693,11 @@ def _build_coordinate_table(variants):
     MODULE.COORDINATE_TABLE_CHR = df.chr.sort_values()
 
 
-def get_all_variants(allow_cached=True):
-    variants = _get_all_genes_and_variants(allow_cached)['variants']
-    return variants
+def get_all_variants(status_filters=[]):
+    variants = _get_all_genes_and_variants()['variants']
+    for v in variants:
+        v._status_filters = status_filters
+    return [v for v in variants if v.evidence]
 
 
 def search_variants_by_coordinates(coordinate_query, search_mode='any'):
@@ -820,8 +847,10 @@ def get_all_variant_ids():
     return _get_all_element_ids('variants')
 
 
-def _get_all_genes_and_variants(allow_cached=True):
+def _get_all_genes_and_variants(allow_cached=True, status_filters=[]):
     variants = _get_elements_by_ids('variants', get_all=True, allow_cached=allow_cached)
+    for v in variants:
+        v._status_filters = status_filters
     genes = _get_elements_by_ids('gene', get_all=True, allow_cached=allow_cached)
     for variant in variants:
         variant.gene.update()
@@ -859,16 +888,18 @@ def get_all_gene_ids():
     return _get_all_element_ids('genes')
 
 
-def get_all_genes():
-    return _get_all_genes_and_variants()['genes']
+def get_all_genes(status_filters=[]):
+    genes = _get_all_genes_and_variants(status_filters=status_filters)['genes']
+    return [g for g in genes if g.variants]
 
 
 def get_all_evidence_ids():
     return _get_all_element_ids('evidence_items')
 
 
-def get_all_evidence():
-    return _get_elements_by_ids('evidence', get_all=True)
+def get_all_evidence(status_filters=[]):
+    evidence = _get_elements_by_ids('evidence', get_all=True)
+    return [e for e in evidence if e.status not in status_filters]
 
 
 def get_HPO_terms_by_ids(hpo_id_list):
