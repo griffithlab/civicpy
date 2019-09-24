@@ -289,7 +289,7 @@ class CivicRecord:
         if not isinstance(self, CivicAttribute) and not self._partial and self.__class__.__name__ != 'CivicRecord':
             CACHE[hash(self)] = self
 
-        self._status_filters = []
+        self._include_status = ['accepted','submitted','rejected']
 
     def __repr__(self):
         return f'<CIViC {self.type} {self.id}>'
@@ -389,7 +389,7 @@ class Variant(CivicRecord):
 
     @property
     def evidence_items(self):
-        return [e for e in self._evidence_items if e.status not in self._status_filters]
+        return [e for e in self._evidence_items if e.status in self._include_status]
 
     @evidence_items.setter
     def evidence_items(self, value):
@@ -456,7 +456,7 @@ class Gene(CivicRecord):
     @property
     def variants(self):
         for variant in self._variants:
-            variant._status_filters = self._status_filters
+            variant._include_status = self._include_status
         return [v for v in self._variants if v.evidence]
 
     @variants.setter
@@ -689,9 +689,9 @@ def get_all_assertion_ids():
     return _get_all_element_ids('assertions')
 
 
-def get_all_assertions(status_filters=[], allow_cached=True):
+def get_all_assertions(include_status=['accepted','submitted','rejected'], allow_cached=True):
     assertions = _get_elements_by_ids('assertion', allow_cached=allow_cached, get_all=True)
-    return [a for a in assertions if a.status not in status_filters]
+    return [a for a in assertions if a.status in include_status]
 
 
 def search_assertions_by_coordinates(coordinates, search_mode='any'):
@@ -746,13 +746,13 @@ def _build_coordinate_table(variants):
     MODULE.COORDINATE_TABLE_CHR = df.chr.sort_values()
 
 
-def get_all_variants(status_filters=[], allow_cached=True):
+def get_all_variants(include_status=['accepted','submitted','rejected'], allow_cached=True):
     variants = _get_elements_by_ids('variant', allow_cached=allow_cached, get_all=True)
-    if status_filters:
+    if include_status:
         assert CACHE.get('evidence_items_all_ids', False)
         resp = list()
         for v in variants:
-            v._status_filters = status_filters
+            v._include_status = include_status
             if v.evidence:
                 resp.append(v)
         return resp
@@ -938,14 +938,14 @@ def get_all_gene_ids():
     return _get_all_element_ids('genes')
 
 
-def get_all_genes(status_filters=[], allow_cached=True):
+def get_all_genes(include_status=['accepted','submitted','rejected'], allow_cached=True):
     genes = _get_elements_by_ids('gene', get_all=True, allow_cached=allow_cached)
-    if status_filters:
+    if include_status:
         assert CACHE.get('variants_all_ids', False)
         assert CACHE.get('evidence_items_all_ids', False)
         resp = list()
         for g in genes:
-            g._status_filters = status_filters
+            g._include_status = include_status
             if g.variants:
                 resp.append(g)
         return resp
@@ -957,9 +957,9 @@ def get_all_evidence_ids():
     return _get_all_element_ids('evidence_items')
 
 
-def get_all_evidence(status_filters=[], allow_cached=True):
+def get_all_evidence(include_status=['accepted','submitted','rejected'], allow_cached=True):
     evidence = _get_elements_by_ids('evidence', get_all=True, allow_cached=allow_cached)
-    return [e for e in evidence if e.status not in status_filters]
+    return [e for e in evidence if e.status in include_status]
 
 
 def get_HPO_terms_by_ids(hpo_id_list):

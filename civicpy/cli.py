@@ -17,3 +17,7 @@ def cli():
 def update(soft, cache_save_path):
     """Updates CIViC content from server and stores to local cache file"""
     civic.update_cache(from_remote_cache=soft, local_cache_path=cache_save_path)
+
+
+if __name__ == '__main__':
+    cli()

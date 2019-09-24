@@ -64,14 +64,14 @@ class TestEvidence(object):
 
     def test_get_all(self):
         evidence = civic.get_all_evidence()
-        assert len(evidence) == 6446
+        assert len(evidence) == 6471
 
     def test_get_non_rejected(self):
-        evidence = civic.get_all_evidence(status_filters=['rejected'])
-        assert len(evidence) == 6314
+        evidence = civic.get_all_evidence(include_status=['accepted', 'submitted'])
+        assert len(evidence) == 6339
 
     def test_get_accepted_only(self):
-        evidence = civic.get_all_evidence(status_filters=['rejected', 'submitted'])
+        evidence = civic.get_all_evidence(include_status=['accepted'])
         assert len(evidence) == 3194
 
 
@@ -79,14 +79,14 @@ class TestVariants(object):
 
     def test_get_all(self):
         variants = civic.get_all_variants()
-        assert len(variants) == 2299
+        assert len(variants) == 2312
 
     def test_get_non_rejected(self):
-        variants = civic.get_all_variants(status_filters=['rejected'])
-        assert len(variants) == 2281
+        variants = civic.get_all_variants(include_status=['accepted', 'submitted'])
+        assert len(variants) == 2294
 
     def test_get_accepted_only(self):
-        variants = civic.get_all_variants(status_filters=['rejected', 'submitted'])
+        variants = civic.get_all_variants(include_status=['accepted'])
         assert len(variants) == 1312
 
 
@@ -97,11 +97,11 @@ class TestAssertions(object):
         assert len(assertions) == 28
 
     def test_get_non_rejected(self):
-        assertions = civic.get_all_assertions(status_filters=['rejected'])
+        assertions = civic.get_all_assertions(include_status=['accepted', 'submitted'])
         assert len(assertions) == 24
 
     def test_get_accepted_only(self):
-        assertions = civic.get_all_assertions(status_filters=['rejected', 'submitted'])
+        assertions = civic.get_all_assertions(include_status=['accepted'])
         assert len(assertions) == 16
 
 
@@ -109,14 +109,14 @@ class TestGenes(object):
 
     def test_get_all(self):
         genes = civic.get_all_genes()
-        assert len(genes) == 401
+        assert len(genes) == 402
 
     def test_get_non_rejected(self):
-        genes = civic.get_all_genes(status_filters=['rejected'])
-        assert len(genes) == 396
+        genes = civic.get_all_genes(include_status=['accepted', 'submitted'])
+        assert len(genes) == 398
 
     def test_get_accepted_only(self):
-        genes = civic.get_all_genes(status_filters=['rejected', 'submitted'])
+        genes = civic.get_all_genes(include_status=['accepted'])
         assert len(genes) == 313
 
 
