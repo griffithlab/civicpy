@@ -1,0 +1,4 @@
+name: py37
+dependencies:
+- pip:
+  - sphinxjp.themes.basicstrap
