@@ -4,6 +4,7 @@ import datetime
 from civicpy.__version__ import __version__
 import obonet, networkx
 import logging
+import requests
 
 
 class SequenceOntologyReader():
@@ -174,14 +175,41 @@ class VCFWriter(DictWriter):
         string_chromosomes.sort(key=lambda x: x.coordinates.chromosome)
         sorted_records = int_chromosomes + string_chromosomes
 
+        ensembl_server = "https://grch37.rest.ensembl.org"
+
         # write them
         for variant in sorted_records:
+            if variant.is_insertion:
+                if not variant.coordinates.representative_transcript:
+                    continue
+                else:
+                    start = variant.coordinates.start
+                    ext = "/sequence/region/human/{}:{}-{}".format(variant.coordinates.chromosome, start, start)
+                    r = requests.get(ensembl_server+ext, headers={ "Content-Type" : "text/plain"})
+                    ref = r.text
+                    alt = "{}{}".format(r.text, variant.coordinates.variant_bases)
+                    csq_alt = variant.coordinates.variant_bases
+            elif variant.is_deletion:
+                if not variant.coordinates.representative_transcript:
+                    continue
+                else:
+                    start = variant.coordinates.start - 1
+                    ext = "/sequence/region/human/{}:{}-{}".format(variant.coordinates.chromosome, start, start)
+                    r = requests.get(ensembl_server+ext, headers={ "Content-Type" : "text/plain"})
+                    ref = "{}{}".format(r.text, variant.coordinates.reference_bases)
+                    alt = r.text
+                    csq_alt = "-"
+            else:
+                start = variant.coordinates.start
+                ref = variant.coordinates.reference_bases
+                alt = variant.coordinates.variant_bases
+                csq_alt = alt
             out_dict = {
                 '#CHROM': variant.coordinates.chromosome,
-                'POS':    variant.coordinates.start,
+                'POS':    str(start),
                 'ID':     variant.id,
-                'REF':    variant.coordinates.reference_bases,
-                'ALT':    variant.coordinates.variant_bases
+                'REF':    ref,
+                'ALT':    alt,
             }
             assert all([c.upper() in ['A', 'C', 'G', 'T', 'N'] for c in out_dict['REF']])
             assert all([c.upper() in ['A', 'C', 'G', 'T', 'N', '*', '-'] for c in out_dict['ALT']]), \
@@ -200,7 +228,7 @@ class VCFWriter(DictWriter):
             for evidence in variant.evidence:
                 special_character_table = str.maketrans(VCFWriter.SPECIAL_CHARACTERS)
                 csq.append('|'.join([
-                    out_dict['ALT'],
+                    csq_alt,
                     '&'.join(map(lambda t: t.name, variant.variant_types)),
                     variant.gene.name,
                     str(variant.gene.entrez_id),
@@ -224,7 +252,7 @@ class VCFWriter(DictWriter):
                 ]))
             for assertion in variant.assertions:
                 csq.append('|'.join([
-                    out_dict['ALT'],
+                    csq_alt,
                     '&'.join(map(lambda t: t.name, variant.variant_types)),
                     variant.gene.name,
                     str(variant.gene.entrez_id),

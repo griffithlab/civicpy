@@ -399,6 +399,18 @@ class Variant(CivicRecord):
     def gene(self):
         return _get_element_by_id('gene', self.gene_id)
 
+    @property
+    def is_insertion(self):
+        return self.coordinates.reference_bases is None and self.coordinates.variant_bases is not None
+
+    @property
+    def is_deletion(self):
+        return self.coordinates.reference_bases is not None and (self.coordinates.variant_bases is None or self.coordinates.variant_bases == '-')
+
+    @property
+    def is_valid_for_vcf(self):
+        return self.coordinates.chromosome and self.coordinates.start and (self.coordinates.reference_bases or self.coordinates.variant_bases)
+
 
 class Gene(CivicRecord):
     _SIMPLE_FIELDS = CivicRecord._SIMPLE_FIELDS.union(
