@@ -102,5 +102,4 @@ ENV/
 .mypy_cache/
 
 # data folders
-civicpy/data/
 analysis/data/

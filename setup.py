@@ -25,8 +25,13 @@ setup(
         'requests',
         'obonet',
         'networkx',
-        'pandas'
+        'pandas',
+        'Click'
     ],
     python_requires='>=3.7',
-    entry_points={},
+    entry_points={
+        'console_scripts': [
+            'civicpy=civicpy.cli:cli'
+        ]
+    },
 )

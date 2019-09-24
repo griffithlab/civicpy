@@ -125,6 +125,18 @@ def cache_file_present(local_cache_path=LOCAL_CACHE_PATH):
     return os.path.isfile(local_cache_path)
 
 
+def delete_local_cache(local_cache_path=LOCAL_CACHE_PATH):
+    """
+    Deletes local cache file.
+
+    :param local_cache_path:    A filepath destination string for the cache to be deleted.
+                                This parameter defaults to LOCAL_CACHE_PATH.
+
+    :return:            Returns True on success.
+    """
+    return os.unlink(local_cache_path)
+
+
 def load_cache(local_cache_path=LOCAL_CACHE_PATH, on_stale='auto'):
     """
     Load local file to in-memory cache.
@@ -209,8 +221,11 @@ def update_cache(from_remote_cache=True, remote_cache_url=REMOTE_CACHE_URL,
         load_cache(local_cache_path=local_cache_path)
     else:
         _get_elements_by_ids('evidence', allow_cached=False, get_all=True)
-        _get_elements_by_ids('gene', allow_cached=False, get_all=True)
         variants = _get_elements_by_ids('variant', allow_cached=False, get_all=True)
+        genes = _get_elements_by_ids('gene', allow_cached=False, get_all=True)
+        for g in genes:
+            for v in g._variants:
+                v.update()
         _get_elements_by_ids('assertion', allow_cached=False, get_all=True)
         CACHE['full_cached'] = datetime.datetime.now()
         _build_coordinate_table(variants)
@@ -273,6 +288,8 @@ class CivicRecord:
         self._partial = bool(self._incomplete)
         if not isinstance(self, CivicAttribute) and not self._partial and self.__class__.__name__ != 'CivicRecord':
             CACHE[hash(self)] = self
+
+        self._status_filters = []
 
     def __repr__(self):
         return f'<CIViC {self.type} {self.id}>'
@@ -341,6 +358,7 @@ class Variant(CivicRecord):
         # Handle overloaded evidence_items from some advanced search views
         evidence_items = kwargs.get('evidence_items')
         kwargs['type'] = 'variant'
+        self._evidence_items = []
         if evidence_items and not isinstance(evidence_items, list):
                 del(kwargs['evidence_items'])
         super().__init__(**kwargs)
@@ -370,6 +388,14 @@ class Variant(CivicRecord):
         return self.evidence_items
 
     @property
+    def evidence_items(self):
+        return [e for e in self._evidence_items if e.status not in self._status_filters]
+
+    @evidence_items.setter
+    def evidence_items(self, value):
+        self._evidence_items = value
+
+    @property
     def gene(self):
         return _get_element_by_id('gene', self.gene_id)
 
@@ -385,6 +411,20 @@ class Gene(CivicRecord):
         # 'sources',
         'variants'
     })
+
+    def __init__(self, **kwargs):
+        self._variants = []
+        super().__init__(**kwargs)
+
+    @property
+    def variants(self):
+        for variant in self._variants:
+            variant._status_filters = self._status_filters
+        return [v for v in self._variants if v.evidence]
+
+    @variants.setter
+    def variants(self, value):
+        self._variants = value
 
 
 class Evidence(CivicRecord):
@@ -612,8 +652,9 @@ def get_all_assertion_ids():
     return _get_all_element_ids('assertions')
 
 
-def get_all_assertions():
-    return get_assertions_by_ids(get_all=True)
+def get_all_assertions(status_filters=[], allow_cached=True):
+    assertions = _get_elements_by_ids('assertion', allow_cached=allow_cached, get_all=True)
+    return [a for a in assertions if a.status not in status_filters]
 
 
 def search_assertions_by_coordinates(coordinates, search_mode='any'):
@@ -668,9 +709,18 @@ def _build_coordinate_table(variants):
     MODULE.COORDINATE_TABLE_CHR = df.chr.sort_values()
 
 
-def get_all_variants(allow_cached=True):
-    variants = _get_all_genes_and_variants(allow_cached)['variants']
-    return variants
+def get_all_variants(status_filters=[], allow_cached=True):
+    variants = _get_elements_by_ids('variant', allow_cached=allow_cached, get_all=True)
+    if status_filters:
+        assert CACHE.get('evidence_items_all_ids', False)
+        resp = list()
+        for v in variants:
+            v._status_filters = status_filters
+            if v.evidence:
+                resp.append(v)
+        return resp
+    else:
+        return variants
 
 
 def search_variants_by_coordinates(coordinate_query, search_mode='any'):
@@ -820,14 +870,6 @@ def get_all_variant_ids():
     return _get_all_element_ids('variants')
 
 
-def _get_all_genes_and_variants(allow_cached=True):
-    variants = _get_elements_by_ids('variants', get_all=True, allow_cached=allow_cached)
-    genes = _get_elements_by_ids('gene', get_all=True, allow_cached=allow_cached)
-    for variant in variants:
-        variant.gene.update()
-    return {'genes': genes, 'variants': variants}
-
-
 def _get_all_element_ids(element):
     url = f'https://civicdb.org/api/{element}?count=100000'
     resp = requests.get(url)
@@ -859,16 +901,28 @@ def get_all_gene_ids():
     return _get_all_element_ids('genes')
 
 
-def get_all_genes():
-    return _get_all_genes_and_variants()['genes']
+def get_all_genes(status_filters=[], allow_cached=True):
+    genes = _get_elements_by_ids('gene', get_all=True, allow_cached=allow_cached)
+    if status_filters:
+        assert CACHE.get('variants_all_ids', False)
+        assert CACHE.get('evidence_items_all_ids', False)
+        resp = list()
+        for g in genes:
+            g._status_filters = status_filters
+            if g.variants:
+                resp.append(g)
+        return resp
+    else:
+        return genes
 
 
 def get_all_evidence_ids():
     return _get_all_element_ids('evidence_items')
 
 
-def get_all_evidence():
-    return _get_elements_by_ids('evidence_items', get_all=True)
+def get_all_evidence(status_filters=[], allow_cached=True):
+    evidence = _get_elements_by_ids('evidence', get_all=True, allow_cached=allow_cached)
+    return [e for e in evidence if e.status not in status_filters]
 
 
 def get_HPO_terms_by_ids(hpo_id_list):
