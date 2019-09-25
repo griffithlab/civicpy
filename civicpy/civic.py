@@ -408,6 +408,43 @@ class Variant(CivicRecord):
     def gene(self):
         return _get_element_by_id('gene', self.gene_id)
 
+    @property
+    def is_insertion(self):
+        return self.coordinates.reference_bases is None and self.coordinates.variant_bases is not None
+
+    @property
+    def is_deletion(self):
+        return self.coordinates.reference_bases is not None and (self.coordinates.variant_bases is None or self.coordinates.variant_bases == '-')
+
+    def is_valid_for_vcf(self, emit_warnings=False):
+        if self.coordinates.chromosome2 or self.coordinates.start2 or self.coordinates.stop2:
+            warning = "Variant {} has a second set of coordinates. Skipping".format(self.id)
+        if self.coordinates.chromosome and self.coordinates.start and (self.coordinates.reference_bases or self.coordinates.variant_bases):
+            if self._valid_ref_bases:
+                if self._valid_alt_bases:
+                    return True
+                else:
+                    warning = "Unsupported variant base(s) for variant {}. Skipping.".format(self.id)
+            else:
+                warning = "Unsupported reference base(s) for variant {}. Skipping.".format(self.id)
+        else:
+            warning = "Incomplete coordinates for variant {}. Skipping.".format(self.id)
+        if emit_warnings:
+            logging.warning(warning)
+        return False
+
+    def _valid_ref_bases(self):
+        if self.coordinates.reference_bases is not None:
+            return True
+        else:
+            return all([c.upper() in ['A', 'C', 'G', 'T', 'N'] for c in self.coordinates.reference_bases])
+
+    def _valid_alt_bases(self):
+        if self.coordinates.variant_bases is not None:
+            return all([c.upper() in ['A', 'C', 'G', 'T', 'N', '*', '-'] for c in self.coordinates.variant_bases])
+        else:
+            return True
+
 
 class Gene(CivicRecord):
     _SIMPLE_FIELDS = CivicRecord._SIMPLE_FIELDS.union(
