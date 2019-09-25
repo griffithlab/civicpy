@@ -359,6 +359,7 @@ class Variant(CivicRecord):
         evidence_items = kwargs.get('evidence_items')
         kwargs['type'] = 'variant'
         self._evidence_items = []
+        self._assertions = []
         if evidence_items and not isinstance(evidence_items, list):
                 del(kwargs['evidence_items'])
         super().__init__(**kwargs)
@@ -394,6 +395,14 @@ class Variant(CivicRecord):
     @evidence_items.setter
     def evidence_items(self, value):
         self._evidence_items = value
+
+    @property
+    def assertions(self):
+        return [a for a in self._assertions if a.status in self._include_status]
+
+    @assertions.setter
+    def assertions(self, value):
+        self._assertions = value
 
     @property
     def gene(self):
@@ -452,9 +461,21 @@ class Evidence(CivicRecord):
         'phenotypes',
         'source'})
 
+    def __init__(self, **kwargs):
+        self._assertion = []
+        super().__init__(**kwargs)
+
     @property
     def variant(self):
         return get_variant_by_id(self.variant_id)
+
+    @property
+    def assertions(self):
+        return [a for a in self._assertions if a.status in self._include_status]
+
+    @assertions.setter
+    def assertions(self, value):
+        self._assertions = value
 
 
 class Assertion(CivicRecord):
