@@ -2,8 +2,6 @@ from civicpy import civic
 from csv import DictWriter
 import datetime
 from civicpy.__version__ import __version__
-import obonet, networkx
-import logging
 import requests
 
 
