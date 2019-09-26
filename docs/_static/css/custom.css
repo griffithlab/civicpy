@@ -1,0 +1,7 @@
+/** css/custom.css **/
+
+/* Change note color */
+div.admonition a {
+    color: white;
+    text-decoration: underline;
+}
