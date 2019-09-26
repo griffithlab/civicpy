@@ -850,8 +850,8 @@ def bulk_search_variants_by_coordinates(sorted_queries, search_mode='any'):
 
     :param search_mode: ['any', 'query_encompassing', 'variant_encompassing', 'exact']
                         any: any overlap between a query and a variant is a match
-                        query_encompassing: variants must fit within the coordinates of the query
-                        variant_encompassing: variants must encompass the coordinates of the query
+                        query_encompassing: CIViC variant records must fit within the coordinates of the query
+                        record_encompassing: CIViC variant records must encompass the coordinates of the query
                         exact: variants must match coordinates precisely, as well as alternate
                                allele, if provided
                         search_mode is 'exact' by default
@@ -881,6 +881,10 @@ def bulk_search_variants_by_coordinates(sorted_queries, search_mode='any'):
     ct = MODULE.COORDINATE_TABLE
     matches = defaultdict(list)
     Match = namedtuple('Match', ct.columns)
+
+    def append_match(matches_list, query, ct_row):
+        matches_list[query].append(Match(**ct_row.to_dict()))
+
     while query_pointer < len(sorted_queries) and ct_pointer < len(ct):
         if last_query_pointer != query_pointer:
             q = sorted_queries[query_pointer]
@@ -908,16 +912,16 @@ def bulk_search_variants_by_coordinates(sorted_queries, search_mode='any'):
             query_pointer += 1
             continue
         if search_mode == 'any':
-            matches[q].append(c.to_dict())
+            append_match(matches, q, c)
         elif search_mode == 'exact' and q_start == c_start and q_stop == c_stop:
             q_alt = q.alt
             c_alt = c.alt
             if not (q_alt and c_alt and q_alt != c_alt):
-                matches[q].append(Match(**c.to_dict()))
-        elif search_mode == 'query_encompassing':
-            raise NotImplementedError
-        elif search_mode == 'variant_encompassing':
-            raise NotImplementedError
+                append_match(matches, q, c)
+        elif search_mode == 'query_encompassing' and q_start <= c_start and q_stop >= c_stop:
+            append_match(matches, q, c)
+        elif search_mode == 'record_encompassing' and c_start <= q_start and c_stop >= q_stop:
+            append_match(matches, q, c)
         if match_start is None:
             match_start = ct_pointer
         ct_pointer += 1

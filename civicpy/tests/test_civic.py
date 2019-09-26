@@ -133,11 +133,38 @@ class TestCoordinateSearch(object):
         assertion_ids = [x.id for x in assertions]
         assert set(assertion_ids) >= set(v600e_assertion_ids)
 
-    def test_bulk_search_variants(self):
+    def test_bulk_any_search_variants(self):
         sorted_queries = [
             CoordinateQuery('7', 140453136, 140453136, 'T'),
             CoordinateQuery('7', 140453136, 140453137, 'TT')
         ]
-        search_results = civic.bulk_search_variants_by_coordinates(sorted_queries)
-        assert len(search_results[sorted_queries[0]]) >= 12
-        assert len(search_results[sorted_queries[1]]) >= len(search_results[sorted_queries[0]])
+        search_results = civic.bulk_search_variants_by_coordinates(sorted_queries, search_mode='any')
+        assert len(search_results[sorted_queries[0]]) == 19
+        assert len(search_results[sorted_queries[1]]) >= 19
+
+    def test_bulk_exact_search_variants(self):
+        sorted_queries = [
+            CoordinateQuery('7', 140453136, 140453136, 'T'),
+            CoordinateQuery('7', 140453136, 140453137, 'TT')
+        ]
+        search_results = civic.bulk_search_variants_by_coordinates(sorted_queries, search_mode='exact')
+        assert len(search_results[sorted_queries[0]]) == 1
+        assert len(search_results[sorted_queries[1]]) == 2
+
+    def test_bulk_qe_search_variants(self):
+        sorted_queries = [
+            CoordinateQuery('7', 140453136, 140453136),
+            CoordinateQuery('7', 140453136, 140453137)
+        ]
+        search_results = civic.bulk_search_variants_by_coordinates(sorted_queries, search_mode='query_encompassing')
+        assert len(search_results[sorted_queries[0]]) == 1
+        assert len(search_results[sorted_queries[1]]) == 4
+
+    def test_bulk_re_search_variants(self):
+        sorted_queries = [
+            CoordinateQuery('7', 140453136, 140453136),
+            CoordinateQuery('7', 140453136, 140453137)
+        ]
+        search_results = civic.bulk_search_variants_by_coordinates(sorted_queries, search_mode='record_encompassing')
+        assert len(search_results[sorted_queries[0]]) == 19
+        assert len(search_results[sorted_queries[1]]) == 16
