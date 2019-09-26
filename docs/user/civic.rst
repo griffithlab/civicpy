@@ -190,6 +190,8 @@ class for additional complex records beyond those mentioned above (e.g. diseases
 except as attached objects to non-:class:`CivicAttribute` :class:`CivicRecord` objects, and cannot be retrieved
 independently.
 
+.. class:: CivicAttribute
+
 Getting records
 ---------------
 
@@ -213,7 +215,7 @@ objects can be queried by the following methods:
 
 .. function:: get_all_gene_ids()
 
-	Queries CIViC for a list of all gene IDs. Useful for passing to :func:`get_genes_by_id` to
+	Queries CIViC for a list of all gene IDs. Useful for passing to :func:`get_genes_by_ids` to
 	first check cache for any previously queried genes.
 
 Analogous methods exist for :class:`Variant`, :class:`Assertion`, :class:`Source`, and :class:`Evidence`:

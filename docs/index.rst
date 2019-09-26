@@ -59,5 +59,6 @@ knowledgebase.
    user/intro
    user/install
    user/civic
+   user/exports
 
 .. _`CIViC knowledgebase`: https://civicdb.org
