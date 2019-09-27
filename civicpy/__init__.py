@@ -10,5 +10,6 @@ CACHE_TIMEOUT_DAYS = os.getenv('CIVICPY_CACHE_TIMEOUT_DAYS', False) or 7
 
 TEST_CACHE_PATH = str(Path(__file__).parent / 'data' / 'test_cache.pkl')
 
+
 def version():
     return __version__
