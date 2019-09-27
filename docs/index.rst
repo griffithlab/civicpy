@@ -60,5 +60,6 @@ knowledgebase.
    install
    civic
    exports
+   cli
 
 .. _`CIViC knowledgebase`: https://civicdb.org
