@@ -64,11 +64,11 @@ class TestEvidence(object):
 
     def test_get_all(self):
         evidence = civic.get_all_evidence()
-        assert len(evidence) == 6471
+        assert len(evidence) == 6481
 
     def test_get_non_rejected(self):
         evidence = civic.get_all_evidence(include_status=['accepted', 'submitted'])
-        assert len(evidence) == 6339
+        assert len(evidence) == 6349
 
     def test_get_accepted_only(self):
         evidence = civic.get_all_evidence(include_status=['accepted'])
@@ -79,15 +79,22 @@ class TestVariants(object):
 
     def test_get_all(self):
         variants = civic.get_all_variants()
-        assert len(variants) == 2312
+        assert len(variants) == 2318
 
     def test_get_non_rejected(self):
         variants = civic.get_all_variants(include_status=['accepted', 'submitted'])
-        assert len(variants) == 2294
+        assert len(variants) == 2300
 
     def test_get_accepted_only(self):
         variants = civic.get_all_variants(include_status=['accepted'])
         assert len(variants) == 1312
+
+
+class TestVariantGroups(object):
+
+    def test_get_all(self):
+        variant_groups = civic.get_all_variant_groups()
+        assert len(variant_groups) == 24
 
 
 class TestAssertions(object):
@@ -109,11 +116,11 @@ class TestGenes(object):
 
     def test_get_all(self):
         genes = civic.get_all_genes()
-        assert len(genes) == 402
+        assert len(genes) == 404
 
     def test_get_non_rejected(self):
         genes = civic.get_all_genes(include_status=['accepted', 'submitted'])
-        assert len(genes) == 398
+        assert len(genes) == 400
 
     def test_get_accepted_only(self):
         genes = civic.get_all_genes(include_status=['accepted'])
