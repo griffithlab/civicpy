@@ -966,7 +966,7 @@ def _get_all_element_ids(element):
 def get_genes_by_ids(gene_id_list):
     """
     :param list gene_id_list: A list of CIViC gene IDs to query against to cache and (as needed) CIViC.
-    :returns: A list of :class`Gene` objects.
+    :returns: A list of :class:`Gene` objects.
     """
     logging.info('Getting genes...')
     genes = _get_elements_by_ids('gene', gene_id_list)  # Advanced search results are incomplete
@@ -1005,6 +1005,8 @@ def get_all_genes(include_status=['accepted','submitted','rejected'], allow_cach
     """
     Queries CIViC for all genes. The cache is not considered by this function.
 
+    :param list include_status: A list of statuses. Only genes and their associated entities matching the given statuses will be returned.
+    :param bool allow_cached: Indicates whether or not object retrieval from CACHE is allowed. If **False** it will query the CIViC database directly.
     :returns: A list of :class:`Gene` objects.
     """
     genes = _get_elements_by_ids('gene', get_all=True, allow_cached=allow_cached)
