@@ -239,11 +239,26 @@ def _make_local_cache_path_if_missing(local_cache_path):
 
 
 class CivicRecord:
+    """
+    As a base class, :class:`CivicRecord` is used to define the characteristic of all records in CIViC. This class is not
+    intended to be invoked directly by the end user, but provided for documentation of shared methods and variables in
+    child classes.
+    """
 
     _SIMPLE_FIELDS = {'id', 'type'}
     _COMPLEX_FIELDS = set()
 
     def __init__(self, partial=False, **kwargs):
+        """
+        The record object may be initialized by the user, though the practice is discouraged. To do so, values for each
+        of the object attributes (except ``type``) must be specified as keyword arguments, or the ``partial`` parameter must
+        be set to **True**. If ``partial`` is set to **True**, the ``id`` keyword argument is still required.
+
+        Users are encouraged to use the functions for `getting records`_ in lieu of directly initializing record
+        objects.
+
+        :param bool partial: Indicates whether the the set of object attributes passed is incomplete. If set to **True** the ``id`` keyword is required.
+        """
         self._incomplete = set()
         self._partial = partial
         simple_fields = sorted(self._SIMPLE_FIELDS, reverse=True)
@@ -309,7 +324,15 @@ class CivicRecord:
         self.__dict__ = state
 
     def update(self, allow_partial=True, force=False, **kwargs):
-        """Updates record and returns True if record is complete after update, else False."""
+        """
+        Updates the record object from the cache or the server.
+        Keyword arguments may be passed to ``kwargs``, which will update the corresponding attributes of the
+        :class:`CivicRecord` instance.
+
+        :param bool allow_partial: Flag to indicate whether the record will be updated according to the contents of CACHe, without requiring all attributes to be assigned.
+        :param bool force: Flag to indicate whether to force an update fromt he server, even if a full record ecists in the cache.
+        :return: True if record is complete after update, else False.
+        """
         if kwargs:
             self.__init__(partial=allow_partial, force=force, **kwargs)
             return not self._partial
@@ -328,6 +351,7 @@ class CivicRecord:
 
     @property
     def site_link(self):
+        """Returns a URL to the record on the CIViC web application."""
         return '/'.join([LINKS_URL, self.type, str(self.id)])
 
 
@@ -940,6 +964,10 @@ def _get_all_element_ids(element):
 
 
 def get_genes_by_ids(gene_id_list):
+    """
+    :param list gene_id_list: A list of CIViC gene IDs to query against to cache and (as needed) CIViC.
+    :returns: A list of :class`Gene` objects.
+    """
     logging.info('Getting genes...')
     genes = _get_elements_by_ids('gene', gene_id_list)  # Advanced search results are incomplete
     variant_ids = set()
@@ -956,14 +984,29 @@ def get_genes_by_ids(gene_id_list):
 
 
 def get_gene_by_id(gene_id):
+    """
+    :param int gene_id: A single CIViC gene ID.
+    :returns: A :class:`Gene` object.
+    """
     return get_genes_by_ids([gene_id])[0]
 
 
 def get_all_gene_ids():
+    """
+    Queries CIViC for a list of all gene IDs. Useful for passing to :func:`get_genes_by_ids` to
+    first check cache for any previously queried genes.
+
+    :returns: A list of all CIViC gene IDs.
+    """
     return _get_all_element_ids('genes')
 
 
 def get_all_genes(include_status=['accepted','submitted','rejected'], allow_cached=True):
+    """
+    Queries CIViC for all genes. The cache is not considered by this function.
+
+    :returns: A list of :class:`Gene` objects.
+    """
     genes = _get_elements_by_ids('gene', get_all=True, allow_cached=allow_cached)
     if include_status:
         assert CACHE.get('variants_all_ids', False)
