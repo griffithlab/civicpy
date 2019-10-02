@@ -6,6 +6,9 @@ import requests
 
 
 class VCFWriter(DictWriter):
+    """
+    :param filehandle f: A filehandle for the VCF output file
+    """
     SPECIAL_CHARACTERS = {
         " ": r'\x20',
         "!": r'\x21',
@@ -85,6 +88,9 @@ class VCFWriter(DictWriter):
         self.variant_records = set()
 
     def writeheader(self):
+        """
+        Writes the header lines to the VCF file.
+        """
         # write meta lines
         self._write_meta_file_lines()
         self._write_meta_info_lines()
@@ -92,6 +98,12 @@ class VCFWriter(DictWriter):
         super().writeheader()
 
     def addrecord(self, civic_record):
+        """
+        Takes either a :class:`civic.Evidence`, :class:`civic.Assertion`, :class:`civic.Variant`, or :class:`civic.Gene` object
+        and adds all :class:`civic.Variant` objects associated with it to the VCFWriter object for processing and writing to the VCF. 
+
+        :param :class:`civic.CivicRecord` civic_record: Either a :class:`civic.Evidence`, :class:`civic.Assertion, :class:`civic.Variant`, or :class:`civic.Gene` object
+        """
         if isinstance(civic_record, civic.Evidence) or isinstance(civic_record, civic.Assertion):
             if civic_record.variant.is_valid_for_vcf(emit_warnings=True):
                 self._add_variant_record(civic_record.variant)
@@ -106,10 +118,22 @@ class VCFWriter(DictWriter):
             raise ValueError('Expected a CIViC Variant, Assertion or Evidence record.')
 
     def addrecords(self, civic_records):
+        """
+        Takes multiple :class:`civic.Evidence`, :class:`civic.Assertion`, :class:`civic.Variant`, and/or :class:`civic.Gene` objects
+        and adds all :class:`civic.Variant` objects associated with them to the VCFWriter object for processing and writing to the VCF.
+        ``civic_records`` can contain a mix of these object types.
+
+        :param list civic_records: A list of a :class:`civic.Evidence`, :class:`civic.Assertion`, :class:`civic.Variant`, and/or :class:`civic.Gene` objects
+        """
         for record in civic_records:
             self.addrecord(record)
 
     def writerecords(self, with_header=True):
+        """
+        Takes all variant objects saved to the VCFWriter object, processes them, and outputs them to the VCF file
+
+        :param bool with_header: Indicates weather or not the VCF header lines should be written as part of this function call.
+        """
         # write header
         if with_header:
             self.writeheader()

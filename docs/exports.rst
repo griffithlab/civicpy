@@ -125,7 +125,8 @@ import into Google BigQuery (git.io/bigquery-variant-annotation).
 VCFWriter
 ~~~~~~~~~
 
-.. class:: VCFWriter
+.. autoclass:: exports.VCFWriter
+   :members:
 
 Example
 ~~~~~~~
