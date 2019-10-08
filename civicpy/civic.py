@@ -52,9 +52,12 @@ def singularize(string):
     return string
 
 
-def search_url(element):
+def search_url(element, use_search_meta):
     element = pluralize(element).lower()
-    return '/'.join([API_URL, element, 'search'])
+    components = [API_URL, element]
+    if use_search_meta:
+        components.append('search')
+    return '/'.join(components)
 
 
 def snake_to_camel(snake_string):
@@ -227,6 +230,7 @@ def update_cache(from_remote_cache=True, remote_cache_url=REMOTE_CACHE_URL,
             for v in g._variants:
                 v.update()
         _get_elements_by_ids('assertion', allow_cached=False, get_all=True)
+        _get_elements_by_ids('variant_group', allow_cached=False, get_all=True)
         CACHE['full_cached'] = datetime.datetime.now()
         _build_coordinate_table(variants)
     save_cache(local_cache_path=local_cache_path)
@@ -470,6 +474,18 @@ class Variant(CivicRecord):
             return True
 
 
+class VariantGroup(CivicRecord):
+    _SIMPLE_FIELDS = CivicRecord._SIMPLE_FIELDS.union(
+        {'description', 'name'})
+    _COMPLEX_FIELDS = CivicRecord._COMPLEX_FIELDS.union({
+        # 'errors',                 # TODO: Add support for these fields in advanced search endpoint
+        # 'lifecycle_actions',
+        # 'provisional_values',
+        # 'sources',
+        'variants'
+    })
+
+
 class Gene(CivicRecord):
     _SIMPLE_FIELDS = CivicRecord._SIMPLE_FIELDS.union(
         {'description', 'entrez_id', 'name'})
@@ -657,14 +673,23 @@ def _get_elements_by_ids(element, id_list=[], allow_cached=True, get_all=False):
     if get_all:
         payload = _construct_get_all_payload()
         logging.warning('Getting all {}. This may take a couple of minutes...'.format(pluralize(element)))
+    elif element == 'variant_group':
+        raise NotImplementedError("Bulk ID search for variant groups not supported. Use get_all=True instead.")
     else:
         payload = _construct_query_payload(id_list)
-    url = search_url(element)
-    response = requests.post(url, json=payload)
+    adv_search = (element != 'variant_group')
+    url = search_url(element, use_search_meta=adv_search)
+    if adv_search:
+        response = requests.post(url, json=payload)
+        container_key = 'results'
+    else:
+        response = requests.get(url)
+        container_key = 'records'
     response.raise_for_status()
     cls = get_class(element)
-    elements = [cls(**x) for x in response.json()['results']]
-    CACHE['{}_all_ids'.format(pluralize(element))] = [x['id'] for x in response.json()['results']]
+    response_container = response.json()[container_key]
+    elements = [cls(**x) for x in response_container]
+    CACHE['{}_all_ids'.format(pluralize(element))] = [x['id'] for x in response_container]
     return elements
 
 
@@ -803,6 +828,11 @@ def get_all_variants(include_status=['accepted','submitted','rejected'], allow_c
         return resp
     else:
         return variants
+
+
+def get_all_variant_groups(allow_cached=True):
+    variant_groups = _get_elements_by_ids('variant_group', allow_cached=allow_cached, get_all=True)
+    return variant_groups
 
 
 def search_variants_by_coordinates(coordinate_query, search_mode='any'):
