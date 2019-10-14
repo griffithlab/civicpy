@@ -264,6 +264,7 @@ class VCFWriter(DictWriter):
         self._f.write('##fileDate={}\n'.format(
             datetime.date.today().strftime('%Y%m%d')
         ))
+        self._f.write('##reference=ftp://ftp.ncbi.nih.gov/genbank/genomes/Eukaryotes/vertebrates_mammals/Homo_sapiens/GRCh37/special_requests/GRCh37-lite.fa.gz\n')
         self._f.write(f'##source=CIViCpy_v{__version__}\n')
         self._f.write(f'##aboutURL=https://civicdb.org/help/evidence/overview\n')
 
