@@ -152,6 +152,8 @@ class VCFWriter(DictWriter):
 
         # write them
         for variant in sorted_records:
+            if variant.coordinates.reference_build != 'GRCh37':
+                continue
             if variant.is_insertion:
                 if not variant.coordinates.representative_transcript:
                     continue
