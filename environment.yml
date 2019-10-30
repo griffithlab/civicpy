@@ -3,4 +3,4 @@ dependencies:
 - pip:
   - sphinxcontrib-programoutput
   - sphinxjp.themes.basicstrap
-  - civicpy==1.0.0rc1
+  - civicpy==1.0.0rc2
