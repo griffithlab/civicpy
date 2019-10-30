@@ -102,7 +102,7 @@ class VCFWriter(DictWriter):
         Takes either a :class:`civic.Evidence`, :class:`civic.Assertion`, :class:`civic.Variant`, or :class:`civic.Gene` object
         and adds all :class:`civic.Variant` objects associated with it to the VCFWriter object for processing and writing to the VCF. 
 
-        :param :class:`civic.CivicRecord` civic_record: Either a :class:`civic.Evidence`, :class:`civic.Assertion`, :class:`civic.Variant`, or :class:`civic.Gene` object
+        :param civic.CivicRecord civic_record: Either a :class:`civic.Evidence`, :class:`civic.Assertion`, :class:`civic.Variant`, or :class:`civic.Gene` object
         """
         if isinstance(civic_record, civic.Evidence) or isinstance(civic_record, civic.Assertion):
             if civic_record.variant.is_valid_for_vcf(emit_warnings=True):
