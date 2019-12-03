@@ -1,6 +1,7 @@
 name: py37
 dependencies:
 - pip:
+  - Cython
   - sphinxcontrib-programoutput
   - sphinxjp.themes.basicstrap
   - civicpy==1.0.0rc2
