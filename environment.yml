@@ -1,6 +1,7 @@
 name: py37
 dependencies:
 - pip:
+  - --prefer-binary
   - pandas==0.25.1
   - sphinxcontrib-programoutput
   - sphinxjp.themes.basicstrap
