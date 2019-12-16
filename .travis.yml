@@ -3,7 +3,7 @@ dist: xenial
 python:
   - "3.7"
 install:
-  - pip install -e .
+  - pip install -e .[test]
 script:
   - pytest --cov civicpy --cov-report term-missing
 after_success:

@@ -94,6 +94,9 @@ def download_remote_cache(remote_cache_url=REMOTE_CACHE_URL, local_cache_path=LO
 
     :return:                    Returns True on success.
     """
+    logging.warning(
+        'Downloading remote cache from {}.'.format(remote_cache_url)
+    )
     _make_local_cache_path_if_missing(local_cache_path)
     r = requests.get(remote_cache_url)
     r.raise_for_status()
@@ -157,18 +160,21 @@ def load_cache(local_cache_path=LOCAL_CACHE_PATH, on_stale='auto'):
                                 cache_path.
                         This parameter defaults to 'auto'.
 
-    :return:            Returns True on success.
+    :return:            Returns True if content is loaded to in-memory cache.
     """
+    downloaded_remote = False
+    remote_url = REMOTE_CACHE_URL
     if local_cache_path == LOCAL_CACHE_PATH:
         if not cache_file_present():
-            download_remote_cache()
+            download_remote_cache(remote_cache_url=remote_url)
+            downloaded_remote = True
     elif not cache_file_present(local_cache_path):
         raise FileNotFoundError("No cache found at {}".format(local_cache_path))
     with open(local_cache_path, 'rb') as pf:
-        old_cache = pickle.load(pf)
+        loaded_cache = pickle.load(pf)
     c = dict()
     variants = set()
-    for k, v in old_cache.items():
+    for k, v in loaded_cache.items():
         if isinstance(k, str):
             c[k] = v
         elif isinstance(k, int):
@@ -177,6 +183,7 @@ def load_cache(local_cache_path=LOCAL_CACHE_PATH, on_stale='auto'):
                 variants.add(v)
         else:
             raise ValueError
+    old_cache = MODULE.CACHE
     MODULE.CACHE = c
     for k, v in MODULE.CACHE.items():
         if isinstance(k, str):
@@ -186,17 +193,30 @@ def load_cache(local_cache_path=LOCAL_CACHE_PATH, on_stale='auto'):
         _build_coordinate_table(variants)
         return True
     elif (on_stale == 'auto' and local_cache_path == LOCAL_CACHE_PATH) or on_stale == 'update':
-        logging.warning(
-            'Cache at {} is stale, updating.'.format(local_cache_path)
-        )
-        update_cache(local_cache_path=local_cache_path)
-        return True
+        MODULE.CACHE = old_cache
+        if downloaded_remote:
+            logging.error(
+                'Remote cache at {} is stale. Consider running `update_cache(from_remote_cache=False)` '
+                "to create cache from API query (slow), or `load_cache(on_stale='ignore')` "
+                "to load stale local cache (if present). "
+                'Please create an issue at https://github.com/griffithlab/civicpy/issues '
+                'if this is unexpected behavior.'.format(remote_url)
+            )
+            raise SystemError
+        else:
+            logging.warning(
+                'Local cache at {} is stale, updating from remote.'.format(local_cache_path)
+            )
+            update_cache(local_cache_path=local_cache_path)
+            return True
     elif on_stale == 'reject' or on_stale == 'auto':
+        MODULE.CACHE = old_cache
         logging.warning(
-            'Cache at {} is stale, cleared from memory. Run update_cache or '
-            'set on_stale parameter to desired behavior.'.format(local_cache_path)
+            'Local cache at {} is stale and was not loaded. To load anyway, re-run '
+            '`load_cache` with `on_stale` parameter set to desired behavior.'.format(local_cache_path)
         )
-        MODULE.CACHE = dict()
+        return False
+    raise NotImplementedError  # An unexpected condition occurred.
 
 
 def update_cache(from_remote_cache=True, remote_cache_url=REMOTE_CACHE_URL,
@@ -233,7 +253,7 @@ def update_cache(from_remote_cache=True, remote_cache_url=REMOTE_CACHE_URL,
         _get_elements_by_ids('variant_group', allow_cached=False, get_all=True)
         CACHE['full_cached'] = datetime.datetime.now()
         _build_coordinate_table(variants)
-    save_cache(local_cache_path=local_cache_path)
+        save_cache(local_cache_path=local_cache_path)
 
 
 def _make_local_cache_path_if_missing(local_cache_path):
