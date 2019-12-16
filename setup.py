@@ -19,15 +19,19 @@ setup(
         'Programming Language :: Python :: 3'
     ],
     install_requires=[
-        'pytest',
-        'pytest-cov',
-        'python-coveralls',
         'requests',
         'obonet',
         'networkx',
         'pandas',
         'Click'
     ],
+    extras_require={
+        'test': [
+            'pytest',
+            'pytest-cov',
+            'python-coveralls',
+        ],
+    },
     python_requires='>=3.7',
     entry_points={
         'console_scripts': [
