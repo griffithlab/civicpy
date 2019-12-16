@@ -330,6 +330,9 @@ class CivicRecord:
 
         self._include_status = ['accepted','submitted','rejected']
 
+    def __dir__(self):
+        return [attribute for attribute in super().__dir__() if not attribute.startswith('_')]
+
     def __repr__(self):
         return f'<CIViC {self.type} {self.id}>'
 
