@@ -54,7 +54,7 @@ This documentation describes how to get started with CIViCpy, the SDK, and makin
 knowledgebase.
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 3
 
    intro
    install

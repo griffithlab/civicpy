@@ -1,3 +1,5 @@
+.. py:module:: civic
+
 The **civic** module
 ======================
 
@@ -7,12 +9,12 @@ While these record objects can be initialized independently, the **civic** modul
 
 The **civic** module may be imported from **civicpy** at the top level::
 
-	>>>from civicpy import civic
+   >>>from civicpy import civic
 
 CIViC records
 -------------
 
-.. autoclass:: civic.CivicRecord
+.. autoclass:: CivicRecord
    :members:
 
    .. automethod:: __init__
@@ -31,7 +33,7 @@ CIViC record types
 
 The primary CIViC records are found on the CIViC advanced search page, and are fully-formed
 
-.. autoclass:: civic.Gene
+.. autoclass:: Gene
    :members:
 
    .. attribute:: description
@@ -58,7 +60,7 @@ The primary CIViC records are found on the CIViC advanced search page, and are f
 
 .. _HGNC Gene Symbol: https://www.genenames.org/
 
-.. autoclass:: civic.Variant
+.. autoclass:: Variant
 
        .. attribute:: allele_registry_id
 
@@ -153,9 +155,9 @@ The primary CIViC records are found on the CIViC advanced search page, and are f
 
 .. _Sequence Ontology: http://www.sequenceontology.org/
 
-.. autoclass:: civic.Evidence
+.. autoclass:: Evidence
 
-.. autoclass:: civic.Assertion
+.. autoclass:: Assertion
 
 CIViC attributes
 ~~~~~~~~~~~~~~~~
@@ -165,31 +167,47 @@ class for additional complex records beyond those mentioned above (e.g. diseases
 except as attached objects to non-:class:`CivicAttribute` :class:`CivicRecord` objects, and cannot be retrieved
 independently.
 
-.. class:: CivicAttribute
+.. autoclass:: CivicAttribute
 
 Getting records
 ---------------
 
+By ID
+~~~~~
+
 Records can be obtained by ID through a collection of functions provided in the `civic` module. :class:`Gene`
 objects can be queried by the following methods:
 
-.. automodule:: civic
-   :members: get_gene_by_id, get_genes_by_ids, get_all_genes, get_all_gene_ids
+.. autofunction:: get_gene_by_id
+.. autofunction:: get_genes_by_ids
+.. autofunction:: get_all_genes
+.. autofunction:: get_all_gene_ids
 
 Analogous methods exist for :class:`Variant`, :class:`Assertion`, and :class:`Evidence`:
 
-.. automodule:: civic
-   :members: get_variants_by_ids, get_variant_by_id, get_all_variants, get_all_variant_ids
-   :undoc-members:
-   :noindex:
+.. autofunction:: get_variants_by_ids
+.. autofunction:: get_variant_by_id
+.. autofunction:: get_all_variants
+.. autofunction:: get_all_variant_ids
 
-.. automodule:: civic
-   :members: get_assertions_by_ids, get_assertion_by_id, get_all_assertions, get_all_assertion_ids
-   :undoc-members:
-   :noindex:
+.. autofunction:: get_assertions_by_ids
+.. autofunction:: get_assertion_by_id
+.. autofunction:: get_all_assertions
+.. autofunction:: get_all_assertion_ids
 
-.. automodule:: civic
-   :members: get_all_evidence, get_all_evidence_ids
-   :undoc-members:
-   :noindex:
+.. autofunction:: get_all_evidence
+.. autofunction:: get_all_evidence_ids
 
+By Coordinate
+~~~~~~~~~~~~~
+
+Variant records can be searched by GRCh37 coordinates. To query specific genomic coordinates, you will
+need to construct a :class:`CoordinateQuery` object, and pass this query to the
+:func:`search_variants_by_coordinates` function. If you wish to query multiple genomic coordinates (e.g.
+a set of variants observed in a patient tumor), construct a sorted list of :class:`CoordinateQuery` objects
+(sorted by `chr`, `start`, `stop`, `alt`), and pass the list to the :func:`bulk_search_variants_by_coordinates`
+function.
+
+.. autoclass:: CoordinateQuery
+.. autofunction:: search_variants_by_coordinates
+.. autofunction:: bulk_search_variants_by_coordinates
