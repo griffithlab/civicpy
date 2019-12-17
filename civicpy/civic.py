@@ -34,8 +34,21 @@ CIVIC_TO_PYCLASS = {
 }
 
 
-CoordinateQuery = namedtuple('CoordinateQuery', ['chr', 'start', 'stop', 'alt', 'key'], defaults=(None, None))
+_CoordinateQuery = namedtuple('CoordinateQuery', ['chr', 'start', 'stop', 'alt', 'key'], defaults=(None, None))
 
+
+class CoordinateQuery(_CoordinateQuery):  # Wrapping for documentation
+    """
+    A namedtuple with preset fields describing a genomic coordinate,
+    for use with coordinate-based queries of CIViC Variants.
+
+    :param str chr: A chromosome of value 1-23, X, Y
+    :param int start: The chromosomal start position in base coordinates (1-based)
+    :param int stop: The chromosomal stop position in base coordinates (1-based)
+    :param str optional alt: The alternate nucleotide(s) at the designated coordinates
+    :param Any optional key: A user-defined object linked to the coordinate
+    """
+    pass
 
 def pluralize(string):
     if string in UNMARKED_PLURALS:
@@ -862,21 +875,16 @@ def search_variants_by_coordinates(coordinate_query, search_mode='any'):
     """
     Search the cache for variants matching provided coordinates using the corresponding search mode.
 
-    :param coordinate_query: A civic CoordinateQuery object
-                        start: the genomic start coordinate of the query
-                        stop: the genomic end coordinate of the query
-                        chr: the GRCh37 chromosome of the query (e.g. "7", "X")
-                        alt: the alternate allele at the coordinate [optional]
+    :param CoordinateQuery coordinate_query: Coordinates to query
 
-    :param search_mode: ['any', 'query_encompassing', 'variant_encompassing', 'exact']
-                        any: any overlap between a query and a variant is a match
-                        query_encompassing: variants must fit within the coordinates of the query
-                        variant_encompassing: variants must encompass the coordinates of the query
-                        exact: variants must match coordinates precisely, as well as alternate
-                               allele, if provided
-                        search_mode is 'exact' by default
+    :param any,query_encompassing,variant_encompassing,exact search_mode:
+                *any* : any overlap between a query and a variant is a match\n
+                *query_encompassing* : CIViC variant records must fit within the coordinates of the query\n
+                *record_encompassing* : CIViC variant records must encompass the coordinates of the query\n
+                *exact* : variants must match coordinates precisely, as well as alternate allele, if provided\n
+                search_mode is *exact* by default
 
-    :return:            Returns a list of variant hashes matching the coordinates and search_mode
+    :return:    Returns a list of variant hashes matching the coordinates and search_mode
     """
     get_all_variants()
     ct = COORDINATE_TABLE
@@ -919,21 +927,16 @@ def bulk_search_variants_by_coordinates(sorted_queries, search_mode='any'):
     An interator to search the cache for variants matching the set of sorted coordinates and yield
     matches corresponding to the search mode.
 
-    :param sorted_queries:  A list of civic CoordinateQuery objects, sorted by coordinate.
-                            start: the genomic start coordinate of the query
-                            stop: the genomic end coordinate of the query
-                            chr: the GRCh37 chromosome of the query (e.g. "7", "X")
-                            alt: the alternate allele at the coordinate [optional]
+    :param list[CoordinateQuery] sorted_queries: Sorted list of coordinates to query
 
-    :param search_mode: ['any', 'query_encompassing', 'variant_encompassing', 'exact']
-                        any: any overlap between a query and a variant is a match
-                        query_encompassing: CIViC variant records must fit within the coordinates of the query
-                        record_encompassing: CIViC variant records must encompass the coordinates of the query
-                        exact: variants must match coordinates precisely, as well as alternate
-                               allele, if provided
-                        search_mode is 'exact' by default
+    :param any,query_encompassing,variant_encompassing,exact search_mode:
+                *any* : any overlap between a query and a variant is a match\n
+                *query_encompassing* : CIViC variant records must fit within the coordinates of the query\n
+                *record_encompassing* : CIViC variant records must encompass the coordinates of the query\n
+                *exact* : variants must match coordinates precisely, as well as alternate allele, if provided\n
+                search_mode is *exact* by default
 
-    :yield:            Yields (query, match) tuples for each identified match
+    :yield:     Yields (query, match) tuples for each identified match
     """
 
     def is_sorted(prev_q, current_q):

@@ -31,6 +31,11 @@ setup(
             'pytest-cov',
             'python-coveralls',
         ],
+        'docs': [
+            'sphinx',
+            'sphinxjp.themes.basicstrap',
+            'sphinxcontrib.programoutput'
+        ]
     },
     python_requires='>=3.7',
     entry_points={
