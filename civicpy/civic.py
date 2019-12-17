@@ -936,7 +936,7 @@ def bulk_search_variants_by_coordinates(sorted_queries, search_mode='any'):
                 *exact* : variants must match coordinates precisely, as well as alternate allele, if provided\n
                 search_mode is *exact* by default
 
-    :return:    returns a dictionary of result lists, keyed by query
+    :return:    returns a dictionary of Match lists, keyed by query
     """
 
     def is_sorted(prev_q, current_q):
