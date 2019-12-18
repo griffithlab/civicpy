@@ -34,7 +34,7 @@ CIViC record types
 The primary CIViC records are found on the CIViC advanced search page, and are fully-formed
 
 .. autoclass:: Gene
-   :members:
+   :show-inheritance:
 
    .. attribute:: description
 
@@ -61,83 +61,88 @@ The primary CIViC records are found on the CIViC advanced search page, and are f
 .. _HGNC Gene Symbol: https://www.genenames.org/
 
 .. autoclass:: Variant
+   :show-inheritance:
 
-       .. attribute:: allele_registry_id
+   .. attribute:: allele_registry_id
 
-               The `allele registry id`_ associated with this variant.
+      The `allele registry id`_ associated with this variant.
 
-       .. attribute:: civic_actionability_score
+   .. attribute:: civic_actionability_score
 
-               The CIViC `actionability score`_ associated with this variant.
+      The CIViC `actionability score`_ associated with this variant.
 
-       .. attribute:: description
+   .. attribute:: description
 
-               A curated summary of the clinical significance of this variant.
+      A curated summary of the clinical significance of this variant.
 
-       .. attribute:: entrez_id
+   .. attribute:: entrez_id
 
-               The `Entrez ID`_ of the gene this variant belongs to.
+      The `Entrez ID`_ of the gene this variant belongs to.
 
-       .. attribute:: entrez_name
+   .. attribute:: entrez_name
 
-               The `HGNC Gene Symbol`_ of the gene this variant belongs to.
+      The `HGNC Gene Symbol`_ of the gene this variant belongs to.
 
-       .. attribute:: gene
+   .. attribute:: gene
 
-               The :class:`Gene` this variant belongs to.
+      The :class:`Gene` this variant belongs to.
 
-       .. attribute:: gene_id
+   .. attribute:: gene_id
 
-               The :attr:`CivicRecord.id` of the gene this variant belongs to.
+      The :attr:`CivicRecord.id` of the gene this variant belongs to.
 
-       .. attribute:: name
+   .. attribute:: name
 
-               The curated name given to this variant.
+      The curated name given to this variant.
 
-       .. attribute:: assertions
+   .. attribute:: assertions
 
-               A list of :class:`Assertion` records associated with this variant.
+      A list of :class:`Assertion` records associated with this variant.
 
-       .. attribute:: clinvar_entries
+   .. attribute:: clinvar_entries
 
-               A list of `clinvar ids`_ associated with this variant.
+      A list of `clinvar ids`_ associated with this variant.
 
-       .. attribute:: coordinates
+   .. attribute:: coordinates
 
-               A :class:`CivicAttribute` object describing `CIViC coordinates`_.
+      A :class:`CivicAttribute` object describing `CIViC coordinates`_.
 
-       .. attribute:: evidence_items
-               evidence
+   .. attribute:: evidence_items
+      evidence
 
-               A list of :class:`Evidence` associated with this variant.
+      A list of :class:`Evidence` associated with this variant.
 
-       .. attribute:: evidence_sources
+   .. attribute:: evidence_sources
 
-               A list of sources  associated with the evidence from this variant.
+      A list of sources  associated with the evidence from this variant.
 
-       .. attribute:: hgvs_expressions
+   .. attribute:: hgvs_expressions
 
-               Curated `HGVS expressions`_ describing this variant.
+      Curated `HGVS expressions`_ describing this variant.
 
-       .. attribute:: sources
+   .. attribute:: sources
 
-               A list of sources objects associated with the variant description.
+      A list of sources objects associated with the variant description.
 
-       .. attribute:: variant_aliases
-               aliases
+   .. attribute:: variant_aliases
+      aliases
 
-               A curated list of aliases by which this variant is referenced.
+      A curated list of aliases by which this variant is referenced.
 
-       .. attribute:: variant_groups
-               groups
+   .. attribute:: variant_groups
+      groups
 
-               A list of `variant groups`_ to which this variant belongs.
+   A list of `variant groups`_ to which this variant belongs.
 
-       .. attribute:: variant_types
-               types
+   .. attribute:: variant_types
+      types
 
-               A list of :class:`CivicAttribute` objects describing `variant types`_ from the
-               `Sequence Ontology`_.
+      A list of :class:`CivicAttribute` objects describing `variant types`_ from the
+      `Sequence Ontology`_.
+
+   .. attribute:: lifecycle_actions
+
+      A :class:`LifecycleAction` container.
 
 .. _allele registry id: http://reg.clinicalgenome.org
 
@@ -156,18 +161,64 @@ The primary CIViC records are found on the CIViC advanced search page, and are f
 .. _Sequence Ontology: http://www.sequenceontology.org/
 
 .. autoclass:: Evidence
+   :show-inheritance:
+
+   .. attribute:: lifecycle_actions
+
+      A :class:`LifecycleAction` container.
 
 .. autoclass:: Assertion
+   :show-inheritance:
+
+   .. attribute:: lifecycle_actions
+
+      A :class:`LifecycleAction` container.
 
 CIViC attributes
 ~~~~~~~~~~~~~~~~
 
-The :class:`CivicAttribute` class is a special type of CivicRecord that is not indexed, and is used as a base container
+The :class:`CivicAttribute` class is a special type of CivicRecord that is not indexed, and is used as a base
 class for additional complex records beyond those mentioned above (e.g. diseases, drugs). CivicAttributes are not cached
 except as attached objects to non-:class:`CivicAttribute` :class:`CivicRecord` objects, and cannot be retrieved
 independently.
 
 .. autoclass:: CivicAttribute
+
+Record provenance
+~~~~~~~~~~~~~~~~~
+
+The :class:`LifecycleAction` class is used to track the provenance of many types of :class:`CivicRecord`, by serving as
+a container class for :class:`BaseLifecycleAction` objects which in turn specify the timestamp and :class:`User` associated with
+a given action on a record.
+
+.. autoclass:: LifecycleAction
+   :show-inheritance:
+
+.. autoclass:: BaseLifecycleAction
+   :show-inheritance:
+
+   .. attribute:: timestamp
+
+      A CIViC timestamp string indicating the time the BaseLifecycleAction took place.
+
+   .. attribute:: user
+
+      A CIViC :class:`User` object.
+
+.. autoclass:: Submitted
+   :show-inheritance:
+
+.. autoclass:: LastModified
+   :show-inheritance:
+
+.. autoclass:: LastReviewed
+   :show-inheritance:
+
+.. autoclass:: Accepted
+   :show-inheritance:
+
+.. autoclass:: User
+   :show-inheritance:
 
 Getting records
 ---------------
