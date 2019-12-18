@@ -743,7 +743,7 @@ class LifecycleAction(CivicAttribute):
 
 
 
-class LCAAttribute(CivicAttribute):
+class BaseLifecycleAction(CivicAttribute):
     _SIMPLE_FIELDS = CivicAttribute._SIMPLE_FIELDS.union({
         'timestamp'
     })
@@ -752,19 +752,19 @@ class LCAAttribute(CivicAttribute):
     })
 
 
-class Submitted(LCAAttribute):
+class Submitted(BaseLifecycleAction):
     pass
 
 
-class LastModified(LCAAttribute):
+class LastModified(BaseLifecycleAction):
     pass
 
 
-class LastReviewed(LCAAttribute):
+class LastReviewed(BaseLifecycleAction):
     pass
 
 
-class Accepted(LCAAttribute):
+class Accepted(BaseLifecycleAction):
     pass
 
 
