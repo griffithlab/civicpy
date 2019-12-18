@@ -284,6 +284,7 @@ class CivicRecord:
 
     _SIMPLE_FIELDS = {'id', 'type'}
     _COMPLEX_FIELDS = set()
+    _OPTIONAL_FIELDS = set()
 
     def __init__(self, partial=False, **kwargs):
         """
@@ -307,7 +308,7 @@ class CivicRecord:
                 try:
                     object.__getattribute__(self, field)
                 except AttributeError:
-                    if partial and field not in CivicRecord._SIMPLE_FIELDS:
+                    if (partial and field not in CivicRecord._SIMPLE_FIELDS) or field in self._OPTIONAL_FIELDS:
                         self._incomplete.add(field)     # Allow for incomplete data when partial flag set
                     else:
                         raise AttributeError(f'Expected {field} attribute for {self.type}, none found.')
@@ -315,8 +316,10 @@ class CivicRecord:
         for field in self._COMPLEX_FIELDS:
             try:
                 v = kwargs[field]
+                if v is None:
+                    v = dict()
             except KeyError:
-                if partial:
+                if partial or field in self._OPTIONAL_FIELDS:
                     self._incomplete.add(field)
                     continue
                 else:
@@ -335,7 +338,10 @@ class CivicRecord:
             else:
                 t = v.get('type', field)
                 v['type'] = CIVIC_TO_PYCLASS.get(t, t)
-                self.__setattr__(field, cls(partial=True, **v))
+                if v.keys() == {'type'}:
+                    self.__setattr__(field, {})
+                else:
+                    self.__setattr__(field, cls(partial=True, **v))
 
         self._partial = bool(self._incomplete)
         if not isinstance(self, CivicAttribute) and not self._partial and self.__class__.__name__ != 'CivicRecord':
@@ -411,7 +417,7 @@ class Variant(CivicRecord):
         # 'errors',
         'evidence_items',
         'hgvs_expressions',
-        # 'lifecycle_actions',
+        'lifecycle_actions',
         # 'provisional_values',
         'sources',
         'variant_aliases',
@@ -633,6 +639,50 @@ class Assertion(CivicRecord):
         return [x.hpo_id for x in self.phenotypes if x.hpo_id]
 
 
+class User(CivicRecord):
+
+    _SIMPLE_FIELDS = CivicRecord._SIMPLE_FIELDS.union({
+        'name',
+        'username',
+        'role',
+        'avatar_url',
+        'area_of_expertise',
+        'orcid',
+        'display_name',
+        'created_at',
+        'url',
+        'twitter_handle',
+        'facebook_profile',
+        'linkedin_profile',
+        'bio',
+        'featured_expert',
+        'accepted_license',
+        'signup_complete',
+        'affiliation'
+    })
+
+    _OPTIONAL_FIELDS = CivicRecord._OPTIONAL_FIELDS.union({
+        'country',
+        'organization',
+        'conflict_of_interest'
+    })
+
+    _COMPLEX_FIELDS = CivicRecord._COMPLEX_FIELDS.union(_OPTIONAL_FIELDS)
+
+
+class Organization(CivicRecord):
+    _SIMPLE_FIELDS = CivicRecord._SIMPLE_FIELDS.union({
+        'name',
+        'url',
+        'description'
+    })
+
+    _COMPLEX_FIELDS = CivicRecord._COMPLEX_FIELDS.union({
+        'profile_image',
+        'parent'
+    })
+
+
 class CivicAttribute(CivicRecord, dict):
 
     _SIMPLE_FIELDS = {'type'}
@@ -676,6 +726,46 @@ class Drug(CivicAttribute):
 
 class Disease(CivicAttribute):
     _SIMPLE_FIELDS = CivicRecord._SIMPLE_FIELDS.union({'display_name', 'doid', 'url'})
+
+
+class Country(CivicAttribute):
+    _SIMPLE_FIELDS = CivicRecord._SIMPLE_FIELDS.union({'iso', 'name'})
+
+
+class LifecycleAction(CivicAttribute):
+    _OPTIONAL_FIELDS = CivicAttribute._OPTIONAL_FIELDS.union({
+        'submitted',
+        'last_modified',
+        'last_reviewed',
+        'accepted'
+    })
+    _COMPLEX_FIELDS = CivicAttribute._COMPLEX_FIELDS.union(_OPTIONAL_FIELDS)
+
+
+
+class LCAAttribute(CivicAttribute):
+    _SIMPLE_FIELDS = CivicAttribute._SIMPLE_FIELDS.union({
+        'timestamp'
+    })
+    _COMPLEX_FIELDS = CivicAttribute._COMPLEX_FIELDS.union({
+        'user'
+    })
+
+
+class Submitted(LCAAttribute):
+    pass
+
+
+class LastModified(LCAAttribute):
+    pass
+
+
+class LastReviewed(LCAAttribute):
+    pass
+
+
+class Accepted(LCAAttribute):
+    pass
 
 
 def get_cached(element_type, element_id):
