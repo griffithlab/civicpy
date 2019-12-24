@@ -56,6 +56,10 @@ The primary CIViC records are found on the CIViC advanced search page, and are f
 
            A list of :class:`Variant` records associated with this gene.
 
+   .. attribute:: lifecycle_actions
+
+      A :class:`LifecycleAction` container.
+
 .. _Entrez ID: https://www.ncbi.nlm.nih.gov/gene/
 
 .. _HGNC Gene Symbol: https://www.genenames.org/
@@ -219,6 +223,97 @@ a given action on a record.
 
 .. autoclass:: User
    :show-inheritance:
+
+   .. attribute:: name
+
+      The user-defined full name for the :class:`User`.
+
+   .. attribute:: username
+
+      The user-defined system name for the :class:`User`.
+
+   .. attribute:: role
+
+      The CIViC role held by a :class:`User`: Administrator, Editor, or Curator.
+
+   .. attribute:: area_of_expertise
+
+      An optional attribute for a :class:`User` indicating their perspective as a CIViC participant:
+         Research Scientist, Clinical Scientist, or Patient Advocate.
+
+   .. attribute:: orcid
+
+      An optional attribute for a :class:`User` indicating their `ORCiD <https://orcid.org/>`_.
+
+   .. attribute:: display_name
+
+      This attribute is populated with the first non-blank value from :attribute:`username`,
+         :attribute:`name`, :attribute:`email`, or :attribute:`id`.
+
+   .. attribute:: created_at
+
+      A `datetime` describing when the :class:`User` object was created.
+
+   .. attribute:: url
+
+      A string describing a personal website or blog for the :class:`User`.
+
+   .. attribute:: twitter_handle
+
+      A string describing the Twitter handle for a :class:`User`.
+
+   .. attribute:: facebook_profile
+
+      A string describing the Facebook profile ID for a :class:`User`.
+
+   .. attribute:: linkedin_profile
+
+      A string describing the Linked profile ID for a :class:`User`.
+
+   .. attribute:: bio
+
+      A short biography for a :class:`User`.
+
+   .. attribute:: featured_expert
+
+      A flag indicating if a user is a featured expert, and thus displayed on the CIViC
+         `domain experts <https://civicdb.org/about#domain-experts>`_ section
+
+.. autoclass:: Organization
+   :show-inheritance:
+
+   .. attribute:: name
+
+      The :class:`Organization` name.
+
+   .. attribute:: url
+
+      A URL for more information about the :class:`Organization`.
+
+   .. attribute:: description
+
+      A short text description about the :class:`Organization`.
+
+   .. attribute:: profile_image
+
+      A set of resource paths for the :class:`Organization` image at varying resolution.
+
+   .. attribute:: parent
+
+      A parent :class:`Organization`, if applicable.
+
+.. autoclass:: Country
+   :show-inheritance:
+
+   .. attribute:: iso
+
+      The `ISO 3166 Country Code <https://www.iso.org/iso-3166-country-codes.html>`_ for the
+      :class:`Country`.
+
+   .. attribute:: name
+
+      The full-text name for the :class:`Country`.
+
 
 Getting records
 ---------------

@@ -534,7 +534,7 @@ class Gene(CivicRecord):
     _COMPLEX_FIELDS = CivicRecord._COMPLEX_FIELDS.union({
         'aliases',
         # 'errors',                 # TODO: Add support for these fields in advanced search endpoint
-        # 'lifecycle_actions',
+        'lifecycle_actions',
         # 'provisional_values',
         # 'sources',
         'variants'
@@ -656,9 +656,9 @@ class User(CivicRecord):
         'linkedin_profile',
         'bio',
         'featured_expert',
-        'accepted_license',
-        'signup_complete',
-        'affiliation'
+        # 'accepted_license',
+        # 'signup_complete',
+        # 'affiliation'
     })
 
     _OPTIONAL_FIELDS = CivicRecord._OPTIONAL_FIELDS.union({
@@ -668,6 +668,19 @@ class User(CivicRecord):
     })
 
     _COMPLEX_FIELDS = CivicRecord._COMPLEX_FIELDS.union(_OPTIONAL_FIELDS)
+
+    def __init__(self, **kwargs):
+        self._created_at = None
+        super().__init__(**kwargs)
+
+    @property
+    def created_at(self):
+        assert self._created_at[-1] == 'Z'
+        return datetime.datetime.fromisoformat(self._created_at[:-1])
+
+    @created_at.setter
+    def created_at(self, value):
+        self._created_at = value
 
 
 class Organization(CivicRecord):
@@ -742,7 +755,6 @@ class LifecycleAction(CivicAttribute):
     _COMPLEX_FIELDS = CivicAttribute._COMPLEX_FIELDS.union(_OPTIONAL_FIELDS)
 
 
-
 class BaseLifecycleAction(CivicAttribute):
     _SIMPLE_FIELDS = CivicAttribute._SIMPLE_FIELDS.union({
         'timestamp'
@@ -750,6 +762,19 @@ class BaseLifecycleAction(CivicAttribute):
     _COMPLEX_FIELDS = CivicAttribute._COMPLEX_FIELDS.union({
         'user'
     })
+
+    def __init__(self, **kwargs):
+        self._timestamp = None
+        super().__init__(**kwargs)
+
+    @property
+    def timestamp(self):
+        assert self._timestamp[-1] == 'Z'
+        return datetime.datetime.fromisoformat(self._timestamp[:-1])
+
+    @timestamp.setter
+    def timestamp(self, value):
+        self._timestamp = value
 
 
 class Submitted(BaseLifecycleAction):
