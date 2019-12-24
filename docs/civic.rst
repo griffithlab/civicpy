@@ -56,6 +56,10 @@ The primary CIViC records are found on the CIViC advanced search page, and are f
 
            A list of :class:`Variant` records associated with this gene.
 
+   .. attribute:: lifecycle_actions
+
+      A :class:`LifecycleAction` container.
+
 .. _Entrez ID: https://www.ncbi.nlm.nih.gov/gene/
 
 .. _HGNC Gene Symbol: https://www.genenames.org/
