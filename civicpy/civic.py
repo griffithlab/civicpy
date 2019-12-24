@@ -669,6 +669,19 @@ class User(CivicRecord):
 
     _COMPLEX_FIELDS = CivicRecord._COMPLEX_FIELDS.union(_OPTIONAL_FIELDS)
 
+    def __init__(self, **kwargs):
+        self._created_at = None
+        super().__init__(**kwargs)
+
+    @property
+    def created_at(self):
+        assert self._created_at[-1] == 'Z'
+        return datetime.datetime.fromisoformat(self._created_at[:-1])
+
+    @created_at.setter
+    def created_at(self, value):
+        self._created_at = value
+
 
 class Organization(CivicRecord):
     _SIMPLE_FIELDS = CivicRecord._SIMPLE_FIELDS.union({
