@@ -656,9 +656,9 @@ class User(CivicRecord):
         'linkedin_profile',
         'bio',
         'featured_expert',
-        'accepted_license',
-        'signup_complete',
-        'affiliation'
+        # 'accepted_license',
+        # 'signup_complete',
+        # 'affiliation'
     })
 
     _OPTIONAL_FIELDS = CivicRecord._OPTIONAL_FIELDS.union({
