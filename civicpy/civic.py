@@ -985,6 +985,16 @@ def get_all_variant_groups(allow_cached=True):
     variant_groups = _get_elements_by_ids('variant_group', allow_cached=allow_cached, get_all=True)
     return variant_groups
 
+def search_variants_by_name(name):
+    """
+    Search the cache for variants matching the queried name
+
+    :param String name: Variant name to query
+
+    :return: Returns a list of variant hashes matching the name
+    """
+    variants = get_all_variants()
+    return [v for v in variants if v.name == name]
 
 def search_variants_by_coordinates(coordinate_query, search_mode='any'):
     """

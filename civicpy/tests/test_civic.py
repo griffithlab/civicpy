@@ -175,3 +175,4 @@ class TestCoordinateSearch(object):
         search_results = civic.bulk_search_variants_by_coordinates(sorted_queries, search_mode='record_encompassing')
         assert len(search_results[sorted_queries[0]]) == 19
         assert len(search_results[sorted_queries[1]]) == 16
+
