@@ -985,6 +985,17 @@ def get_all_variant_groups(allow_cached=True):
     variant_groups = _get_elements_by_ids('variant_group', allow_cached=allow_cached, get_all=True)
     return variant_groups
 
+def search_variants_by_allele_registry_id(caid):
+    """
+    Search the cache for variants matching the queried Allele Registry ID (CAID)
+
+    :param String caid: Allele Registry ID to query
+
+    :return: Returns a list of variant hashes matching the Allele Registry ID
+    """
+    variants = get_all_variants()
+    return [v for v in variants if v.allele_registry_id == caid]
+
 def search_variants_by_name(name):
     """
     Search the cache for variants matching the queried name
