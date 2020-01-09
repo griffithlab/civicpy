@@ -8,6 +8,7 @@ import os
 from pathlib import Path
 from collections import defaultdict, namedtuple
 from civicpy import REMOTE_CACHE_URL, LOCAL_CACHE_PATH, CACHE_TIMEOUT_DAYS
+import requests
 
 
 CACHE = dict()
@@ -34,7 +35,7 @@ CIVIC_TO_PYCLASS = {
 }
 
 
-_CoordinateQuery = namedtuple('CoordinateQuery', ['chr', 'start', 'stop', 'alt', 'key'], defaults=(None, None))
+_CoordinateQuery = namedtuple('CoordinateQuery', ['chr', 'start', 'stop', 'alt', 'ref', 'build', 'key'], defaults=(None, None, "GRCh37", None))
 
 
 class CoordinateQuery(_CoordinateQuery):  # Wrapping for documentation
@@ -46,6 +47,8 @@ class CoordinateQuery(_CoordinateQuery):  # Wrapping for documentation
     :param int start: The chromosomal start position in base coordinates (1-based)
     :param int stop: The chromosomal stop position in base coordinates (1-based)
     :param str optional alt: The alternate nucleotide(s) at the designated coordinates
+    :param ref optional ref: The reference nucleotide(s) at the designated coordinates
+    :param GRCh37,GRCh38 build: The reference build version of the coordinates
     :param Any optional key: A user-defined object linked to the coordinate
     """
     pass
@@ -1023,39 +1026,123 @@ def search_variants_by_coordinates(coordinate_query, search_mode='any'):
     :return:    Returns a list of variant hashes matching the coordinates and search_mode
     """
     get_all_variants()
-    ct = COORDINATE_TABLE
-    start_idx = COORDINATE_TABLE_START
-    stop_idx = COORDINATE_TABLE_STOP
-    chr_idx = COORDINATE_TABLE_CHR
-    start = int(coordinate_query.start)
-    stop = int(coordinate_query.stop)
-    chromosome = str(coordinate_query.chr)
-    # overlapping = (start <= ct.stop) & (stop >= ct.start)
-    left_idx = chr_idx.searchsorted(chromosome)
-    right_idx = chr_idx.searchsorted(chromosome, side='right')
-    chr_ct_idx = chr_idx[left_idx:right_idx].index
-    right_idx = start_idx.searchsorted(stop, side='right')
-    start_ct_idx = start_idx[:right_idx].index
-    left_idx = stop_idx.searchsorted(start)
-    stop_ct_idx = stop_idx[left_idx:].index
-    match_idx = chr_ct_idx & start_ct_idx & stop_ct_idx
-    m_df = ct.loc[match_idx, ]
-    if search_mode == 'any':
-        var_digests = m_df.v_hash.to_list()
+    if coordinate_query.build == 'GRCh37':
+        ct = COORDINATE_TABLE
+        start_idx = COORDINATE_TABLE_START
+        stop_idx = COORDINATE_TABLE_STOP
+        chr_idx = COORDINATE_TABLE_CHR
+        start = int(coordinate_query.start)
+        stop = int(coordinate_query.stop)
+        chromosome = str(coordinate_query.chr)
+        # overlapping = (start <= ct.stop) & (stop >= ct.start)
+        left_idx = chr_idx.searchsorted(chromosome)
+        right_idx = chr_idx.searchsorted(chromosome, side='right')
+        chr_ct_idx = chr_idx[left_idx:right_idx].index
+        right_idx = start_idx.searchsorted(stop, side='right')
+        start_ct_idx = start_idx[:right_idx].index
+        left_idx = stop_idx.searchsorted(start)
+        stop_ct_idx = stop_idx[left_idx:].index
+        match_idx = chr_ct_idx & start_ct_idx & stop_ct_idx
+        m_df = ct.loc[match_idx, ]
+        if search_mode == 'any':
+            var_digests = m_df.v_hash.to_list()
+            return [CACHE[v] for v in var_digests]
+        elif search_mode == 'query_encompassing':
+            match_idx = (start <= m_df.start) & (stop >= m_df.stop)
+        elif search_mode == 'variant_encompassing':
+            match_idx = (start >= m_df.start) & (stop <= m_df.stop)
+        elif search_mode == 'exact':
+            match_idx = (start == m_df.stop) & (stop == m_df.start)
+            if coordinate_query.alt:
+                match_idx = match_idx & (coordinate_query.alt == m_df.alt)
+        else:
+            raise ValueError("unexpected search mode")
+        var_digests = m_df.loc[match_idx,].v_hash.to_list()
         return [CACHE[v] for v in var_digests]
-    elif search_mode == 'query_encompassing':
-        match_idx = (start <= m_df.start) & (stop >= m_df.stop)
-    elif search_mode == 'variant_encompassing':
-        match_idx = (start >= m_df.start) & (stop <= m_df.stop)
-    elif search_mode == 'exact':
-        match_idx = (start == m_df.stop) & (stop == m_df.start)
-        if coordinate_query.alt:
-            match_idx = match_idx & (coordinate_query.alt == m_df.alt)
     else:
-        raise ValueError("unexpected search mode")
-    var_digests = m_df.loc[match_idx,].v_hash.to_list()
-    return [CACHE[v] for v in var_digests]
+        if search_mode == 'exact':
+            if coordinate_query.alt or coordinate_query.ref:
+                hgvs = _construct_hgvs_for_coordinate_query(coordinate_query)
+                r = requests.get(url=_allele_registry_url(), params={'hgvs': hgvs})
+                data = r.json()
+                if '@id' in data:
+                    allele_registry_id = data['@id'].split('/')[-1]
+                    if not allele_registry_id == '_:CA':
+                        return search_variants_by_allele_registry_id(allele_registry_id)
+            else:
+                raise ValueError("alt or ref required for non-GRCh37 coordinate queries")
+        else:
+            raise ValueError("Only exact search mode is supported for non-GRCh37 coordinate queries")
 
+def _allele_registry_url():
+    return "http://reg.genome.network/allele"
+
+def _construct_hgvs_for_coordinate_query(coordinate_query):
+    if coordinate_query.build == 'GRCh38':
+        chromosome = _refseq_sequence_b38(coordinate_query.chr)
+    else:
+        raise ValueError("unexpected reference build")
+    base_hgvs = "{}:g.{}".format(chromosome, coordinate_query.start)
+    variant_type = _variant_type(coordinate_query)
+    if variant_type == "deletion":
+        if (coordinate_query.ref) > 1:
+            return"{}_{}del".format(base_hgvs, coordinate_query.stop)
+        else:
+            return "{}del".format(base_hgvs)
+    elif variant_type == "substitution":
+        return "{}{}>{}".format(base_hgvs, coordinate_query.ref, coordinate_query.alt)
+    elif variant_type == "insertion":
+        return "{}_{}ins{}".format(base_hgvs, coordinate_query.stop, coordinate_query.alt)
+    elif variant_type == "indel":
+        if len(coordinate_query.ref) > 1:
+          return "{}_{}delins{}".format(base_hgvs, coordinate_query.stop, coordinate_query.alt)
+        else:
+          return "{}delins{}".format(base_hgvs, coordinate_query.alt)
+    else:
+        return None
+
+def _variant_type(coordinate_query):
+    if not coordinate_query.ref and not coordinate_query.alt:
+        return None
+    elif coordinate_query.ref and not coordinate_query.alt:
+        return "deletion"
+    elif not coordinate_query.ref and coordinate_query.alt:
+        return "insertion"
+    elif len(coordinate_query.ref) == 1 and len(coordinate_query.alt) == 1:
+        return "substitution"
+    elif len(coordinate_query.ref) > 1 and len(coordinate_query.alt) > 1:
+        return "indel"
+    else:
+        return None
+
+def _refseq_sequence_b38(chromosome):
+    sequences = {
+      '1' : 'NC_000001.11',
+      '2' : 'NC_000002.12',
+      '3' : 'NC_000003.12',
+      '4' : 'NC_000004.12',
+      '5' : 'NC_000005.10',
+      '6' : 'NC_000006.12',
+      '7' : 'NC_000007.14',
+      '8' : 'NC_000008.11',
+      '9' : 'NC_000009.12',
+      '10' : 'NC_000010.11',
+      '11' : 'NC_000011.10',
+      '12' : 'NC_000012.12',
+      '13' : 'NC_000013.11',
+      '14' : 'NC_000014.9',
+      '15' : 'NC_000015.10',
+      '16' : 'NC_000016.10',
+      '17' : 'NC_000017.11',
+      '18' : 'NC_000018.10',
+      '19' : 'NC_000019.10',
+      '20' : 'NC_000020.11',
+      '21' : 'NC_000021.9',
+      '22' : 'NC_000022.11',
+      'X' : 'NC_000023.11',
+      'Y' : 'NC_000024.10',
+    }
+    return sequences[chromosome]
 
 # TODO: Refactor this method
 def bulk_search_variants_by_coordinates(sorted_queries, search_mode='any'):
