@@ -185,3 +185,8 @@ class TestCoordinateSearch(object):
         assert len(search_results[sorted_queries[0]]) == 19
         assert len(search_results[sorted_queries[1]]) == 16
 
+    def test_build38_exact_search_variants(self, v600e):
+        query = CoordinateQuery('7', 140753336, 140753336, 'T', 'A', 'GRCh38')
+        search_results = civic.search_variants_by_coordinates(query, search_mode='exact')
+        assert len(search_results) == 1
+        assert search_results[0] == v600e
