@@ -89,6 +89,15 @@ class TestVariants(object):
         variants = civic.get_all_variants(include_status=['accepted'])
         assert len(variants) >= 1333
 
+    def test_get_by_name(self, v600e):
+        variants = civic.search_variants_by_name("V600E")
+        assert len(variants) == 1
+        assert variants[0] == v600e
+
+    def test_get_by_caid(self, v600e):
+        variants = civic.search_variants_by_allele_registry_id("CA123643")
+        assert len(variants) == 1
+        assert variants[0] == v600e
 
 class TestVariantGroups(object):
 
