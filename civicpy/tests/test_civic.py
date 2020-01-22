@@ -156,7 +156,7 @@ class TestCoordinateSearch(object):
         ]
         search_results = civic.bulk_search_variants_by_coordinates(sorted_queries, search_mode='exact')
         assert len(search_results[sorted_queries[0]]) == 1
-        assert len(search_results[sorted_queries[1]]) == 2
+        assert len(search_results[sorted_queries[1]]) == 1
 
     def test_bulk_qe_search_variants(self):
         sorted_queries = [

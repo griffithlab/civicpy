@@ -1111,7 +1111,7 @@ def bulk_search_variants_by_coordinates(sorted_queries, search_mode='any'):
         elif search_mode == 'exact' and q_start == c_start and q_stop == c_stop:
             q_alt = q.alt
             c_alt = c.alt
-            if not (q_alt and c_alt and q_alt != c_alt):
+            if not (q_alt and q_alt != c_alt):
                 append_match(matches, q, c)
         elif search_mode == 'query_encompassing' and q_start <= c_start and q_stop >= c_stop:
             append_match(matches, q, c)
