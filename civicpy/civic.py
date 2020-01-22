@@ -997,7 +997,7 @@ def search_variants_by_coordinates(coordinate_query, search_mode='any'):
                 *query_encompassing* : CIViC variant records must fit within the coordinates of the query\n
                 *record_encompassing* : CIViC variant records must encompass the coordinates of the query\n
                 *exact* : variants must match coordinates precisely, as well as alternate allele, if provided\n
-                search_mode is *exact* by default
+                search_mode is *any* by default
 
     :return:    Returns a list of variant hashes matching the coordinates and search_mode
     """
@@ -1049,7 +1049,7 @@ def bulk_search_variants_by_coordinates(sorted_queries, search_mode='any'):
                 *query_encompassing* : CIViC variant records must fit within the coordinates of the query\n
                 *record_encompassing* : CIViC variant records must encompass the coordinates of the query\n
                 *exact* : variants must match coordinates precisely, as well as alternate allele, if provided\n
-                search_mode is *exact* by default
+                search_mode is *any* by default
 
     :return:    returns a dictionary of Match lists, keyed by query
     """
