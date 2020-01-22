@@ -140,6 +140,21 @@ class TestCoordinateSearch(object):
         assertion_ids = [x.id for x in assertions]
         assert set(assertion_ids) >= set(v600e_assertion_ids)
 
+    def test_single_and_bulk_exact_return_same_variants(self):
+        query = CoordinateQuery('7', 140453136, 140453136, 'T')
+        variants_single = civic.search_variants_by_coordinates(query, search_mode='exact')
+        variants_bulk = civic.bulk_search_variants_by_coordinates([query], search_mode='exact')
+        assert len(variants_single) == 1
+        assert len(variants_bulk[query]) == 1
+        assert hash(variants_single[0]) == variants_bulk[query][0].v_hash
+
+        query = CoordinateQuery('7', 140453136, 140453137, 'TT')
+        variants_single = civic.search_variants_by_coordinates(query, search_mode='exact')
+        variants_bulk = civic.bulk_search_variants_by_coordinates([query], search_mode='exact')
+        assert len(variants_single) == 1
+        assert len(variants_bulk[query]) == 1
+        assert hash(variants_single[0]) == variants_bulk[query][0].v_hash
+
     def test_bulk_any_search_variants(self):
         sorted_queries = [
             CoordinateQuery('7', 140453136, 140453136, 'T'),
