@@ -50,6 +50,7 @@ class CoordinateQuery(_CoordinateQuery):  # Wrapping for documentation
     """
     pass
 
+
 def pluralize(string):
     if string in UNMARKED_PLURALS:
         return f'{string}_items'
@@ -605,15 +606,15 @@ class Assertion(CivicRecord):
         'description',
         'drug_interaction_type',
         'evidence_direction',
-        'evidence_item_count',
+        # 'evidence_item_count',
         'evidence_type',
         'fda_companion_test',
         'fda_regulatory_approval',
         'name',
         'nccn_guideline',
         'nccn_guideline_version',
-        'open_change_count',
-        'pending_evidence_count',
+        # 'open_change_count',
+        # 'pending_evidence_count',
         'status',
         'summary',
         'variant_origin'

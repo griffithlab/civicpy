@@ -167,6 +167,8 @@ The primary CIViC records are found on the CIViC advanced search page, and are f
 .. autoclass:: Evidence
    :show-inheritance:
 
+   .. todo:: Finish documenting
+
    .. attribute:: lifecycle_actions
 
       A :class:`LifecycleAction` container.
@@ -174,9 +176,118 @@ The primary CIViC records are found on the CIViC advanced search page, and are f
 .. autoclass:: Assertion
    :show-inheritance:
 
+   .. attribute:: acmg_codes
+
+      Evidence codes used in the assessment of variants under the `ACMG/AMP`_ classification guidelines.
+
+   .. attribute:: allele_registry_id
+
+      The `allele registry id`_ associated with this variant.
+
+   .. attribute:: amp_level
+
+      The clinical interpretation classification by `AMP/ASCO/CAP`_ or `ACMG/AMP`_ guidelines.
+
+   .. attribute:: clinical_significance
+
+      The association with diagnostic/prognostic end point or treatment.
+
+   .. attribute:: description
+
+      The Assertion Description gives detail including practice guidelines and approved tests for the variant.
+      See `curating assertions`_ for more details.
+
+   .. attribute:: disease
+
+      A disease :class:`CivicAttribute`, linked to a corresponding `Disease Ontology`_ term when applicable.
+
+   .. attribute:: drugs
+
+      Zero or more drug :class:`CivicAttribute`, linked to corresponding `NCIT`_ terms when applicable. Only used with
+      therapeutic response predictive :attr:`evidence_type`.
+
+   .. attribute:: drug_interaction_type
+
+      One of 'Combination', 'Sequential', or 'Substitutes', this field describes how multiple indicated drugs within
+      a therapeutic response predictive assertion are related.
+
+   .. attribute:: evidence_direction
+
+      An indicator of whether the evidence statement supports or refutes the clinical significance of an event.
+
+   .. attribute:: evidence_type
+
+      Category of clinical action/relevance implicated by event. Refer to the additional `documentation on evidence types`_
+      for details on how to enter evidence of each of the four types: Predictive, Prognostic, Predisposing and Diagnostic.
+
+   .. attribute:: fda_companion_test
+
+      A boolean indicating whether or not the assertion has an associated FDA companion test.
+
+   .. attribute:: fda_regulatory_approval
+
+      A boolean indicating whether or not the drugs indicated in the assertion have regulatory approval for use in
+      the treatment of the assertion disease.
+
    .. attribute:: lifecycle_actions
 
       A :class:`LifecycleAction` container.
+
+   .. attribute:: name
+
+      A system-generated unique identifier for the assertion, e.g. `AID7`.
+
+   .. attribute:: nccn_guideline
+
+      A string linking the assertion to the corresponding `NCCN Guidelines for treatment of cancer by disease site`_, if
+      applicable.
+
+   .. attribute:: nccn_guideline_version
+
+      The version associated with the indicated :attr:`nccn_guideline` document.
+
+   .. attribute:: phenotypes
+
+      Zero or more phenotype :class:`CivicAttribute`, linked to corresponding Human Phenotype Ontology (`HPO`_) terms
+      when applicable.
+
+   .. attribute:: status
+
+      One of ['accepted', 'rejected', or 'submitted'], describing the state of this assertion in the CIViC curation cycle.
+
+      - *submitted*: This assertion has been submitted by a CIViC curator or editor
+      - *accepted*: This assertion has been reviewed and approved by a CIViC editor
+      - *rejected*: This assertion has been reviewed and rejected by a CIViC editor
+
+   .. attribute:: summary
+
+      The Assertion Summary restates the Clinical Significance as a brief single sentence statement. It is intended for
+      potential use in clinical reports. The Assertion Summary is designed for rapid communication of the Clinical
+      Significance, especially when displayed in a longer list with other variants.
+
+   .. attribute:: variant
+
+      The :class:`Variant` associated with this assertion.
+
+   .. attribute:: variant_origin
+
+      The origin of this variant, one of ['Somatic', 'Rare Germline', 'Common Germline', 'Unknown', 'N/A', 'Germline or Somatic']
+
+.. _AMP/ASCO/CAP: https://www.ncbi.nlm.nih.gov/pubmed/27993330
+
+.. _ACMG/AMP: https://www.ncbi.nlm.nih.gov/pubmed/25741868
+
+.. _curating assertions: https://docs.civicdb.org/en/latest/curating/assertions.html
+
+.. _Disease Ontology: http://disease-ontology.org/
+
+.. _documentation on evidence types: https://civicdb.org/help/evidence/evidence-types
+
+.. _NCIT: https://ncit.nci.nih.gov/ncitbrowser/
+
+.. _NCCN Guidelines for treatment of cancer by disease site: https://www.nccn.org/professionals/physician_gls/default.aspx#site
+
+.. _HPO: https://hpo.jax.org/
 
 CIViC attributes
 ~~~~~~~~~~~~~~~~
