@@ -734,7 +734,7 @@ class CivicAttribute(CivicRecord, dict):
 
 
 class Drug(CivicAttribute):
-    _SIMPLE_FIELDS = CivicRecord._SIMPLE_FIELDS.union({'pubchem_id'})
+    _SIMPLE_FIELDS = CivicRecord._SIMPLE_FIELDS.union({'ncit_id'})
 
 
 class Disease(CivicAttribute):
