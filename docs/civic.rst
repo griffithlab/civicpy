@@ -69,7 +69,7 @@ The primary CIViC records are found on the CIViC advanced search page, and are f
 
    .. attribute:: allele_registry_id
 
-      The `allele registry id`_ associated with this variant.
+      The `ClinGen Allele Registry ID`_ associated with this variant.
 
    .. attribute:: civic_actionability_score
 
@@ -148,7 +148,7 @@ The primary CIViC records are found on the CIViC advanced search page, and are f
 
       A :class:`LifecycleAction` container.
 
-.. _allele registry id: http://reg.clinicalgenome.org
+.. _ClinGen Allele Registry ID: http://reg.clinicalgenome.org
 
 .. _actionability score: https://civicdb.org/help/variants/actionability-score
 
@@ -182,7 +182,7 @@ The primary CIViC records are found on the CIViC advanced search page, and are f
 
    .. attribute:: allele_registry_id
 
-      The `allele registry id`_ associated with this variant.
+      The `ClinGen Allele Registry ID`_ associated with the assertion's variant.
 
    .. attribute:: amp_level
 
@@ -281,7 +281,7 @@ The primary CIViC records are found on the CIViC advanced search page, and are f
 
 .. _Disease Ontology: http://disease-ontology.org/
 
-.. _documentation on evidence types: https://civicdb.org/help/evidence/evidence-types
+.. _documentation on evidence types: https://docs.civicdb.org/en/latest/model/evidence/type.html
 
 .. _NCIT: https://ncit.nci.nih.gov/ncitbrowser/
 
