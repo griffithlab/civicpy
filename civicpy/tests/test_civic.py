@@ -22,6 +22,11 @@ def v600e():
     return civic.get_variant_by_id(12)
 
 
+@pytest.fixture(scope="module")
+def v600e_assertion():
+    return civic.get_assertion_by_id(7)
+
+
 class TestGetFunctions(object):
     
     def test_get_assertions(self):
@@ -111,6 +116,10 @@ class TestAssertions(object):
         assertions = civic.get_all_assertions(include_status=['accepted'])
         assert len(assertions) >= 16
 
+    def test_has_boolean_flags(self, v600e_assertion):
+        assert v600e_assertion.fda_companion_test is True
+        assert v600e_assertion.fda_regulatory_approval is True
+
 
 class TestGenes(object):
 
@@ -148,7 +157,21 @@ class TestCoordinateSearch(object):
         assert len(variants_bulk[query]) == 1
         assert hash(variants_single[0]) == variants_bulk[query][0].v_hash
 
+        query = CoordinateQuery('7', 140453136, 140453136, 'T', 'A')
+        variants_single = civic.search_variants_by_coordinates(query, search_mode='exact')
+        variants_bulk = civic.bulk_search_variants_by_coordinates([query], search_mode='exact')
+        assert len(variants_single) == 1
+        assert len(variants_bulk[query]) == 1
+        assert hash(variants_single[0]) == variants_bulk[query][0].v_hash
+
         query = CoordinateQuery('7', 140453136, 140453137, 'TT')
+        variants_single = civic.search_variants_by_coordinates(query, search_mode='exact')
+        variants_bulk = civic.bulk_search_variants_by_coordinates([query], search_mode='exact')
+        assert len(variants_single) == 1
+        assert len(variants_bulk[query]) == 1
+        assert hash(variants_single[0]) == variants_bulk[query][0].v_hash
+
+        query = CoordinateQuery('7', 140453136, 140453137, 'TT', 'AC')
         variants_single = civic.search_variants_by_coordinates(query, search_mode='exact')
         variants_bulk = civic.bulk_search_variants_by_coordinates([query], search_mode='exact')
         assert len(variants_single) == 1
@@ -194,3 +217,10 @@ class TestCoordinateSearch(object):
         search_results = civic.bulk_search_variants_by_coordinates(sorted_queries, search_mode='record_encompassing')
         assert len(search_results[sorted_queries[0]]) == 19
         assert len(search_results[sorted_queries[1]]) == 16
+
+class TestDrugs(object):
+
+    def test_has_ncit_id(self, v600e_assertion):
+        trametinib = v600e_assertion.drugs[0]
+        assert trametinib.ncit_id == 'C77908'
+        assert 'pubchem_id' not in trametinib.keys()
