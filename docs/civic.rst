@@ -150,17 +150,17 @@ The primary CIViC records are found on the CIViC advanced search page, and are f
 
 .. _ClinGen Allele Registry ID: http://reg.clinicalgenome.org
 
-.. _actionability score: https://civicdb.org/help/variants/actionability-score
+.. _actionability score: https://docs.civicdb.org/en/latest/model/variants/evidence_score.html
 
 .. _clinvar ids: https://www.ncbi.nlm.nih.gov/clinvar
 
-.. _CIViC coordinates: https://civicdb.org/help/variants/variants-coordinates
+.. _CIViC coordinates: https://docs.civicdb.org/en/latest/model/variants/coordinates.html
 
 .. _HGVS expressions: https://varnomen.hgvs.org
 
-.. _variant groups: https://civicdb.org/help/variant-groups/overview
+.. _variant groups: https://docs.civicdb.org/en/latest/model/variant_groups.html
 
-.. _variant types: https://civicdb.org/help/variants/variants-type
+.. _variant types: https://docs.civicdb.org/en/latest/model/variants/types.html
 
 .. _Sequence Ontology: http://www.sequenceontology.org/
 
@@ -388,7 +388,7 @@ a given action on a record.
    .. attribute:: featured_expert
 
       A flag indicating if a user is a featured expert, and thus displayed on the CIViC
-         `domain experts <https://civicdb.org/about#domain-experts>`_ section
+         `domain experts <https://docs.civicdb.org/en/latest/about/domain-experts.html>`_ section
 
 .. autoclass:: Organization
    :show-inheritance:
