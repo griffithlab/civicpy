@@ -190,7 +190,9 @@ The primary CIViC records are found on the CIViC advanced search page, and are f
 
    .. attribute:: clinical_significance
 
-      The association with diagnostic/prognostic end point or treatment.
+      A string indicating the type of clinical significance statement being made, values are defined based on
+      the corresponding :attr:`evidence_type`. Please see `Understanding Clinical Significance`_ for more
+      details on the expected values for this field.
 
    .. attribute:: description
 
@@ -288,6 +290,8 @@ The primary CIViC records are found on the CIViC advanced search page, and are f
 .. _NCCN Guidelines for treatment of cancer by disease site: https://www.nccn.org/professionals/physician_gls/default.aspx#site
 
 .. _HPO: https://hpo.jax.org/
+
+.. _Understanding Clinical Significance: https://docs.civicdb.org/en/latest/model/evidence/clinical_significance.html#understanding-clinical-significance
 
 CIViC attributes
 ~~~~~~~~~~~~~~~~
