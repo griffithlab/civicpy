@@ -7,4 +7,4 @@ dependencies:
   - sphinxjp.themes.basicstrap
   - Cython
   - pandas==0.24.1
-  - civicpy==1.0.0rc4
+  - civicpy==1.0.0rc5

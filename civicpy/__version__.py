@@ -4,7 +4,7 @@ __url__ = 'http://civicpy.org'
 __major__ = '1'
 __minor__ = '0'
 __patch__ = '0'
-__meta_label__ = 'rc4'
+__meta_label__ = 'rc5'
 __short_version__ = f"{__major__}.{__minor__}"
 __version__ = f"{__short_version__}.{__patch__}"
 if __meta_label__:
