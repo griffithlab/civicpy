@@ -148,44 +148,15 @@ class VCFWriter(DictWriter):
         string_chromosomes.sort(key=lambda x: x.coordinates.chromosome)
         sorted_records = int_chromosomes + string_chromosomes
 
-        ensembl_server = "https://grch37.rest.ensembl.org"
 
         # write them
         rows = []
         for variant in sorted_records:
-            if variant.coordinates.reference_build != 'GRCh37':
-                continue
-            if variant.is_insertion:
-                if not variant.coordinates.representative_transcript:
-                    continue
-                else:
-                    start = variant.coordinates.start
-                    ext = "/sequence/region/human/{}:{}-{}".format(variant.coordinates.chromosome, start, start)
-                    r = requests.get(ensembl_server+ext, headers={ "Content-Type" : "text/plain"})
-                    if variant.coordinates.reference_bases == None or variant.coordinates.reference_bases == '-' or variant.coordinates.reference_bases == '':
-                        ref = r.text
-                    else:
-                        ref = "{}{}".format(r.text, variant.coordinates.reference_bases)
-                    alt = "{}{}".format(r.text, variant.coordinates.variant_bases)
-                    csq_alt = variant.coordinates.variant_bases
-            elif variant.is_deletion:
-                if not variant.coordinates.representative_transcript:
-                    continue
-                else:
-                    start = variant.coordinates.start - 1
-                    ext = "/sequence/region/human/{}:{}-{}".format(variant.coordinates.chromosome, start, start)
-                    r = requests.get(ensembl_server+ext, headers={ "Content-Type" : "text/plain"})
-                    ref = "{}{}".format(r.text, variant.coordinates.reference_bases)
-                    if variant.coordinates.variant_bases == None or variant.coordinates.variant_bases == '-' or variant.coordinates.variant_bases == '':
-                        alt = r.text
-                    else:
-                        alt = "{}{}".format(r.text, variant.coordinates.variant_bases)
-                    csq_alt = "-"
+            if variant.vcf_coordinates() is not None:
+                (start, ref, alt) = variant.vcf_coordinates()
             else:
-                start = variant.coordinates.start
-                ref = variant.coordinates.reference_bases
-                alt = variant.coordinates.variant_bases
-                csq_alt = alt
+                continue
+
             out_dict = {
                 '#CHROM': variant.coordinates.chromosome,
                 'POS':    str(start),
@@ -197,63 +168,8 @@ class VCFWriter(DictWriter):
             info_dict = {
                 'GN': variant.gene.name,
                 'VT': variant.name,
+                'CSQ': ','.join(variant.csq()),
             }
-            csq = []
-            if variant.coordinates.representative_transcript:
-                hgvs_cs = [e for e in variant.hgvs_expressions if (':c.' in e) and (variant.coordinates.representative_transcript in e)]
-                hgvs_ps = [e for e in variant.hgvs_expressions if (':p.' in e) and (variant.coordinates.representative_transcript in e)]
-            hgvs_c = hgvs_cs[0] if len(hgvs_cs) == 1 else ''
-            hgvs_p = hgvs_ps[0] if len(hgvs_ps) == 1 else ''
-            for evidence in variant.evidence:
-                special_character_table = str.maketrans(VCFWriter.SPECIAL_CHARACTERS)
-                csq.append('|'.join([
-                    csq_alt,
-                    '&'.join(map(lambda t: t.name, variant.variant_types)),
-                    variant.gene.name,
-                    str(variant.gene.entrez_id),
-                    'transcript',
-                    str(variant.coordinates.representative_transcript),
-                    hgvs_c,
-                    hgvs_p,
-                    variant.name,
-                    str(variant.id),
-                    '&'.join(map(lambda a: a.translate(special_character_table), variant.variant_aliases)),
-                    '&'.join(map(lambda e: e.translate(special_character_table), variant.hgvs_expressions)),
-                    str(variant.allele_registry_id),
-                    '&'.join(variant.clinvar_entries),
-                    str(variant.civic_actionability_score),
-                    "evidence",
-                    str(evidence.id),
-                    "https://civicdb.org/links/evidence/{}".format(evidence.id),
-                    "{} ({})".format(evidence.source.citation_id, evidence.source.source_type),
-                    str(evidence.variant_origin),
-                    evidence.status,
-                ]))
-            for assertion in variant.assertions:
-                csq.append('|'.join([
-                    csq_alt,
-                    '&'.join(map(lambda t: t.name, variant.variant_types)),
-                    variant.gene.name,
-                    str(variant.gene.entrez_id),
-                    'transcript',
-                    str(variant.coordinates.representative_transcript),
-                    hgvs_c,
-                    hgvs_p,
-                    variant.name,
-                    str(variant.id),
-                    '&'.join(map(lambda a: a.translate(special_character_table), variant.variant_aliases)),
-                    '&'.join(map(lambda e: e.translate(special_character_table), variant.hgvs_expressions)),
-                    str(variant.allele_registry_id),
-                    '&'.join(variant.clinvar_entries),
-                    str(variant.civic_actionability_score),
-                    "assertion",
-                    str(assertion.id),
-                    "https://civicdb.org/links/assertion/{}".format(assertion.id),
-                    "",
-                    str(assertion.variant_origin),
-                    assertion.status,
-                ]))
-            info_dict['CSQ'] = ','.join(csq)
 
             out = list()
             for field in self.meta_info_fields:
