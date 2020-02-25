@@ -304,7 +304,7 @@ class VCFWriter(DictWriter):
         assert id_ not in self.meta_info_fields
         assert id_ not in self.VCF_RESERVED_FIELDS
         self.meta_info_fields.append(id_)
-        s = [f'ID={id_},Number={number},Type={type_},Description={description}']
+        s = [f'ID={id_},Number={number},Type={type_},Description="{description}"']
         s.extend([f'{k}={v}' for k, v in kwargs])
         out = ','.join(s)
         self._f.write(f'##INFO=<{out}>\n')
