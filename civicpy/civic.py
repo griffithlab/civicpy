@@ -487,7 +487,7 @@ class Variant(CivicRecord):
 
     @property
     def is_deletion(self):
-        return self.coordinates.reference_bases is not None and (self.coordinates.variant_bases is None or self.coordinates.variant_bases == '-')
+        return self.coordinates.reference_bases is not None and (self.coordinates.variant_bases is None or self.coordinates.variant_bases == '-' or self.coordinates.variant_bases == '')
 
     def is_valid_for_vcf(self, emit_warnings=False):
         if self.coordinates.chromosome2 or self.coordinates.start2 or self.coordinates.stop2:
