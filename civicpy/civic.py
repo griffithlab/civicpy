@@ -483,11 +483,17 @@ class Variant(CivicRecord):
 
     @property
     def is_insertion(self):
-        return self.coordinates.reference_bases is None and self.coordinates.variant_bases is not None
+        ref = self.coordinates.reference_bases
+        alt = self.coordinates.variant_bases
+        return (ref is None and alt is not None) or (ref is not None and alt is not None and len(ref) < len(alt))
 
     @property
     def is_deletion(self):
-        return self.coordinates.reference_bases is not None and (self.coordinates.variant_bases is None or self.coordinates.variant_bases == '-' or self.coordinates.variant_bases == '')
+        ref = self.coordinates.reference_bases
+        alt = self.coordinates.variant_bases
+        if alt is not None and (alt == '-' or alt == ''):
+            alt = None
+        return (ref is not None and alt is None) or (ref is not None and alt is not None and len(ref) > len(alt))
 
     def is_valid_for_vcf(self, emit_warnings=False):
         if self.coordinates.chromosome2 or self.coordinates.start2 or self.coordinates.stop2:
