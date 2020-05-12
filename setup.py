@@ -23,7 +23,8 @@ setup(
         'obonet',
         'networkx',
         'pandas',
-        'Click'
+        'Click',
+        'PyVCF',
     ],
     extras_require={
         'test': [

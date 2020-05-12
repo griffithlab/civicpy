@@ -56,6 +56,31 @@ class VCFWriter(DictWriter):
         'INFO'
     ]
 
+    CSQ_DESCRIPTION = 'Consequence annotations from CIViC. Format: {}'.format('|'.join([
+        'Allele',
+        'Consequence',
+        'SYMBOL',
+        'Entrez Gene ID',
+        'Feature_type',
+        'Feature',
+        'HGVSc',
+        'HGVSp',
+        'CIViC Variant Name',
+        'CIViC Variant ID',
+        'CIViC Variant Aliases',
+        'CIViC HGVS',
+        'Allele Registry ID',
+        'ClinVar IDs',
+        'CIViC Variant Evidence Score',
+        'CIViC Entity Type',
+        'CIViC Entity ID',
+        'CIViC Entity URL',
+        'CIViC Entity Source',
+        'CIViC Entity Variant Origin',
+        'CIViC Entity Status',
+    ]))
+
+
     SUPPORTED_VERSIONS = [4.2]
 
     VCF_RESERVED_FIELDS = {
@@ -201,29 +226,7 @@ class VCFWriter(DictWriter):
         # Variant
         self._write_meta_info_line('VT', 1, 'String', 'CIViC Variant Name')
         # CSQ
-        self._write_meta_info_line('CSQ', '.', 'String', 'Consequence annotations from CIViC. Format: {}'.format('|'.join([
-            'Allele',
-            'Consequence',
-            'SYMBOL',
-            'Entrez Gene ID',
-            'Feature_type',
-            'Feature',
-            'HGVSc',
-            'HGVSp',
-            'CIViC Variant Name',
-            'CIViC Variant ID',
-            'CIViC Variant Aliases',
-            'CIViC HGVS',
-            'Allele Registry ID',
-            'ClinVar IDs',
-            'CIViC Variant Evidence Score',
-            'CIViC Entity Type',
-            'CIViC Entity ID',
-            'CIViC Entity URL',
-            'CIViC Entity Source',
-            'CIViC Entity Variant Origin',
-            'CIViC Entity Status',
-        ])))
+        self._write_meta_info_line('CSQ', '.', 'String', self.CSQ_DESCRIPTION)
 
     def _write_meta_info_line(self, id_, number, type_, description, **kwargs):
         assert id_ not in self.meta_info_fields

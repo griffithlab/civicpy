@@ -598,12 +598,14 @@ class Variant(CivicRecord):
         else:
             return ''
 
-    def csq(self):
+    def csq(self, include_status=None):
         if self.csq_alt() is None:
             return []
         else:
             csq = []
             for evidence in self.evidence:
+                if include_status is not None and evidence.status not in include_status:
+                    continue
                 special_character_table = str.maketrans(VCFWriter.SPECIAL_CHARACTERS)
                 csq.append('|'.join([
                     self.csq_alt(),
@@ -629,6 +631,8 @@ class Variant(CivicRecord):
                     evidence.status,
                 ]))
             for assertion in self.assertions:
+                if include_status is not None and assertion.status not in include_status:
+                    continue
                 csq.append('|'.join([
                     self.csq_alt(),
                     '&'.join(map(lambda t: t.name, self.variant_types)),
