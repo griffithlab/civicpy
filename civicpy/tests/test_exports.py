@@ -53,7 +53,7 @@ class TestVcfExport(object):
         assert not caplog.records
         assert len(vcf_writer.variant_records) == 1
         out_dict = vcf_writer.writerecords()
-        assert out_dict[0]['POS'] == '10183698'
+        assert out_dict[0]['POS'] == '10183697'
         assert out_dict[0]['REF'] == 'C'
         assert out_dict[0]['ALT'] == 'CA'
 
