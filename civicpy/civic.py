@@ -499,8 +499,8 @@ class Variant(CivicRecord):
         if self.coordinates.chromosome2 or self.coordinates.start2 or self.coordinates.stop2:
             warning = "Variant {} has a second set of coordinates. Skipping".format(self.id)
         if self.coordinates.chromosome and self.coordinates.start and (self.coordinates.reference_bases or self.coordinates.variant_bases):
-            if self._valid_ref_bases:
-                if self._valid_alt_bases:
+            if self._valid_ref_bases():
+                if self._valid_alt_bases():
                     return True
                 else:
                     warning = "Unsupported variant base(s) for variant {}. Skipping.".format(self.id)
