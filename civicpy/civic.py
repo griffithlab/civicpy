@@ -613,6 +613,14 @@ class Evidence(CivicRecord):
     def assertions(self, value):
         self._assertions = value
 
+    @property
+    def statement(self):
+        return self.description
+
+    @statement.setter
+    def statement(self, value):
+        self.description = value
+
 
 class Assertion(CivicRecord):
     _SIMPLE_FIELDS = CivicRecord._SIMPLE_FIELDS.union({
