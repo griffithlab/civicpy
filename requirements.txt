@@ -2,5 +2,5 @@ pytest>=3.5
 requests~=2.18
 obonet==0.2.3
 networkx~=2.1
-pandas==0.24.1
+pandas~=1.0
 Click==7.0

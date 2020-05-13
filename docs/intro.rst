@@ -18,7 +18,7 @@ If you find CIViCpy useful, we request that you reference it in published works 
 
     Wagner, A. H., Kiwala, S., Coffman, A. C., McMichael, J. F., Cotto, K. C., Mooney, T. B., Barnell, E. K., Krysiak, K., Danos, A. M., Griffith, O. L. & Griffith, M. CIViCpy: a Python software development and analysis toolkit for the CIViC knowledgebase. bioRxiv 783134 (2019). `doi:10.1101/783134 <https://doi.org/10.1101/783134>`_
 
-For the cureated content from CIViC, please cite:
+For the curated content from CIViC, please cite:
 
     Griffith, M. et al. CIViC is a community knowledgebase for expert crowdsourcing the clinical interpretation of variants in cancer.
     *Nat Genet* 49, 170-174, `doi:10.1038/ng.3774`_ (2017).

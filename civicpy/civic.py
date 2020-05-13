@@ -47,11 +47,12 @@ class CoordinateQuery(_CoordinateQuery):  # Wrapping for documentation
     :param int start: The chromosomal start position in base coordinates (1-based)
     :param int stop: The chromosomal stop position in base coordinates (1-based)
     :param str optional alt: The alternate nucleotide(s) at the designated coordinates
-    :param ref optional ref: The reference nucleotide(s) at the designated coordinates
+    :param str optional ref: The reference nucleotide(s) at the designated coordinates
     :param GRCh37,GRCh38 build: The reference build version of the coordinates
     :param Any optional key: A user-defined object linked to the coordinate
     """
     pass
+
 
 def pluralize(string):
     if string in UNMARKED_PLURALS:
@@ -483,18 +484,24 @@ class Variant(CivicRecord):
 
     @property
     def is_insertion(self):
-        return self.coordinates.reference_bases is None and self.coordinates.variant_bases is not None
+        ref = self.coordinates.reference_bases
+        alt = self.coordinates.variant_bases
+        return (ref is None and alt is not None) or (ref is not None and alt is not None and len(ref) < len(alt))
 
     @property
     def is_deletion(self):
-        return self.coordinates.reference_bases is not None and (self.coordinates.variant_bases is None or self.coordinates.variant_bases == '-')
+        ref = self.coordinates.reference_bases
+        alt = self.coordinates.variant_bases
+        if alt is not None and (alt == '-' or alt == ''):
+            alt = None
+        return (ref is not None and alt is None) or (ref is not None and alt is not None and len(ref) > len(alt))
 
     def is_valid_for_vcf(self, emit_warnings=False):
         if self.coordinates.chromosome2 or self.coordinates.start2 or self.coordinates.stop2:
             warning = "Variant {} has a second set of coordinates. Skipping".format(self.id)
         if self.coordinates.chromosome and self.coordinates.start and (self.coordinates.reference_bases or self.coordinates.variant_bases):
-            if self._valid_ref_bases:
-                if self._valid_alt_bases:
+            if self._valid_ref_bases():
+                if self._valid_alt_bases():
                     return True
                 else:
                     warning = "Unsupported variant base(s) for variant {}. Skipping.".format(self.id)
@@ -508,9 +515,9 @@ class Variant(CivicRecord):
 
     def _valid_ref_bases(self):
         if self.coordinates.reference_bases is not None:
-            return True
-        else:
             return all([c.upper() in ['A', 'C', 'G', 'T', 'N'] for c in self.coordinates.reference_bases])
+        else:
+            return True
 
     def _valid_alt_bases(self):
         if self.coordinates.variant_bases is not None:
@@ -608,15 +615,15 @@ class Assertion(CivicRecord):
         'description',
         'drug_interaction_type',
         'evidence_direction',
-        'evidence_item_count',
+        # 'evidence_item_count',
         'evidence_type',
         'fda_companion_test',
         'fda_regulatory_approval',
         'name',
         'nccn_guideline',
         'nccn_guideline_version',
-        'open_change_count',
-        'pending_evidence_count',
+        # 'open_change_count',
+        # 'pending_evidence_count',
         'status',
         'summary',
         'variant_origin'
@@ -737,7 +744,7 @@ class CivicAttribute(CivicRecord, dict):
 
 
 class Drug(CivicAttribute):
-    _SIMPLE_FIELDS = CivicRecord._SIMPLE_FIELDS.union({'pubchem_id'})
+    _SIMPLE_FIELDS = CivicRecord._SIMPLE_FIELDS.union({'ncit_id'})
 
 
 class Disease(CivicAttribute):
@@ -951,19 +958,20 @@ def _build_coordinate_table(variants):
         stop = getattr(c, 'stop', None)
         chr = getattr(c, 'chromosome', None)
         alt = getattr(c, 'variant_bases', None)
+        ref = getattr(c, 'reference_bases', None)
         if all([start, stop, chr]):
-            variant_records.append([chr, start, stop, alt, hash(v)])
+            variant_records.append([chr, start, stop, alt, ref, hash(v)])
         else:
             continue
         start = getattr(c, 'start2', None)
         stop = getattr(c, 'stop2', None)
         chr = getattr(c, 'chromosome2', None)
         if all([start, stop, chr]):
-            variant_records.append([chr, start, stop, None, hash(v)])
+            variant_records.append([chr, start, stop, None, None, hash(v)])
     df = pd.DataFrame.from_records(
         variant_records,
-        columns=['chr', 'start', 'stop', 'alt', 'v_hash']
-    ).sort_values(by=['chr', 'start', 'stop', 'alt'])
+        columns=['chr', 'start', 'stop', 'alt', 'ref', 'v_hash']
+    ).sort_values(by=['chr', 'start', 'stop', 'alt', 'ref'])
     MODULE.COORDINATE_TABLE = df
     MODULE.COORDINATE_TABLE_START = df.start.sort_values()
     MODULE.COORDINATE_TABLE_STOP = df.stop.sort_values()
@@ -1021,7 +1029,7 @@ def search_variants_by_coordinates(coordinate_query, search_mode='any'):
                 *query_encompassing* : CIViC variant records must fit within the coordinates of the query\n
                 *record_encompassing* : CIViC variant records must encompass the coordinates of the query\n
                 *exact* : variants must match coordinates precisely, as well as alternate allele, if provided\n
-                search_mode is *exact* by default
+                search_mode is *any* by default
 
     :return:    Returns a list of variant hashes matching the coordinates and search_mode
     """
@@ -1055,6 +1063,8 @@ def search_variants_by_coordinates(coordinate_query, search_mode='any'):
             match_idx = (start == m_df.stop) & (stop == m_df.start)
             if coordinate_query.alt:
                 match_idx = match_idx & (coordinate_query.alt == m_df.alt)
+            if coordinate_query.ref:
+                match_idx = match_idx & (coordinate_query.ref == m_df.ref)
         else:
             raise ValueError("unexpected search mode")
         var_digests = m_df.loc[match_idx,].v_hash.to_list()
@@ -1157,7 +1167,7 @@ def bulk_search_variants_by_coordinates(sorted_queries, search_mode='any'):
                 *query_encompassing* : CIViC variant records must fit within the coordinates of the query\n
                 *record_encompassing* : CIViC variant records must encompass the coordinates of the query\n
                 *exact* : variants must match coordinates precisely, as well as alternate allele, if provided\n
-                search_mode is *exact* by default
+                search_mode is *any* by default
 
     :return:    returns a dictionary of Match lists, keyed by query
     """
@@ -1219,7 +1229,9 @@ def bulk_search_variants_by_coordinates(sorted_queries, search_mode='any'):
         elif search_mode == 'exact' and q_start == c_start and q_stop == c_stop:
             q_alt = q.alt
             c_alt = c.alt
-            if not (q_alt and c_alt and q_alt != c_alt):
+            q_ref = q.ref
+            c_ref = c.ref
+            if (not (q_alt and q_alt != c_alt)) and (not (q_ref and q_ref != c_ref)):
                 append_match(matches, q, c)
         elif search_mode == 'query_encompassing' and q_start <= c_start and q_stop >= c_stop:
             append_match(matches, q, c)

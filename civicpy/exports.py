@@ -151,6 +151,7 @@ class VCFWriter(DictWriter):
         ensembl_server = "https://grch37.rest.ensembl.org"
 
         # write them
+        rows = []
         for variant in sorted_records:
             if variant.coordinates.reference_build != 'GRCh37':
                 continue
@@ -161,7 +162,10 @@ class VCFWriter(DictWriter):
                     start = variant.coordinates.start
                     ext = "/sequence/region/human/{}:{}-{}".format(variant.coordinates.chromosome, start, start)
                     r = requests.get(ensembl_server+ext, headers={ "Content-Type" : "text/plain"})
-                    ref = r.text
+                    if variant.coordinates.reference_bases == None or variant.coordinates.reference_bases == '-' or variant.coordinates.reference_bases == '':
+                        ref = r.text
+                    else:
+                        ref = "{}{}".format(r.text, variant.coordinates.reference_bases)
                     alt = "{}{}".format(r.text, variant.coordinates.variant_bases)
                     csq_alt = variant.coordinates.variant_bases
             elif variant.is_deletion:
@@ -172,7 +176,10 @@ class VCFWriter(DictWriter):
                     ext = "/sequence/region/human/{}:{}-{}".format(variant.coordinates.chromosome, start, start)
                     r = requests.get(ensembl_server+ext, headers={ "Content-Type" : "text/plain"})
                     ref = "{}{}".format(r.text, variant.coordinates.reference_bases)
-                    alt = r.text
+                    if variant.coordinates.variant_bases == None or variant.coordinates.variant_bases == '-' or variant.coordinates.variant_bases == '':
+                        alt = r.text
+                    else:
+                        alt = "{}{}".format(r.text, variant.coordinates.variant_bases)
                     csq_alt = "-"
             else:
                 start = variant.coordinates.start
@@ -260,6 +267,8 @@ class VCFWriter(DictWriter):
             out_dict['INFO'] = ';'.join(out)
 
             super().writerow(out_dict)
+            rows.append(out_dict)
+        return rows
 
     def _write_meta_file_lines(self):
         self._f.write(f'##fileformat=VCFv{self.version}\n')
@@ -304,7 +313,7 @@ class VCFWriter(DictWriter):
         assert id_ not in self.meta_info_fields
         assert id_ not in self.VCF_RESERVED_FIELDS
         self.meta_info_fields.append(id_)
-        s = [f'ID={id_},Number={number},Type={type_},Description={description}']
+        s = [f'ID={id_},Number={number},Type={type_},Description="{description}"']
         s.extend([f'{k}={v}' for k, v in kwargs])
         out = ','.join(s)
         self._f.write(f'##INFO=<{out}>\n')
