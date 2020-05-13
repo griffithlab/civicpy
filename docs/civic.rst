@@ -76,6 +76,7 @@ The primary CIViC records are found on the CIViC advanced search page, and are f
       The CIViC `actionability score`_ associated with this variant.
 
    .. attribute:: description
+      summary
 
       A curated summary of the clinical significance of this variant.
 

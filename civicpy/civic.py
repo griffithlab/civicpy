@@ -458,6 +458,14 @@ class Variant(CivicRecord):
         return self.variant_types
 
     @property
+    def summary(self):
+        return self.description
+
+    @summary.setter
+    def summary(self, value):
+        self.description = value
+
+    @property
     def evidence(self):
         return self.evidence_items
 
