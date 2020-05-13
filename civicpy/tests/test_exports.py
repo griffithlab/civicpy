@@ -54,8 +54,8 @@ class TestVcfExport(object):
         assert len(vcf_writer.variant_records) == 1
         out_dict = vcf_writer.writerecords()
         assert out_dict[0]['POS'] == '10183697'
-        assert out_dict[0]['REF'] == 'C'
-        assert out_dict[0]['ALT'] == 'CA'
+        assert out_dict[0]['REF'] == 'G'
+        assert out_dict[0]['ALT'] == 'GA'
 
     def test_simple_deletion(self, vcf_writer, caplog, v273fs):
         assert v273fs.is_deletion
