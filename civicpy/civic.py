@@ -514,9 +514,9 @@ class Variant(CivicRecord):
 
     def _valid_ref_bases(self):
         if self.coordinates.reference_bases is not None:
-            return True
-        else:
             return all([c.upper() in ['A', 'C', 'G', 'T', 'N'] for c in self.coordinates.reference_bases])
+        else:
+            return True
 
     def _valid_alt_bases(self):
         if self.coordinates.variant_bases is not None:
