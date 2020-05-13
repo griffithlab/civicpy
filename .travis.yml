@@ -5,6 +5,8 @@ python:
 install:
   - pip install -e .[test]
 script:
+  - mkdir -p /home/travis/build/griffithlab/civicpy/civicpy/data
+  - wget -O /home/travis/build/griffithlab/civicpy/civicpy/data/test_cache.pkl https://civicdb.org/downloads/nightly/nightly-civicpy_cache.pkl
   - pytest --cov civicpy --cov-report term-missing
 after_success:
   - coveralls
