@@ -169,6 +169,20 @@ The primary CIViC records are found on the CIViC advanced search page, and are f
 
    .. todo:: Finish documenting
 
+   .. attribute:: assertions
+
+      CIViC :class:`Assertion` records containing this evidence.
+
+   .. attribute:: clinical_significance
+
+      A string indicating the type of clinical significance statement being made, values are defined based on
+      the corresponding :attr:`evidence_type`. Please see `Understanding Clinical Significance`_ for more
+      details on the expected values for this field.
+
+   .. attribute::
+
+
+
    .. attribute:: lifecycle_actions
 
       A :class:`LifecycleAction` container.
