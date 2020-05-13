@@ -1060,7 +1060,7 @@ def search_variants_by_coordinates(coordinate_query, search_mode='any'):
         elif search_mode == 'variant_encompassing':
             match_idx = (start >= m_df.start) & (stop <= m_df.stop)
         elif search_mode == 'exact':
-            match_idx = (start == m_df.stop) & (stop == m_df.start)
+            match_idx = (start == m_df.start) & (stop == m_df.stop)
             if coordinate_query.alt:
                 match_idx = match_idx & (coordinate_query.alt == m_df.alt)
             if coordinate_query.ref:
