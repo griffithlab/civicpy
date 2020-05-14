@@ -458,6 +458,14 @@ class Variant(CivicRecord):
         return self.variant_types
 
     @property
+    def summary(self):
+        return self.description
+
+    @summary.setter
+    def summary(self, value):
+        self.description = value
+
+    @property
     def evidence(self):
         return self.evidence_items
 
@@ -483,18 +491,24 @@ class Variant(CivicRecord):
 
     @property
     def is_insertion(self):
-        return self.coordinates.reference_bases is None and self.coordinates.variant_bases is not None
+        ref = self.coordinates.reference_bases
+        alt = self.coordinates.variant_bases
+        return (ref is None and alt is not None) or (ref is not None and alt is not None and len(ref) < len(alt))
 
     @property
     def is_deletion(self):
-        return self.coordinates.reference_bases is not None and (self.coordinates.variant_bases is None or self.coordinates.variant_bases == '-' or self.coordinates.variant_bases == '')
+        ref = self.coordinates.reference_bases
+        alt = self.coordinates.variant_bases
+        if alt is not None and (alt == '-' or alt == ''):
+            alt = None
+        return (ref is not None and alt is None) or (ref is not None and alt is not None and len(ref) > len(alt))
 
     def is_valid_for_vcf(self, emit_warnings=False):
         if self.coordinates.chromosome2 or self.coordinates.start2 or self.coordinates.stop2:
             warning = "Variant {} has a second set of coordinates. Skipping".format(self.id)
         if self.coordinates.chromosome and self.coordinates.start and (self.coordinates.reference_bases or self.coordinates.variant_bases):
-            if self._valid_ref_bases:
-                if self._valid_alt_bases:
+            if self._valid_ref_bases():
+                if self._valid_alt_bases():
                     return True
                 else:
                     warning = "Unsupported variant base(s) for variant {}. Skipping.".format(self.id)
@@ -508,9 +522,9 @@ class Variant(CivicRecord):
 
     def _valid_ref_bases(self):
         if self.coordinates.reference_bases is not None:
-            return True
-        else:
             return all([c.upper() in ['A', 'C', 'G', 'T', 'N'] for c in self.coordinates.reference_bases])
+        else:
+            return True
 
     def _valid_alt_bases(self):
         if self.coordinates.variant_bases is not None:
@@ -568,7 +582,7 @@ class Evidence(CivicRecord):
         'evidence_type',
         'gene_id',
         'name',
-        'open_change_count',
+        # 'open_change_count',
         'rating',
         'status',
         'variant_id',
@@ -577,8 +591,8 @@ class Evidence(CivicRecord):
         'assertions',
         'disease',
         'drugs',
-        'errors',
-        'fields_with_pending_changes',
+        # 'errors',
+        # 'fields_with_pending_changes',
         'lifecycle_actions',
         'phenotypes',
         'source'})
@@ -598,6 +612,14 @@ class Evidence(CivicRecord):
     @assertions.setter
     def assertions(self, value):
         self._assertions = value
+
+    @property
+    def statement(self):
+        return self.description
+
+    @statement.setter
+    def statement(self, value):
+        self.description = value
 
 
 class Assertion(CivicRecord):

@@ -5,6 +5,12 @@ python:
 install:
   - pip install -e .[test]
 script:
+  - mkdir -p /home/travis/build/griffithlab/civicpy/civicpy/data
+  #testing_civicpy_cache.pkl is a symlink that points to one of the monthly
+  #pkl releases. This is so that test data stays static. As the CIViC data
+  #model changes, updating the target of this symlink might be necessary to
+  #ensure that the tests capture the latest data model.
+  - wget -O /home/travis/build/griffithlab/civicpy/civicpy/data/test_cache.pkl https://civicdb.org/downloads/testing_civicpy_cache.pkl
   - pytest --cov civicpy --cov-report term-missing
 after_success:
   - coveralls
