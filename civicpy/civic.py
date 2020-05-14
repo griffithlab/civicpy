@@ -520,7 +520,7 @@ class Variant(CivicRecord):
 
     def _valid_alt_bases(self):
         if self.coordinates.variant_bases is not None:
-            return all([c.upper() in ['A', 'C', 'G', 'T', 'N', '*', '-'] for c in self.coordinates.variant_bases])
+            return all([c.upper() in ['A', 'C', 'G', 'T', 'N'] for c in self.coordinates.variant_bases])
         else:
             return True
 
