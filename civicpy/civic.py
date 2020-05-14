@@ -458,6 +458,14 @@ class Variant(CivicRecord):
         return self.variant_types
 
     @property
+    def summary(self):
+        return self.description
+
+    @summary.setter
+    def summary(self, value):
+        self.description = value
+
+    @property
     def evidence(self):
         return self.evidence_items
 
@@ -574,7 +582,7 @@ class Evidence(CivicRecord):
         'evidence_type',
         'gene_id',
         'name',
-        'open_change_count',
+        # 'open_change_count',
         'rating',
         'status',
         'variant_id',
@@ -583,8 +591,8 @@ class Evidence(CivicRecord):
         'assertions',
         'disease',
         'drugs',
-        'errors',
-        'fields_with_pending_changes',
+        # 'errors',
+        # 'fields_with_pending_changes',
         'lifecycle_actions',
         'phenotypes',
         'source'})
@@ -604,6 +612,14 @@ class Evidence(CivicRecord):
     @assertions.setter
     def assertions(self, value):
         self._assertions = value
+
+    @property
+    def statement(self):
+        return self.description
+
+    @statement.setter
+    def statement(self, value):
+        self.description = value
 
 
 class Assertion(CivicRecord):

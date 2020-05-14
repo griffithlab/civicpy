@@ -28,6 +28,10 @@ CIViC records
       The record ID. This is set on initialization using the `id` keyword argument, and reflects the primary ID for
       the record as stored in CIViC.
 
+   .. attribute:: site_link
+
+      A URL string to the appropriate landing page for the CivicRecord on the CIViC web application.
+
 CIViC record types
 ~~~~~~~~~~~~~~~~~~
 
@@ -76,6 +80,7 @@ The primary CIViC records are found on the CIViC advanced search page, and are f
       The CIViC `actionability score`_ associated with this variant.
 
    .. attribute:: description
+      summary
 
       A curated summary of the clinical significance of this variant.
 
@@ -118,7 +123,7 @@ The primary CIViC records are found on the CIViC advanced search page, and are f
 
    .. attribute:: evidence_sources
 
-      A list of sources  associated with the evidence from this variant.
+      A list of :class:`CivicAttribute` source objects associated with the evidence from this variant.
 
    .. attribute:: hgvs_expressions
 
@@ -126,7 +131,7 @@ The primary CIViC records are found on the CIViC advanced search page, and are f
 
    .. attribute:: sources
 
-      A list of sources objects associated with the variant description.
+      A list of :class:`CivicAttribute` source objects associated with the variant description.
 
    .. attribute:: variant_aliases
       aliases
@@ -167,11 +172,84 @@ The primary CIViC records are found on the CIViC advanced search page, and are f
 .. autoclass:: Evidence
    :show-inheritance:
 
-   .. todo:: Finish documenting
+   .. attribute:: assertions
+
+      CIViC :class:`Assertion` records containing this evidence.
+
+   .. attribute:: clinical_significance
+
+      A string indicating the type of clinical significance statement being made, values are defined based on
+      the corresponding :attr:`evidence_type`. Please see `Understanding Clinical Significance`_ for more
+      details on the expected values for this field.
+
+   .. attribute:: description
+      statement
+
+      The Evidence Statement (returned as `description` by the CIViC API) is a brief summary of the clinical implications of the :attr:`variant` in the context of the specific :attr:`disease`, :attr:`evidence_type`, and :attr:`clinical_significance` as curated from the cited literature source.
+
+   .. attribute:: disease
+
+      The cancer or cancer subtype context for the evidence record.
+
+   .. attribute:: drugs
+
+      Zero or more drug :class:`CivicAttribute`, linked to corresponding `NCIT`_ terms when applicable. Only used with
+      therapeutic response predictive :attr:`evidence_type`.
+
+   .. attribute:: drug_interaction_type
+
+      One of 'Combination', 'Sequential', or 'Substitutes', this field describes how multiple indicated drugs within
+      a therapeutic response predictive :attr:`evidence_type` are related.
+
+   .. attribute:: evidence_direction
+
+      One of 'Supports', 'Does Not Support' or 'N/A', indicating whether the evidence statement supports or refutes the clinical significance of an event. The evidence_direction is 'N/A' for Predisposing evidence items.
+
+   .. attribute:: evidence_level
+
+      The evidence level describes the robustness of the study supporting the evidence item. Five different evidence levels are supported: “A - Validated association”, “B - Clinical evidence”, “C - Case study”, “D - Preclinical evidence”, and “E - Inferential association”. For more information, please see `Understanding Levels`_.
+
+   .. attribute:: evidence_type
+
+      Category of clinical action/relevance implicated by event. Refer to the additional `documentation on evidence types`_
+      for details on how to enter evidence of each of the four types: Predictive, Prognostic, Predisposing and Diagnostic.
+
+   .. attribute:: gene_id
+
+      An integer designating the :attr:`CivicRecord.id` for the gene associated with this evidence record.
 
    .. attribute:: lifecycle_actions
 
       A :class:`LifecycleAction` container.
+
+   .. attribute:: name
+
+      A system-generated unique identifier for the evidence record, e.g. `EID7`.
+
+   .. attribute:: phenotypes
+
+      Zero or more phenotype :class:`CivicAttribute`, linked to corresponding Human Phenotype Ontology (`HPO`_) terms
+      when applicable.
+
+   .. attribute:: rating
+
+      The Evidence Rating is an integer from 1 to 5, indicating the curator’s confidence in the quality of the summarized evidence as a number of stars. For more information about this metric, please see `Understanding Evidence Ratings`_.
+
+   .. attribute:: source
+
+      A :class:`CivicAttribute` source object from which this evidence was derived.
+
+   .. attribute:: status
+
+      One of 'accepted', 'rejected', or 'submitted', describing the state of this evidence in the CIViC curation cycle. An evidence item needs to be reviewed by a CIViC editor before being accepted or rejected. Therefore "submitted" evidence might not be accurate or complete.
+
+      - *submitted*: This evidence has been submitted by a CIViC curator or editor
+      - *accepted*: This evidence has been reviewed and approved by a CIViC editor
+      - *rejected*: This evidence has been reviewed and rejected by a CIViC editor
+
+.. _Understanding Levels: https://civic.readthedocs.io/en/latest/model/evidence/level.html#understanding-levels
+
+.. _Understanding Evidence Ratings: https://civic.readthedocs.io/en/latest/model/evidence/evidence_rating.html#understanding-evidence-ratings
 
 .. autoclass:: Assertion
    :show-inheritance:
@@ -211,11 +289,11 @@ The primary CIViC records are found on the CIViC advanced search page, and are f
    .. attribute:: drug_interaction_type
 
       One of 'Combination', 'Sequential', or 'Substitutes', this field describes how multiple indicated drugs within
-      a therapeutic response predictive assertion are related.
+      a therapeutic response predictive :attr:`evidence_type` assertion are related.
 
    .. attribute:: evidence_direction
 
-      An indicator of whether the evidence statement supports or refutes the clinical significance of an event.
+      One of 'Supports' or 'Does Not Support', indicating whether the evidence statement supports or refutes the clinical significance of an event.
 
    .. attribute:: evidence_type
 
@@ -255,7 +333,7 @@ The primary CIViC records are found on the CIViC advanced search page, and are f
 
    .. attribute:: status
 
-      One of ['accepted', 'rejected', or 'submitted'], describing the state of this assertion in the CIViC curation cycle.
+      One of 'accepted', 'rejected', or 'submitted', describing the state of this assertion in the CIViC curation cycle. An Assertion needs to be reviewed by a CIViC editor before being accepted or rejected. Therefore "submitted" Assertions might not be accurate or complete.
 
       - *submitted*: This assertion has been submitted by a CIViC curator or editor
       - *accepted*: This assertion has been reviewed and approved by a CIViC editor
@@ -273,7 +351,7 @@ The primary CIViC records are found on the CIViC advanced search page, and are f
 
    .. attribute:: variant_origin
 
-      The origin of this variant, one of ['Somatic', 'Rare Germline', 'Common Germline', 'Unknown', 'N/A', 'Germline or Somatic']
+      The origin of this variant, one of 'Somatic', 'Rare Germline', 'Common Germline', 'Unknown', 'N/A', 'Germline or Somatic'
 
 .. _AMP/ASCO/CAP: https://www.ncbi.nlm.nih.gov/pubmed/27993330
 
