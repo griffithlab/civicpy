@@ -293,7 +293,7 @@ The primary CIViC records are found on the CIViC advanced search page, and are f
 
    .. attribute:: evidence_direction
 
-      A string indicating whether the evidence statement supports or refutes the clinical significance of an event.
+      One of 'Supports' or 'Does Not Support', indicating whether the evidence statement supports or refutes the clinical significance of an event.
 
    .. attribute:: evidence_type
 
