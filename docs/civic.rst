@@ -333,7 +333,7 @@ The primary CIViC records are found on the CIViC advanced search page, and are f
 
    .. attribute:: status
 
-      One of 'accepted', 'rejected', or 'submitted', describing the state of this assertion in the CIViC curation cycle.
+      One of 'accepted', 'rejected', or 'submitted', describing the state of this assertion in the CIViC curation cycle. An Assertion needs to be reviewed by a CIViC editor before being accepted or rejected. Therefore "submitted" Assertions might not be accurate or complete.
 
       - *submitted*: This assertion has been submitted by a CIViC curator or editor
       - *accepted*: This assertion has been reviewed and approved by a CIViC editor
