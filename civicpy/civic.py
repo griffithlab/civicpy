@@ -1097,6 +1097,8 @@ def search_variants_by_coordinates(coordinate_query, search_mode='any'):
     else:
         if search_mode == 'exact':
             if coordinate_query.alt or coordinate_query.ref:
+                if coordinate_query.alt == '*' or coordinate_query.ref == '*':
+                    raise ValueError("Can't use wildcard when searching for non-GRCh37 coordinates")
                 hgvs = _construct_hgvs_for_coordinate_query(coordinate_query)
                 r = requests.get(url=_allele_registry_url(), params={'hgvs': hgvs})
                 data = r.json()
