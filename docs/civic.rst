@@ -241,7 +241,7 @@ The primary CIViC records are found on the CIViC advanced search page, and are f
 
    .. attribute:: status
 
-      One of 'accepted', 'rejected', or 'submitted', describing the state of this evidence in the CIViC curation cycle.
+      One of 'accepted', 'rejected', or 'submitted', describing the state of this evidence in the CIViC curation cycle. An evidence item needs to be reviewed by a CIViC editor before being accepted or rejected. Therefore "submitted" evidence might not be accurate or complete.
 
       - *submitted*: This evidence has been submitted by a CIViC curator or editor
       - *accepted*: This evidence has been reviewed and approved by a CIViC editor
