@@ -437,6 +437,12 @@ class Variant(CivicRecord):
         self._assertions = []
         if evidence_items and not isinstance(evidence_items, list):
                 del(kwargs['evidence_items'])
+        coordinates = kwargs.get('coordinates')
+        if coordinates:
+            if coordinates.get('reference_bases') in ['', '-']:
+                coordinates['reference_bases'] = None
+            if coordinates.get('variant_bases') in ['', '-']:
+                coordinates['variant_bases'] = None
         super().__init__(**kwargs)
 
     @property
