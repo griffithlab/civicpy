@@ -438,6 +438,10 @@ class Variant(CivicRecord):
         if evidence_items and not isinstance(evidence_items, list):
                 del(kwargs['evidence_items'])
         super().__init__(**kwargs)
+        if self.coordinates.reference_bases in ['', '-']:
+            self.coordinates.reference_bases = None
+        if self.coordinatetes.variant_bases in ['', '-']:
+            self.coordinates.variant_bases = None
 
     @property
     def evidence_sources(self):
