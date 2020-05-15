@@ -104,6 +104,14 @@ class TestVariants(object):
         assert len(variants) == 1
         assert variants[0] == v600e
 
+    def test_sanitize_coordinate_bases(self):
+        variant1 = civic.get_variant_by_id(2696)
+        variant2 = civic.get_variant_by_id(558)
+        for v in variant1, variant2:
+            assert v.coordinates.reference_bases not in ['', '-']
+            assert v.coordinates.variant_bases not in ['', '-']
+
+
 class TestVariantGroups(object):
 
     def test_get_all(self):
