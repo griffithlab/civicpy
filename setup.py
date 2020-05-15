@@ -24,7 +24,8 @@ setup(
         'networkx',
         'pandas',
         'Click',
-        'PyVCF',
+        'vcfpy',
+        'pysam'
     ],
     extras_require={
         'test': [
