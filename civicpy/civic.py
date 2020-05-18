@@ -528,7 +528,7 @@ class Variant(CivicRecord):
 
     def _valid_alt_bases(self):
         if self.coordinates.variant_bases is not None:
-            return all([c.upper() in ['A', 'C', 'G', 'T', 'N', '*', '-'] for c in self.coordinates.variant_bases])
+            return all([c.upper() in ['A', 'C', 'G', 'T', 'N'] for c in self.coordinates.variant_bases])
         else:
             return True
 
@@ -1022,7 +1022,10 @@ def search_variants_by_coordinates(coordinate_query, search_mode='any'):
                 *any* : any overlap between a query and a variant is a match\n
                 *query_encompassing* : CIViC variant records must fit within the coordinates of the query\n
                 *record_encompassing* : CIViC variant records must encompass the coordinates of the query\n
-                *exact* : variants must match coordinates precisely, as well as alternate allele, if provided\n
+                *exact* : variants must match coordinates precisely, as well as reference allele(s) and alternate allele(s).\n
+                          Use '*' in the coordinate_query as a wildcard for reference and/or alternate alleles.
+                          Using 'None' in the coordinate_query for reference or alternate alleles will only match
+                          variants that have no reference or alternate alleles, respectively (e.g. indels) \n
                 search_mode is *any* by default
 
     :return:    Returns a list of variant hashes matching the coordinates and search_mode
@@ -1054,10 +1057,14 @@ def search_variants_by_coordinates(coordinate_query, search_mode='any'):
         match_idx = (start >= m_df.start) & (stop <= m_df.stop)
     elif search_mode == 'exact':
         match_idx = (start == m_df.start) & (stop == m_df.stop)
-        if coordinate_query.alt:
+        if coordinate_query.alt is not None and coordinate_query.alt != '*':
             match_idx = match_idx & (coordinate_query.alt == m_df.alt)
-        if coordinate_query.ref:
+        elif coordinate_query.alt is None:
+            match_idx = match_idx & pd.isnull(m_df.alt)
+        if (coordinate_query.ref is not None and coordinate_query.ref != '*'):
             match_idx = match_idx & (coordinate_query.ref == m_df.ref)
+        elif coordinate_query.ref is None:
+            match_idx = match_idx & pd.isnull(m_df.ref)
     else:
         raise ValueError("unexpected search mode")
     var_digests = m_df.loc[match_idx,].v_hash.to_list()
@@ -1076,7 +1083,10 @@ def bulk_search_variants_by_coordinates(sorted_queries, search_mode='any'):
                 *any* : any overlap between a query and a variant is a match\n
                 *query_encompassing* : CIViC variant records must fit within the coordinates of the query\n
                 *record_encompassing* : CIViC variant records must encompass the coordinates of the query\n
-                *exact* : variants must match coordinates precisely, as well as alternate allele, if provided\n
+                *exact* : variants must match coordinates precisely, as well as reference allele(s) and alternate allele(s).\n
+                          Use '*' in the coordinate_query as a wildcard for reference and/or alternate alleles.
+                          Using 'None' in the coordinate_query for reference or alternate alleles will only match
+                          variants that have no reference or alternate alleles, respectively (e.g. indels) \n
                 search_mode is *any* by default
 
     :return:    returns a dictionary of Match lists, keyed by query
@@ -1141,7 +1151,7 @@ def bulk_search_variants_by_coordinates(sorted_queries, search_mode='any'):
             c_alt = c.alt
             q_ref = q.ref
             c_ref = c.ref
-            if (not (q_alt and q_alt != c_alt)) and (not (q_ref and q_ref != c_ref)):
+            if (not (q_alt != '*' and q_alt != c_alt)) and (not (q_ref != '*' and q_ref != c_ref)):
                 append_match(matches, q, c)
         elif search_mode == 'query_encompassing' and q_start <= c_start and q_stop >= c_stop:
             append_match(matches, q, c)
