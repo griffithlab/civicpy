@@ -1020,8 +1020,7 @@ def search_variants_by_allele_registry_id(caid):
 
     :return: Returns a list of variant hashes matching the Allele Registry ID
     """
-    variants = get_all_variants()
-    return [v for v in variants if v.allele_registry_id == caid]
+    return search_variants_by_attribute('allele_registry_id', caid)
 
 def search_variants_by_name(name):
     """
@@ -1031,8 +1030,11 @@ def search_variants_by_name(name):
 
     :return: Returns a list of variant hashes matching the name
     """
+    return search_variants_by_attribute('name', name)
+
+def search_variants_by_attribute(attribute, value):
     variants = get_all_variants()
-    return [v for v in variants if v.name == name]
+    return [v for v in variants if getattr(v, attribute) == value]
 
 def search_variants_by_coordinates(coordinate_query, search_mode='any'):
     """
