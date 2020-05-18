@@ -1229,6 +1229,8 @@ def bulk_search_variants_by_coordinates(sorted_queries, search_mode='any'):
     while query_pointer < len(sorted_queries) and ct_pointer < len(ct):
         if last_query_pointer != query_pointer:
             q = sorted_queries[query_pointer]
+            if q.build != 'GRCh37':
+                raise ValueError("Bulk coordinate search only supports build GRCh37")
             if match_start is not None:
                 ct_pointer = match_start
                 match_start = None
