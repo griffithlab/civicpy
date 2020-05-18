@@ -94,6 +94,15 @@ class TestVariants(object):
         variants = civic.get_all_variants(include_status=['accepted'])
         assert len(variants) >= 1333
 
+    def test_get_by_name(self, v600e):
+        variants = civic.search_variants_by_name("V600E")
+        assert len(variants) == 1
+        assert variants[0] == v600e
+
+    def test_get_by_caid(self, v600e):
+        variants = civic.search_variants_by_allele_registry_id("CA123643")
+        assert len(variants) == 1
+        assert variants[0] == v600e
 
 class TestVariantGroups(object):
 
@@ -253,6 +262,12 @@ class TestCoordinateSearch(object):
         search_results = civic.bulk_search_variants_by_coordinates(sorted_queries, search_mode='record_encompassing')
         assert len(search_results[sorted_queries[0]]) == 19
         assert len(search_results[sorted_queries[1]]) == 16
+
+    def test_build38_exact_search_variants(self, v600e):
+        query = CoordinateQuery('7', 140753336, 140753336, 'T', 'A', 'GRCh38')
+        search_results = civic.search_variants_by_coordinates(query, search_mode='exact')
+        assert len(search_results) == 1
+        assert search_results[0] == v600e
 
 class TestDrugs(object):
 
