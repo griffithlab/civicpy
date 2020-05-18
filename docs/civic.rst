@@ -550,3 +550,9 @@ function.
 .. autoclass:: CoordinateQuery
 .. autofunction:: search_variants_by_coordinates
 .. autofunction:: bulk_search_variants_by_coordinates
+
+By Other Attribute
+~~~~~~~~~~~~~~~~~~
+
+.. autofunction:: search_variants_by_allele_registry_id
+.. autofunction:: search_variants_by_name
