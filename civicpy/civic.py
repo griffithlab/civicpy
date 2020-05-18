@@ -9,6 +9,7 @@ from pathlib import Path
 from collections import defaultdict, namedtuple
 from civicpy import REMOTE_CACHE_URL, LOCAL_CACHE_PATH, CACHE_TIMEOUT_DAYS
 import requests
+from civicpy.exports import VCFWriter
 
 
 CACHE = dict()
@@ -436,6 +437,12 @@ class Variant(CivicRecord):
         self._assertions = []
         if evidence_items and not isinstance(evidence_items, list):
                 del(kwargs['evidence_items'])
+        coordinates = kwargs.get('coordinates')
+        if coordinates:
+            if coordinates.get('reference_bases') in ['', '-']:
+                coordinates['reference_bases'] = None
+            if coordinates.get('variant_bases') in ['', '-']:
+                coordinates['variant_bases'] = None
         super().__init__(**kwargs)
 
     @property
@@ -532,6 +539,130 @@ class Variant(CivicRecord):
             return all([c.upper() in ['A', 'C', 'G', 'T', 'N'] for c in self.coordinates.variant_bases])
         else:
             return True
+
+    def vcf_coordinates(self):
+        ensembl_server = "https://grch37.rest.ensembl.org"
+        if self.coordinates.reference_build != 'GRCh37':
+            return
+        if self.is_insertion:
+            if not self.coordinates.representative_transcript:
+                return
+            else:
+                start = self.coordinates.start
+                ext = "/sequence/region/human/{}:{}-{}".format(self.coordinates.chromosome, start, start)
+                r = requests.get(ensembl_server+ext, headers={ "Content-Type" : "text/plain"})
+                if self.coordinates.reference_bases == None or self.coordinates.reference_bases == '-' or self.coordinates.reference_bases == '':
+                    ref = r.text
+                else:
+                    ref = "{}{}".format(r.text, self.coordinates.reference_bases)
+                alt = "{}{}".format(r.text, self.coordinates.variant_bases)
+        elif self.is_deletion:
+            if not self.coordinates.representative_transcript:
+                return
+            else:
+                start = self.coordinates.start - 1
+                ext = "/sequence/region/human/{}:{}-{}".format(self.coordinates.chromosome, start, start)
+                r = requests.get(ensembl_server+ext, headers={ "Content-Type" : "text/plain"})
+                ref = "{}{}".format(r.text, self.coordinates.reference_bases)
+                if self.coordinates.variant_bases == None or self.coordinates.variant_bases == '-' or self.coordinates.variant_bases == '':
+                    alt = r.text
+                else:
+                    alt = "{}{}".format(r.text, self.coordinates.variant_bases)
+        else:
+            start = self.coordinates.start
+            ref = self.coordinates.reference_bases
+            alt = self.coordinates.variant_bases
+        return (start, ref, alt)
+
+    def csq_alt(self):
+        if self.coordinates.reference_build != 'GRCh37':
+            return
+        if self.is_insertion:
+            if not self.coordinates.representative_transcript:
+                return
+            else:
+                return self.coordinates.variant_bases
+        elif self.is_deletion:
+            if not self.coordinates.representative_transcript:
+                return
+            else:
+                return "-"
+        else:
+            return self.coordinates.variant_bases
+
+    def hgvs_c(self):
+        if self.coordinates.representative_transcript:
+            hgvs_cs = [e for e in self.hgvs_expressions if (':c.' in e) and (self.coordinates.representative_transcript in e)]
+            return hgvs_cs[0] if len(hgvs_cs) == 1 else ''
+        else:
+            return ''
+
+    def hgvs_p(self):
+        if self.coordinates.representative_transcript:
+            hgvs_ps = [e for e in self.hgvs_expressions if (':p.' in e) and (self.coordinates.representative_transcript in e)]
+            return hgvs_ps[0] if len(hgvs_ps) == 1 else ''
+        else:
+            return ''
+
+    def csq(self, include_status=None):
+        if self.csq_alt() is None:
+            return []
+        else:
+            csq = []
+            for evidence in self.evidence:
+                if include_status is not None and evidence.status not in include_status:
+                    continue
+                special_character_table = str.maketrans(VCFWriter.SPECIAL_CHARACTERS)
+                csq.append('|'.join([
+                    self.csq_alt(),
+                    '&'.join(map(lambda t: t.name, self.variant_types)),
+                    self.gene.name,
+                    str(self.gene.entrez_id),
+                    'transcript',
+                    str(self.coordinates.representative_transcript),
+                    self.hgvs_c(),
+                    self.hgvs_p(),
+                    self.name,
+                    str(self.id),
+                    '&'.join(map(lambda a: a.translate(special_character_table), self.variant_aliases)),
+                    '&'.join(map(lambda e: e.translate(special_character_table), self.hgvs_expressions)),
+                    str(self.allele_registry_id),
+                    '&'.join(self.clinvar_entries),
+                    str(self.civic_actionability_score),
+                    "evidence",
+                    str(evidence.id),
+                    "https://civicdb.org/links/evidence/{}".format(evidence.id),
+                    "{} ({})".format(evidence.source.citation_id, evidence.source.source_type),
+                    str(evidence.variant_origin),
+                    evidence.status,
+                ]))
+            for assertion in self.assertions:
+                if include_status is not None and assertion.status not in include_status:
+                    continue
+                csq.append('|'.join([
+                    self.csq_alt(),
+                    '&'.join(map(lambda t: t.name, self.variant_types)),
+                    self.gene.name,
+                    str(self.gene.entrez_id),
+                    'transcript',
+                    str(self.coordinates.representative_transcript),
+                    self.hgvs_c(),
+                    self.hgvs_p(),
+                    self.name,
+                    str(self.id),
+                    '&'.join(map(lambda a: a.translate(special_character_table), self.variant_aliases)),
+                    '&'.join(map(lambda e: e.translate(special_character_table), self.hgvs_expressions)),
+                    str(self.allele_registry_id),
+                    '&'.join(self.clinvar_entries),
+                    str(self.civic_actionability_score),
+                    "assertion",
+                    str(assertion.id),
+                    "https://civicdb.org/links/assertion/{}".format(assertion.id),
+                    "",
+                    str(assertion.variant_origin),
+                    assertion.status,
+                ]))
+            return csq
 
 
 class VariantGroup(CivicRecord):
@@ -1097,6 +1228,8 @@ def search_variants_by_coordinates(coordinate_query, search_mode='any'):
     else:
         if search_mode == 'exact':
             if coordinate_query.alt or coordinate_query.ref:
+                if coordinate_query.alt == '*' or coordinate_query.ref == '*':
+                    raise ValueError("Can't use wildcard when searching for non-GRCh37 coordinates")
                 hgvs = _construct_hgvs_for_coordinate_query(coordinate_query)
                 r = requests.get(url=_allele_registry_url(), params={'hgvs': hgvs})
                 data = r.json()

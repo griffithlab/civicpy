@@ -23,7 +23,9 @@ setup(
         'obonet',
         'networkx',
         'pandas',
-        'Click'
+        'Click',
+        'vcfpy',
+        'pysam'
     ],
     extras_require={
         'test': [
