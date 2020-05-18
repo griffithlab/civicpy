@@ -1046,10 +1046,10 @@ def search_variants_by_coordinates(coordinate_query, search_mode='any'):
                 *any* : any overlap between a query and a variant is a match\n
                 *query_encompassing* : CIViC variant records must fit within the coordinates of the query\n
                 *record_encompassing* : CIViC variant records must encompass the coordinates of the query\n
-                *exact* : variants must match coordinates precisely, as well as reference allele(s) and alternate allele(s).\n
-                          Use '*' in the coordinate_query as a wildcard for reference and/or alternate alleles.
-                          Using 'None' in the coordinate_query for reference or alternate alleles will only match
-                          variants that have no reference or alternate alleles, respectively (e.g. indels) \n
+                *exact* : variants must match coordinates precisely, as well as reference allele(s) and alternate allele(s).
+                Use ``'*'`` in the coordinate_query as a wildcard for reference and/or alternate alleles.
+                Using ``None`` in the coordinate_query for reference or alternate alleles will only match
+                variants that have no reference or alternate alleles, respectively (e.g. indels) \n
                 search_mode is *any* by default
 
     :return:    Returns a list of variant hashes matching the coordinates and search_mode
@@ -1191,10 +1191,10 @@ def bulk_search_variants_by_coordinates(sorted_queries, search_mode='any'):
                 *any* : any overlap between a query and a variant is a match\n
                 *query_encompassing* : CIViC variant records must fit within the coordinates of the query\n
                 *record_encompassing* : CIViC variant records must encompass the coordinates of the query\n
-                *exact* : variants must match coordinates precisely, as well as reference allele(s) and alternate allele(s).\n
-                          Use '*' in the coordinate_query as a wildcard for reference and/or alternate alleles.
-                          Using 'None' in the coordinate_query for reference or alternate alleles will only match
-                          variants that have no reference or alternate alleles, respectively (e.g. indels) \n
+                *exact* : variants must match coordinates precisely, as well as reference allele(s) and alternate allele(s).
+                Use ``'*'`` in the coordinate_query as a wildcard for reference and/or alternate alleles.
+                Using ``None`` in the coordinate_query for reference or alternate alleles will only match
+                variants that have no reference or alternate alleles, respectively (e.g. indels) \n
                 search_mode is *any* by default
 
     :return:    returns a dictionary of Match lists, keyed by query
