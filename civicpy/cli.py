@@ -91,12 +91,9 @@ def annotate_vcf(input_vcf, output_vcf, reference, include_status):
                 if len(csq) > 0:
                     entry.INFO['CIVIC'] = variants[0].csq(include_status)
             elif len(variants) > 1:
-                if start == 10183706:
-                    import pdb
-                    pdb.set_trace()
-                print("More than one variant found for {} {} {} {}".format(start, end, alt, ref))
+                print("More than one variant found for start {} stop {} ref {} alt {}. CIViC Variants IDs: {}".format(start, end, ref, alt, ",".join(list(map(lambda v: str(v.id), variants)))))
             else:
-                print("No variant found for {} {} {} {}".format(start, end, alt, ref))
+                print("No variant found for start {} stop {} ref {} alt {}".format(start, end, ref, alt))
             writer.write_record(entry)
     writer.close()
     reader.close()
