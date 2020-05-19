@@ -32,6 +32,7 @@ setup(
             'pytest',
             'pytest-cov',
             'python-coveralls',
+            'coverage<5.0',
         ],
         'docs': [
             'sphinx',
