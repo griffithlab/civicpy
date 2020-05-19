@@ -80,6 +80,10 @@ class TestEvidence(object):
         evidence = civic.get_all_evidence(include_status=['accepted'])
         assert len(evidence) >= 3247
 
+    def test_properties(self, v600e):
+        evidence = v600e.evidence[0]
+        assert evidence.variant.name == 'V600E'
+        assert evidence.statement == evidence.description
 
 class TestVariants(object):
 
@@ -112,6 +116,13 @@ class TestVariants(object):
             assert v.coordinates.reference_bases not in ['', '-']
             assert v.coordinates.variant_bases not in ['', '-']
 
+    def test_properties(self):
+        variant = civic.get_variant_by_id(11)
+        assert sorted(variant.aliases) == sorted(variant.variant_aliases)
+        assert sorted(variant.groups) == sorted(variant.variant_groups)
+        assert sorted(variant.types) == sorted(variant.variant_types)
+        assert variant.summary == variant.description
+
 
 class TestVariantGroups(object):
 
@@ -137,6 +148,11 @@ class TestAssertions(object):
     def test_has_boolean_flags(self, v600e_assertion):
         assert v600e_assertion.fda_companion_test is True
         assert v600e_assertion.fda_regulatory_approval is True
+
+    def test_properties(self):
+        assertion = civic.get_assertion_by_id(18)
+        assert assertion.evidence == assertion.evidence_items
+        assert assertion.hpo_ids == [p.hpo_id for p in assertion.phenotypes if p.hpo_id]
 
 
 class TestGenes(object):
