@@ -1,5 +1,6 @@
 import pytest
-from civicpy import exports, civic
+from civicpy import civic
+from civicpy.exports import VCFWriter
 import io
 
 
@@ -10,7 +11,7 @@ def vcf_stream():
 
 @pytest.fixture(scope='function')
 def vcf_writer(vcf_stream):
-    return exports.VCFWriter(vcf_stream)
+    return VCFWriter(vcf_stream)
 
 #snv
 @pytest.fixture(scope="module")
@@ -86,3 +87,24 @@ class TestVcfExport(object):
         assert out_dict[0]['POS'] == '10191480'
         assert out_dict[0]['REF'] == 'TGAA'
         assert out_dict[0]['ALT'] == 'TC'
+
+    def test_addrecord_from_gene(self, vcf_writer):
+        gene = civic.get_gene_by_id(24)
+        vcf_writer.addrecord(gene)
+        assert len(vcf_writer.variant_records) <= len(gene.variants)
+
+    def test_addrecord_from_evidence(self, vcf_writer):
+        evidence = civic._get_element_by_id('evidence', 373)
+        vcf_writer.addrecord(evidence)
+        assert len(vcf_writer.variant_records) == 1
+        assert list(vcf_writer.variant_records)[0].id == evidence.variant.id
+
+    def test_addrecords(self, vcf_writer, v600e, l158fs):
+        vcf_writer.addrecords([v600e, l158fs])
+        assert len(vcf_writer.variant_records) == 2
+
+    def test_addrecord_wrong_type(self, vcf_writer):
+        evidence = civic._get_element_by_id('evidence', 373)
+        with pytest.raises(ValueError) as context:
+            vcf_writer.addrecord(evidence.source)
+        assert "Expected a CIViC Gene, Variant, Assertion or Evidence record" in str(context.value)
