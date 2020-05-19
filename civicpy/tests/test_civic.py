@@ -185,6 +185,10 @@ class TestGenes(object):
         gene_ids = civic.get_all_gene_ids()
         assert len(gene_ids) >= len(genes)
 
+    def test_get_by_id(self):
+        gene = civic.get_gene_by_id(58)
+        assert gene.name == 'VHL'
+
 class TestCoordinateSearch(object):
 
     def test_search_assertions(self):
