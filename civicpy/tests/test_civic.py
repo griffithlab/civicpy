@@ -80,6 +80,11 @@ class TestEvidence(object):
         evidence = civic.get_all_evidence(include_status=['accepted'])
         assert len(evidence) >= 3247
 
+    #get_all_ids pulls from the live site so it will return more results than get_all_x
+    def test_get_all_ids(self):
+        evidence_ids = civic.get_all_evidence_ids()
+        assert len(evidence_ids) >= len(civic.get_all_evidence())
+
     def test_properties(self, v600e):
         evidence = v600e.evidence[0]
         assert evidence.variant.name == 'V600E'
@@ -98,6 +103,11 @@ class TestVariants(object):
     def test_get_accepted_only(self):
         variants = civic.get_all_variants(include_status=['accepted'])
         assert len(variants) >= 1333
+
+    #get_all_ids pulls from the live site so it will return more results than get_all_x
+    def test_get_all_ids(self):
+        variant_ids = civic.get_all_variant_ids()
+        assert len(variant_ids) >= len(civic.get_all_variants())
 
     def test_get_by_name(self, v600e):
         variants = civic.search_variants_by_name("V600E")
@@ -169,6 +179,11 @@ class TestGenes(object):
         genes = civic.get_all_genes(include_status=['accepted'])
         assert len(genes) >= 322
 
+    #get_all_ids pulls from the live site so it might return more results than get_all_x
+    def test_get_all_ids(self):
+        genes = civic.get_all_genes(include_status=['accepted'])
+        gene_ids = civic.get_all_gene_ids()
+        assert len(gene_ids) >= len(genes)
 
 class TestCoordinateSearch(object):
 
