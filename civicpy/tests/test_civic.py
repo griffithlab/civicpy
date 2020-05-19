@@ -1,6 +1,7 @@
 import pytest
 from civicpy import civic, TEST_CACHE_PATH
 from civicpy.civic import CoordinateQuery
+import logging
 
 ELEMENTS = [
     'Assertion'
@@ -283,3 +284,21 @@ class TestDrugs(object):
         trametinib = v600e_assertion.drugs[0]
         assert trametinib.ncit_id == 'C77908'
         assert 'pubchem_id' not in trametinib.keys()
+
+#warning logging tests
+LOGGER = logging.getLogger(__name__)
+
+def test_is_valid_for_vcf_warnings(caplog):
+    fusion_variant = civic.get_variant_by_id(287)
+    fusion_variant.is_valid_for_vcf(emit_warnings=True)
+    assert "Variant 287 has a second set of coordinates. Skipping" in caplog.text
+
+    incomplete_coordinates_variant = civic.get_variant_by_id(27)
+    incomplete_coordinates_variant.is_valid_for_vcf(emit_warnings=True)
+    assert "Incomplete coordinates for variant 27. Skipping." in caplog.text
+
+    unsupported_var_bases_variant = civic.get_variant_by_id(613)
+    unsupported_var_bases_variant.is_valid_for_vcf(emit_warnings=True)
+    assert "Unsupported variant base(s) for variant 613. Skipping." in caplog.text
+
+    #currently no case for unsupported ref bases
