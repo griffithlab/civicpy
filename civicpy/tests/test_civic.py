@@ -316,6 +316,41 @@ class TestCoordinateSearch(object):
         assert len(search_results) == 1
         assert search_results[0] == v600e
 
+        query = CoordinateQuery('7', 140753336, 140753337, 'TT', 'AC', 'GRCh38')
+        search_results = civic.search_variants_by_coordinates(query, search_mode='exact')
+        assert len(search_results) == 1
+        assert search_results[0].id == 563
+
+        query = CoordinateQuery('3', 10146548, 10146549, 'C', None, 'GRCh38')
+        search_results = civic.search_variants_by_coordinates(query, search_mode='exact')
+        assert len(search_results) == 1
+        assert search_results[0].id == 1918
+
+        query = CoordinateQuery('3', 10146618, 10146618, None, 'G', 'GRCh38')
+        search_results = civic.search_variants_by_coordinates(query, search_mode='exact')
+        assert len(search_results) == 1
+        assert search_results[0].id == 2042
+
+    def test_errors(self):
+        with pytest.raises(ValueError) as context:
+            query = CoordinateQuery('7', 140453136, 140453136, 'T', 'A')
+            variants_single = civic.search_variants_by_coordinates(query, search_mode='wrong_mode')
+        assert "unexpected search mode" in str(context.value)
+        with pytest.raises(ValueError) as context:
+            query = CoordinateQuery('7', 140753336, 140753336, '*', 'A', 'GRCh38')
+            search_results = civic.search_variants_by_coordinates(query, search_mode='exact')
+        assert "Can't use wildcard when searching for non-GRCh37 coordinates" in str(context.value)
+        with pytest.raises(ValueError) as context:
+            query = CoordinateQuery('7', 140753336, 140753336, None, None, 'GRCh38')
+            search_results = civic.search_variants_by_coordinates(query, search_mode='exact')
+        assert "alt or ref required for non-GRCh37 coordinate queries" in str(context.value)
+        with pytest.raises(ValueError) as context:
+            query = CoordinateQuery('7', 140753336, 140753336, 'T', 'A', 'GRCh38')
+            search_results = civic.search_variants_by_coordinates(query, search_mode='any')
+        assert "Only exact search mode is supported for non-GRCh37 coordinate queries" in str(context.value)
+
+
+
 class TestDrugs(object):
 
     def test_has_ncit_id(self, v600e_assertion):
