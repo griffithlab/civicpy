@@ -1253,7 +1253,7 @@ def _construct_hgvs_for_coordinate_query(coordinate_query):
     base_hgvs = "{}:g.{}".format(chromosome, coordinate_query.start)
     variant_type = _variant_type(coordinate_query)
     if variant_type == "deletion":
-        if (coordinate_query.ref) > 1:
+        if len(coordinate_query.ref) > 1:
             return"{}_{}del".format(base_hgvs, coordinate_query.stop)
         else:
             return "{}del".format(base_hgvs)
