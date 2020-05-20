@@ -29,7 +29,10 @@ def v600e_assertion():
 
 
 class TestGetFunctions(object):
-    
+    def test_element_lookup_by_id(self):
+        assertion = civic.element_lookup_by_id('assertion', '1')
+        assert assertion['id'] == 1
+
     def test_get_assertions(self):
         test_ids = [1, 2, 3]
         results = civic._get_elements_by_ids('assertion', test_ids)
