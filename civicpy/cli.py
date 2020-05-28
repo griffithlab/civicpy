@@ -20,7 +20,7 @@ def cli():
               help='Hard-update from live API (slow) or \
               soft-update from daily precache (fast; default)')
 @click.option('--cache-save-path',
-              help=f'Filepath to save cache to. Default: {LOCAL_CACHE_PATH}',
+              help='Filepath to save cache to. Default: {}'.format(LOCAL_CACHE_PATH),
               default=LOCAL_CACHE_PATH)
 def update(soft, cache_save_path):
     """Updates CIViC content from server and stores to local cache file"""

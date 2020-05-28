@@ -1,7 +1,6 @@
 import requests
 import importlib
 import logging
-import datetime
 import pandas as pd
 import pickle
 import os
@@ -10,6 +9,9 @@ from collections import defaultdict, namedtuple
 from civicpy import REMOTE_CACHE_URL, LOCAL_CACHE_PATH, CACHE_TIMEOUT_DAYS
 import requests
 from civicpy.exports import VCFWriter
+from datetime import datetime, timedelta
+from backports.datetime_fromisoformat import MonkeyPatch
+MonkeyPatch.patch_fromisoformat()
 
 
 CACHE = dict()
@@ -21,7 +23,7 @@ COORDINATE_TABLE_CHR = None
 
 HPO_TERMS = dict()
 
-FRESH_DELTA = datetime.timedelta(days=CACHE_TIMEOUT_DAYS)
+FRESH_DELTA = timedelta(days=CACHE_TIMEOUT_DAYS)
 
 MODULE = importlib.import_module('civicpy.civic')
 
@@ -36,7 +38,8 @@ CIVIC_TO_PYCLASS = {
 }
 
 
-_CoordinateQuery = namedtuple('CoordinateQuery', ['chr', 'start', 'stop', 'alt', 'ref', 'build', 'key'], defaults=(None, None, "GRCh37", None))
+_CoordinateQuery = namedtuple('CoordinateQuery', ['chr', 'start', 'stop', 'alt', 'ref', 'build', 'key'])
+_CoordinateQuery.__new__.__defaults__ = (None, None, "GRCh37", None)
 
 
 class CoordinateQuery(_CoordinateQuery):  # Wrapping for documentation
@@ -57,7 +60,7 @@ class CoordinateQuery(_CoordinateQuery):  # Wrapping for documentation
 
 def pluralize(string):
     if string in UNMARKED_PLURALS:
-        return f'{string}_items'
+        return '{}_items'.format(string)
     if string.endswith('s'):
         return string
     return string + 's'
@@ -269,7 +272,7 @@ def update_cache(from_remote_cache=True, remote_cache_url=REMOTE_CACHE_URL,
                 v.update()
         _get_elements_by_ids('assertion', allow_cached=False, get_all=True)
         _get_elements_by_ids('variant_group', allow_cached=False, get_all=True)
-        CACHE['full_cached'] = datetime.datetime.now()
+        CACHE['full_cached'] = datetime.now()
         _build_coordinate_table(variants)
         save_cache(local_cache_path=local_cache_path)
 
@@ -316,7 +319,7 @@ class CivicRecord:
                     if (partial and field not in CivicRecord._SIMPLE_FIELDS) or field in self._OPTIONAL_FIELDS:
                         self._incomplete.add(field)     # Allow for incomplete data when partial flag set
                     else:
-                        raise AttributeError(f'Expected {field} attribute for {self.type}, none found.')
+                        raise AttributeError('Expected {} attribute for {}, none found.'.format(field, self.type))
 
         for field in self._COMPLEX_FIELDS:
             try:
@@ -328,7 +331,7 @@ class CivicRecord:
                     self._incomplete.add(field)
                     continue
                 else:
-                    raise AttributeError(f'Expected {field} attribute for {self.type}, none found.')
+                    raise AttributeError('Expected {} attribute for {}, none found.'.format(field, self.type))
             is_compound = isinstance(v, list)
             cls = get_class(field)
             if is_compound:
@@ -358,7 +361,7 @@ class CivicRecord:
         return [attribute for attribute in super().__dir__() if not attribute.startswith('_')]
 
     def __repr__(self):
-        return f'<CIViC {self.type} {self.id}>'
+        return '<CIViC {} {}>'.format(self.type, self.id)
 
     def __getattr__(self, item):
         if self._partial and item in self._incomplete:
@@ -366,7 +369,7 @@ class CivicRecord:
         return object.__getattribute__(self, item)
 
     def __hash__(self):
-        return hash(f'{self.type}:{self.id}')
+        return hash('{}:{}'.format(self.type, self.id))
 
     def __eq__(self, other):
         return hash(self) == hash(other)
@@ -394,7 +397,7 @@ class CivicRecord:
                 v = getattr(cached, field)
                 setattr(self, field, v)
             self._partial = False
-            logging.info(f'Loading {str(self)} from cache')
+            logging.info('Loading {} from cache'.format(str(self)))
             return True
         resp_dict = element_lookup_by_id(self.type, self.id)
         self.__init__(partial=False, **resp_dict)
@@ -833,7 +836,7 @@ class User(CivicRecord):
     @property
     def created_at(self):
         assert self._created_at[-1] == 'Z'
-        return datetime.datetime.fromisoformat(self._created_at[:-1])
+        return datetime.fromisoformat(self._created_at[:-1])
 
     @created_at.setter
     def created_at(self, value):
@@ -862,9 +865,9 @@ class CivicAttribute(CivicRecord, dict):
         try:
             _id = self.id
         except AttributeError:
-            return f'<CIViC Attribute {self.type}>'
+            return '<CIViC Attribute {}>'.format(self.type)
         else:
-            return f'<CIViC Attribute {self.type} {self.id}>'
+            return '<CIViC Attribute {} {}>'.format(self.type, self.id)
 
     def __init__(self, **kwargs):
         kwargs['partial'] = False
@@ -927,7 +930,7 @@ class BaseLifecycleAction(CivicAttribute):
     @property
     def timestamp(self):
         assert self._timestamp[-1] == 'Z'
-        return datetime.datetime.fromisoformat(self._timestamp[:-1])
+        return datetime.fromisoformat(self._timestamp[:-1])
 
     @timestamp.setter
     def timestamp(self, value):
@@ -959,7 +962,7 @@ def get_cached(element_type, element_id):
 def _has_full_cached_fresh(delta=FRESH_DELTA):
     s = 'full_cached'
     if CACHE.get(s, False):
-        return CACHE[s] + delta > datetime.datetime.now()
+        return CACHE[s] + delta > datetime.now()
     return False
 
 
@@ -970,11 +973,11 @@ def _get_elements_by_ids(element, id_list=[], allow_cached=True, get_all=False):
         if not get_all:
             cached = [get_cached(element, element_id) for element_id in id_list]
             if all(cached):
-                logging.info(f'Loading {pluralize(element)} from cache')
+                logging.info('Loading {} from cache'.format(pluralize(element)))
                 return cached
         else:
             cached = [get_cached(element, element_id) for element_id in CACHE['{}_all_ids'.format(pluralize(element))]]
-            logging.info(f'Loading {pluralize(element)} from cache')
+            logging.info('Loading {} from cache'.format(pluralize(element)))
             return cached
     if id_list and get_all:
         raise ValueError('Please pass list of ids or use the get_all flag, not both.')
@@ -1411,7 +1414,7 @@ def get_all_variant_ids():
 
 
 def _get_all_element_ids(element):
-    url = f'https://civicdb.org/api/{element}?count=100000'
+    url = 'https://civicdb.org/api/{}?count=100000'.format(element)
     resp = requests.get(url)
     resp.raise_for_status()
     return [x['id'] for x in resp.json()['records']]
