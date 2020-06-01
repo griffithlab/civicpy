@@ -78,6 +78,19 @@ class VCFWriter(DictWriter):
         'CIViC Entity Source',
         'CIViC Entity Variant Origin',
         'CIViC Entity Status',
+        'CIViC Entity Clinical Signifiance',
+        'CIViC Entity Direction',
+        'CIViC Entity Disease',
+        'CIViC Entity Drugs',
+        'CIViC Entity Drug Interaction Type',
+        'CIViC Evidence Phenotypes',
+        'CIViC Evidence Level',
+        'CIViC Evidence Rating',
+        'CIViC Assertion ACMG Codes',
+        'CIViC Assertion AMP Category',
+        'CIViC Assertion NCCN Guideline',
+        'CIVIC Assertion Regulatory Approval',
+        'CIVIC Assertion FDA Companion Test ',
     ]))
 
 

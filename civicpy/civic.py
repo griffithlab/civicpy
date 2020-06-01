@@ -638,6 +638,19 @@ class Variant(CivicRecord):
                     "{} ({})".format(evidence.source.citation_id, evidence.source.source_type),
                     str(evidence.variant_origin),
                     evidence.status,
+                    str(evidence.clinical_significance or ''),
+                    str(evidence.evidence_direction or ''),
+                    "{} (DOID {})".format(evidence.disease.name, evidence.disease.doid),
+                    '&'.join(["{} (NCIt ID {})".format(drug.name, drug.ncit_id) for drug in evidence.drugs]),
+                    str(evidence.drug_interaction_type or ""),
+                    '&'.join(["{} (HPO ID {})".format(phenotype.hpo_class, phenotype.hpo_id) for phenotype in evidence.phenotypes]),
+                    evidence.evidence_level,
+                    str(evidence.rating),
+                    "",
+                    "",
+                    "",
+                    "",
+                    "",
                 ]))
             for assertion in self.assertions:
                 if include_status is not None and assertion.status not in include_status:
@@ -664,6 +677,19 @@ class Variant(CivicRecord):
                     "",
                     str(assertion.variant_origin),
                     assertion.status,
+                    assertion.clinical_significance,
+                    assertion.evidence_direction,
+                    "{} (DOID {})".format(assertion.disease.name, assertion.disease.doid),
+                    '&'.join(["{} (NCIt ID {})".format(drug.name, drug.ncit_id) for drug in assertion.drugs]),
+                    str(assertion.drug_interaction_type or ''),
+                    "",
+                    "",
+                    "",
+                    "&".join([acmg_code.code for acmg_code in assertion.acmg_codes]),
+                    str(assertion.amp_level or ''),
+                    "{} (v{})".format(assertion.nccn_guideline, assertion.nccn_guideline_version),
+                    str(assertion.fda_regulatory_approval or ''),
+                    str(assertion.fda_companion_test or ''),
                 ]))
             return csq
 
