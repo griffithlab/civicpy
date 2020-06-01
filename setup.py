@@ -27,6 +27,7 @@ setup(
         'vcfpy',
         'pysam',
         'backports-datetime-fromisoformat',
+        'deprecation',
     ],
     extras_require={
         'test': [

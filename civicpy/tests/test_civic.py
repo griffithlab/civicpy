@@ -2,6 +2,7 @@ import pytest
 from civicpy import civic, TEST_CACHE_PATH
 from civicpy.civic import CoordinateQuery
 import logging
+import deprecation
 
 ELEMENTS = [
     'Assertion'
@@ -84,6 +85,7 @@ class TestEvidence(object):
         assert len(evidence) >= 3247
 
     #get_all_ids pulls from the live site so it will return more results than get_all_x
+    @deprecation.fail_if_not_removed
     def test_get_all_ids(self):
         evidence_ids = civic.get_all_evidence_ids()
         assert len(evidence_ids) >= len(civic.get_all_evidence())
@@ -108,6 +110,7 @@ class TestVariants(object):
         assert len(variants) >= 1333
 
     #get_all_ids pulls from the live site so it will return more results than get_all_x
+    @deprecation.fail_if_not_removed
     def test_get_all_ids(self):
         variant_ids = civic.get_all_variant_ids()
         assert len(variant_ids) >= len(civic.get_all_variants())
@@ -183,6 +186,7 @@ class TestGenes(object):
         assert len(genes) >= 322
 
     #get_all_ids pulls from the live site so it might return more results than get_all_x
+    @deprecation.fail_if_not_removed
     def test_get_all_ids(self):
         genes = civic.get_all_genes(include_status=['accepted'])
         gene_ids = civic.get_all_gene_ids()
