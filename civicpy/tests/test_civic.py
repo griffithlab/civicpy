@@ -348,7 +348,30 @@ class TestCoordinateSearch(object):
             query = CoordinateQuery('7', 140753336, 140753336, 'T', 'A', 'GRCh38')
             search_results = civic.search_variants_by_coordinates(query, search_mode='any')
         assert "Only exact search mode is supported for non-GRCh37 coordinate queries" in str(context.value)
-
+        with pytest.raises(ValueError) as context:
+            query = CoordinateQuery('7', 140453136, 140453136, '-', 'A')
+            variants_single = civic.search_variants_by_coordinates(query, search_mode='exact')
+        assert "Unexpected alt `-` in coordinate query. Did you mean `None`?" in str(context.value)
+        with pytest.raises(ValueError) as context:
+            query = CoordinateQuery('7', 140453136, 140453136, 'T', '-')
+            variants_single = civic.search_variants_by_coordinates(query, search_mode='exact')
+        assert "Unexpected ref `-` in coordinate query. Did you mean `None`?" in str(context.value)
+        with pytest.raises(ValueError) as context:
+            query = CoordinateQuery('7', 140453136, 140453136, '-', 'A', 'GRCh38')
+            variants_single = civic.search_variants_by_coordinates(query, search_mode='exact')
+        assert "Unexpected alt `-` in coordinate query. Did you mean `None`?" in str(context.value)
+        with pytest.raises(ValueError) as context:
+            query = CoordinateQuery('7', 140453136, 140453136, 'T', '-', 'GRCh38')
+            variants_single = civic.search_variants_by_coordinates(query, search_mode='exact')
+        assert "Unexpected ref `-` in coordinate query. Did you mean `None`?" in str(context.value)
+        with pytest.raises(ValueError) as context:
+            query = CoordinateQuery('7', 140453136, 140453136, '-', 'A')
+            variants_bulk = civic.bulk_search_variants_by_coordinates([query], search_mode='exact')
+        assert "Unexpected alt `-` in coordinate query. Did you mean `None`?" in str(context.value)
+        with pytest.raises(ValueError) as context:
+            query = CoordinateQuery('7', 140453136, 140453136, 'T', '-')
+            variants_bulk = civic.bulk_search_variants_by_coordinates([query], search_mode='exact')
+        assert "Unexpected ref `-` in coordinate query. Did you mean `None`?" in str(context.value)
 
 
 class TestDrugs(object):
