@@ -1166,9 +1166,24 @@ def search_variants_by_name(name):
     """
     return search_variants_by_attribute('name', name)
 
+def search_variants_by_hgvs(hgvs):
+    """
+    Search the cache for variants matching the queried HGVS expression
+
+    :param String name: HGVS expression to query
+
+    :return: Returns a list of variant hashes matching the HGVS expression
+    """
+    return search_variants_by_list_field('hgvs_expressions', hgvs)
+
 def search_variants_by_attribute(attribute, value):
     variants = get_all_variants()
     return [v for v in variants if getattr(v, attribute) == value]
+
+def search_variants_by_list_field(field, value):
+    variants = get_all_variants()
+    matched_variants = []
+    return [v for v in variants if value in getattr(v, field)]
 
 def search_variants_by_coordinates(coordinate_query, search_mode='any'):
     """
