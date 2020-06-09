@@ -1,4 +1,5 @@
 import requests
+from requests.packages.urllib3.util.retry import Retry
 import importlib
 import logging
 import pandas as pd
@@ -1257,12 +1258,23 @@ def search_variants_by_coordinates(coordinate_query, search_mode='any'):
                 if coordinate_query.ref == '-':
                     raise ValueError("Unexpected ref `-` in coordinate query. Did you mean `None`?")
                 hgvs = _construct_hgvs_for_coordinate_query(coordinate_query)
-                r = requests.get(url=_allele_registry_url(), params={'hgvs': hgvs})
-                data = r.json()
-                if '@id' in data:
-                    allele_registry_id = data['@id'].split('/')[-1]
-                    if not allele_registry_id == '_:CA':
-                        return search_variants_by_allele_registry_id(allele_registry_id)
+                if hgvs is not None:
+                    s = requests.Session()
+                    retry = Retry(
+                        total=5,
+                        read=5,
+                        connect=5,
+                        backoff_factor=0.3,
+                        status_forcelist=(500, 502, 504),
+                    )
+                    adapter = requests.adapters.HTTPAdapter(max_retries=retry)
+                    s.mount('http://', adapter)
+                    r = s.get(url=_allele_registry_url(), params={'hgvs': hgvs})
+                    data = r.json()
+                    if '@id' in data:
+                        allele_registry_id = data['@id'].split('/')[-1]
+                        if not allele_registry_id == '_:CA':
+                            return search_variants_by_allele_registry_id(allele_registry_id)
             else:
                 raise ValueError("alt or ref required for non-GRCh37 coordinate queries")
         else:
