@@ -1288,6 +1288,8 @@ def _construct_hgvs_for_coordinate_query(coordinate_query):
         chromosome = _refseq_sequence_b38(coordinate_query.chr)
     else:
         raise ValueError("unexpected reference build")
+    if chromosome is None:
+        return None
     base_hgvs = "{}:g.{}".format(chromosome, coordinate_query.start)
     variant_type = _variant_type(coordinate_query)
     if variant_type == "deletion":
@@ -1322,6 +1324,7 @@ def _variant_type(coordinate_query):
         return None
 
 def _refseq_sequence_b38(chromosome):
+    chromosome = chromosome.replace('chr', '')
     sequences = {
       '1' : 'NC_000001.11',
       '2' : 'NC_000002.12',
@@ -1348,6 +1351,8 @@ def _refseq_sequence_b38(chromosome):
       'X' : 'NC_000023.11',
       'Y' : 'NC_000024.10',
     }
+    if chromosome not in sequences:
+        return None
     return sequences[chromosome]
 
 # TODO: Refactor this method
