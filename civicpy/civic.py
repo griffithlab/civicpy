@@ -53,7 +53,7 @@ class CoordinateQuery(_CoordinateQuery):  # Wrapping for documentation
     :param int stop: The chromosomal stop position in base coordinates (1-based)
     :param str optional alt: The alternate nucleotide(s) at the designated coordinates
     :param str optional ref: The reference nucleotide(s) at the designated coordinates
-    :param GRCh37,GRCh38 build: The reference build version of the coordinates
+    :param NCBI36,GRCh37,GRCh38 build: The reference build version of the coordinates
     :param Any optional key: A user-defined object linked to the coordinate
     """
     pass
@@ -1286,6 +1286,8 @@ def _allele_registry_url():
 def _construct_hgvs_for_coordinate_query(coordinate_query):
     if coordinate_query.build == 'GRCh38':
         chromosome = _refseq_sequence_b38(coordinate_query.chr)
+    elif coordinate_query.build == 'NCBI36':
+        chromosome = _refseq_sequence_b36(coordinate_query.chr)
     else:
         raise ValueError("unexpected reference build")
     if chromosome is None:
@@ -1322,6 +1324,38 @@ def _variant_type(coordinate_query):
         return "indel"
     else:
         return None
+
+def _refseq_sequence_b36(chromosome):
+    chromosome = chromosome.replace('chr', '')
+    sequences = {
+      '1' : 'NC_000001.9',
+      '2' : 'NC_000002.10',
+      '3' : 'NC_000003.10',
+      '4' : 'NC_000004.10',
+      '5' : 'NC_000005.8',
+      '6' : 'NC_000006.10',
+      '7' : 'NC_000007.12',
+      '8' : 'NC_000008.9',
+      '9' : 'NC_000009.10',
+      '10' : 'NC_000010.9',
+      '11' : 'NC_000011.8',
+      '12' : 'NC_000012.10',
+      '13' : 'NC_000013.9',
+      '14' : 'NC_000014.7',
+      '15' : 'NC_000015.8',
+      '16' : 'NC_000016.8',
+      '17' : 'NC_000017.9',
+      '18' : 'NC_000018.8',
+      '19' : 'NC_000019.8',
+      '20' : 'NC_000020.9',
+      '21' : 'NC_000021.7',
+      '22' : 'NC_000022.9',
+      'X' : 'NC_000023.9',
+      'Y' : 'NC_000024.8',
+    }
+    if chromosome not in sequences:
+        return None
+    return sequences[chromosome]
 
 def _refseq_sequence_b38(chromosome):
     chromosome = chromosome.replace('chr', '')

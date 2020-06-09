@@ -336,6 +336,12 @@ class TestCoordinateSearch(object):
         assert len(search_results) == 1
         assert search_results[0].id == 2042
 
+    def test_build36_exact_search_variants(self, v600e):
+        query = CoordinateQuery('7', 140099605, 140099605, 'T', 'A', 'NCBI36')
+        search_results = civic.search_variants_by_coordinates(query, search_mode='exact')
+        assert len(search_results) == 1
+        assert search_results[0] == v600e
+
     def test_errors(self):
         with pytest.raises(ValueError) as context:
             query = CoordinateQuery('7', 140453136, 140453136, 'T', 'A')
