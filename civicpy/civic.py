@@ -687,7 +687,7 @@ class Variant(CivicRecord):
                     "",
                     "&".join([acmg_code.code for acmg_code in assertion.acmg_codes]),
                     str(assertion.amp_level or ''),
-                    "{} (v{})".format(assertion.nccn_guideline, assertion.nccn_guideline_version),
+                    assertion.format_nccn_guideline(),
                     str(assertion.fda_regulatory_approval or ''),
                     str(assertion.fda_companion_test or ''),
                 ]))
@@ -823,6 +823,12 @@ class Assertion(CivicRecord):
     @property
     def hpo_ids(self):
         return [x.hpo_id for x in self.phenotypes if x.hpo_id]
+
+    def format_nccn_guideline(self):
+        if self.nccn_guideline is None:
+            return ""
+        else:
+            return "{} (v{})".format(self.nccn_guideline, self.nccn_guideline_version)
 
 
 class User(CivicRecord):
