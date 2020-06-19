@@ -9,7 +9,7 @@ from pathlib import Path
 from collections import defaultdict, namedtuple
 from civicpy import REMOTE_CACHE_URL, LOCAL_CACHE_PATH, CACHE_TIMEOUT_DAYS
 import requests
-from civicpy.exports import VCFWriter
+from civicpy import exports
 import deprecation
 from civicpy.__version__ import __version__
 from datetime import datetime, timedelta
@@ -618,7 +618,7 @@ class Variant(CivicRecord):
             for evidence in self.evidence:
                 if include_status is not None and evidence.status not in include_status:
                     continue
-                special_character_table = str.maketrans(VCFWriter.SPECIAL_CHARACTERS)
+                special_character_table = str.maketrans(exports.VCFWriter.SPECIAL_CHARACTERS)
                 csq.append('|'.join([
                     self.csq_alt(),
                     '&'.join(map(lambda t: t.name, self.variant_types)),
