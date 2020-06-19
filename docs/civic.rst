@@ -555,4 +555,5 @@ By Other Attribute
 ~~~~~~~~~~~~~~~~~~
 
 .. autofunction:: search_variants_by_allele_registry_id
+.. autofunction:: search_variants_by_hgvs
 .. autofunction:: search_variants_by_name
