@@ -125,6 +125,11 @@ class TestVariants(object):
         assert len(variants) == 1
         assert variants[0] == v600e
 
+    def test_get_by_hgvs(self, v600e):
+        variants = civic.search_variants_by_hgvs("ENST00000288602.6:c.1799T>A")
+        assert len(variants) == 1
+        assert variants[0] == v600e
+
     def test_sanitize_coordinate_bases(self):
         variant1 = civic.get_variant_by_id(2696)
         variant2 = civic.get_variant_by_id(558)
