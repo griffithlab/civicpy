@@ -1,5 +1,5 @@
-jupyter==1.0.0
-notebook>=5.7.8
-matplotlib==2.0.2
-pytest-cov>=4.4
-python-coveralls>=2.9.1
+jupyter~=1.0
+notebook~=5.7
+matplotlib~=2.0
+pytest-cov~=2.7
+python-coveralls~=2.9
