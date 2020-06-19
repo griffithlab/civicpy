@@ -638,6 +638,19 @@ class Variant(CivicRecord):
                     "{} ({})".format(evidence.source.citation_id, evidence.source.source_type),
                     str(evidence.variant_origin),
                     evidence.status,
+                    str(evidence.clinical_significance or ''),
+                    str(evidence.evidence_direction or ''),
+                    str(evidence.disease),
+                    '&'.join([str(drug) for drug in evidence.drugs]),
+                    str(evidence.drug_interaction_type or ""),
+                    '&'.join(["{} (HPO ID {})".format(phenotype.hpo_class, phenotype.hpo_id) for phenotype in evidence.phenotypes]),
+                    evidence.evidence_level,
+                    str(evidence.rating),
+                    "",
+                    "",
+                    "",
+                    "",
+                    "",
                 ]))
             for assertion in self.assertions:
                 if include_status is not None and assertion.status not in include_status:
@@ -664,6 +677,19 @@ class Variant(CivicRecord):
                     "",
                     str(assertion.variant_origin),
                     assertion.status,
+                    assertion.clinical_significance,
+                    assertion.evidence_direction,
+                    str(assertion.disease),
+                    '&'.join([str(drug) for drug in assertion.drugs]),
+                    str(assertion.drug_interaction_type or ''),
+                    "",
+                    "",
+                    "",
+                    "&".join([acmg_code.code for acmg_code in assertion.acmg_codes]),
+                    str(assertion.amp_level or ''),
+                    assertion.format_nccn_guideline(),
+                    str(assertion.fda_regulatory_approval or ''),
+                    str(assertion.fda_companion_test or ''),
                 ]))
             return csq
 
@@ -798,6 +824,12 @@ class Assertion(CivicRecord):
     def hpo_ids(self):
         return [x.hpo_id for x in self.phenotypes if x.hpo_id]
 
+    def format_nccn_guideline(self):
+        if self.nccn_guideline is None:
+            return ""
+        else:
+            return "{} (v{})".format(self.nccn_guideline, self.nccn_guideline_version)
+
 
 class User(CivicRecord):
 
@@ -896,9 +928,21 @@ class CivicAttribute(CivicRecord, dict):
 class Drug(CivicAttribute):
     _SIMPLE_FIELDS = CivicRecord._SIMPLE_FIELDS.union({'ncit_id'})
 
+    def __str__(self):
+        if self.ncit_id is None:
+            return self.name
+        else:
+            return "{} (NCIt ID {})".format(self.name, self.ncit_id)
+
 
 class Disease(CivicAttribute):
     _SIMPLE_FIELDS = CivicRecord._SIMPLE_FIELDS.union({'display_name', 'doid', 'url'})
+
+    def __str__(self):
+        if self.doid is None:
+            return self.name
+        else:
+            return "{} (DOID {})".format(self.name, self.doid)
 
 
 class Country(CivicAttribute):

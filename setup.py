@@ -30,8 +30,9 @@ setup(
     ],
     extras_require={
         'test': [
-            'pytest',
-            'pytest-cov',
+            'pytest==4.1.0',
+            'pytest-cov==2.9.0',
+            'attrs==18.2.0',
             'python-coveralls',
             'coverage<5.0',
         ],
