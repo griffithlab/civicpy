@@ -9,6 +9,8 @@ from collections import defaultdict, namedtuple
 from civicpy import REMOTE_CACHE_URL, LOCAL_CACHE_PATH, CACHE_TIMEOUT_DAYS
 import requests
 from civicpy.exports import VCFWriter
+import deprecation
+from civicpy.__version__ import __version__
 from datetime import datetime, timedelta
 from backports.datetime_fromisoformat import MonkeyPatch
 MonkeyPatch.patch_fromisoformat()
@@ -1110,6 +1112,8 @@ def get_assertion_by_id(assertion_id):
     return get_assertions_by_ids([assertion_id])[0]
 
 
+@deprecation.deprecated(deprecated_in="1.1", removed_in="2.0",
+                        current_version=__version__)
 def get_all_assertion_ids():
     return _get_all_element_ids('assertions')
 
@@ -1453,10 +1457,14 @@ def bulk_search_variants_by_coordinates(sorted_queries, search_mode='any'):
     return dict(matches)
 
 
+@deprecation.deprecated(deprecated_in="1.1", removed_in="2.0",
+                        current_version=__version__)
 def get_all_variant_ids():
     return _get_all_element_ids('variants')
 
 
+@deprecation.deprecated(deprecated_in="1.1", removed_in="2.0",
+                        current_version=__version__)
 def _get_all_element_ids(element):
     url = 'https://civicdb.org/api/{}?count=100000'.format(element)
     resp = requests.get(url)
@@ -1492,6 +1500,8 @@ def get_gene_by_id(gene_id):
     return get_genes_by_ids([gene_id])[0]
 
 
+@deprecation.deprecated(deprecated_in="1.1", removed_in="2.0",
+                        current_version=__version__)
 def get_all_gene_ids():
     """
     Queries CIViC for a list of all gene IDs. Useful for passing to :func:`get_genes_by_ids` to
@@ -1524,6 +1534,8 @@ def get_all_genes(include_status=['accepted','submitted','rejected'], allow_cach
         return genes
 
 
+@deprecation.deprecated(deprecated_in="1.1", removed_in="2.0",
+                        current_version=__version__)
 def get_all_evidence_ids():
     return _get_all_element_ids('evidence_items')
 
