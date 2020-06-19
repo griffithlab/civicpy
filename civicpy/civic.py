@@ -641,7 +641,7 @@ class Variant(CivicRecord):
                     str(evidence.clinical_significance or ''),
                     str(evidence.evidence_direction or ''),
                     str(evidence.disease),
-                    '&'.join(["{} (NCIt ID {})".format(drug.name, drug.ncit_id) for drug in evidence.drugs]),
+                    '&'.join([str(drug) for drug in evidence.drugs]),
                     str(evidence.drug_interaction_type or ""),
                     '&'.join(["{} (HPO ID {})".format(phenotype.hpo_class, phenotype.hpo_id) for phenotype in evidence.phenotypes]),
                     evidence.evidence_level,
@@ -680,7 +680,7 @@ class Variant(CivicRecord):
                     assertion.clinical_significance,
                     assertion.evidence_direction,
                     str(assertion.disease),
-                    '&'.join(["{} (NCIt ID {})".format(drug.name, drug.ncit_id) for drug in assertion.drugs]),
+                    '&'.join([str(drug) for drug in assertion.drugs]),
                     str(assertion.drug_interaction_type or ''),
                     "",
                     "",
@@ -921,6 +921,12 @@ class CivicAttribute(CivicRecord, dict):
 
 class Drug(CivicAttribute):
     _SIMPLE_FIELDS = CivicRecord._SIMPLE_FIELDS.union({'ncit_id'})
+
+    def __str__(self):
+        if self.ncit_id is None:
+            return self.name
+        else:
+            return "{} (NCIt ID {})".format(self.name, self.ncit_id)
 
 
 class Disease(CivicAttribute):
