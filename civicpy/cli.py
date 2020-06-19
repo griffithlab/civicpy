@@ -46,7 +46,7 @@ def create_vcf(vcf_file_path, include_status):
               help="A VCF to annotate with information from CIViC.")
 @click.option('--output-vcf', required=True,
               help="The file path to write the annotated VCF to.")
-@click.option('--reference', required=True, type=click.Choice(['GRCh37', 'GRCh38']),
+@click.option('--reference', required=True, type=click.Choice(['NCBI36', 'GRCh37', 'GRCh38']),
               help="The reference sequence build used to create the input VCF")
 @click.option('-i', '--include-status', required=True, multiple=True, type=click.Choice(['accepted', 'submitted', 'rejected']),
               help="Limits the variants and annotations in the VCF to only the ones that match the given statuses. \
