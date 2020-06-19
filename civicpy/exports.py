@@ -204,7 +204,7 @@ class VCFWriter(DictWriter):
                     assert ';' not in v
                     assert '=' not in v
                 if v:
-                    out.append(f'{field}={v}')
+                    out.append('{}={}'.format(field, v))
             out_dict['INFO'] = ';'.join(out)
 
             super().writerow(out_dict)
@@ -212,13 +212,13 @@ class VCFWriter(DictWriter):
         return rows
 
     def _write_meta_file_lines(self):
-        self._f.write(f'##fileformat=VCFv{self.version}\n')
+        self._f.write('##fileformat=VCFv{}\n'.format(self.version))
         self._f.write('##fileDate={}\n'.format(
             datetime.date.today().strftime('%Y%m%d')
         ))
         self._f.write('##reference=ftp://ftp.ncbi.nih.gov/genbank/genomes/Eukaryotes/vertebrates_mammals/Homo_sapiens/GRCh37/special_requests/GRCh37-lite.fa.gz\n')
-        self._f.write(f'##source=CIViCpy_v{__version__}\n')
-        self._f.write(f'##aboutURL=https://civicdb.org/help/evidence/overview\n')
+        self._f.write('##source=CIViCpy_v{}\n'.format(__version__))
+        self._f.write('##aboutURL=https://civicdb.org/help/evidence/overview\n')
 
     def _write_meta_info_lines(self):
         # Gene
@@ -232,10 +232,10 @@ class VCFWriter(DictWriter):
         assert id_ not in self.meta_info_fields
         assert id_ not in self.VCF_RESERVED_FIELDS
         self.meta_info_fields.append(id_)
-        s = [f'ID={id_},Number={number},Type={type_},Description="{description}"']
-        s.extend([f'{k}={v}' for k, v in kwargs])
+        s = ['ID={},Number={},Type={},Description="{}"'.format(id_, number, type_, description)]
+        s.extend(['{}={}'.format(k, v) for k, v in kwargs])
         out = ','.join(s)
-        self._f.write(f'##INFO=<{out}>\n')
+        self._f.write('##INFO=<{}>\n'.format(out))
 
     def _add_variant_record(self, variant_record):
         self.variant_records.add(variant_record)

@@ -25,7 +25,8 @@ setup(
         'pandas',
         'Click',
         'vcfpy',
-        'pysam'
+        'pysam',
+        'backports-datetime-fromisoformat',
     ],
     extras_require={
         'test': [
@@ -40,7 +41,7 @@ setup(
             'sphinxcontrib.programoutput'
         ]
     },
-    python_requires='>=3.7',
+    python_requires='>=3.5',
     entry_points={
         'console_scripts': [
             'civicpy=civicpy.cli:cli'
