@@ -514,7 +514,7 @@ class Variant(CivicRecord):
     def is_valid_for_vcf(self, emit_warnings=False):
         if self.coordinates.chromosome2 or self.coordinates.start2 or self.coordinates.stop2:
             warning = "Variant {} has a second set of coordinates. Skipping".format(self.id)
-        if self.coordinates.chromosome and self.coordinates.start and (self.coordinates.reference_bases or self.coordinates.variant_bases):
+        elif self.coordinates.chromosome and self.coordinates.start and (self.coordinates.reference_bases or self.coordinates.variant_bases):
             if self._valid_ref_bases():
                 if self._valid_alt_bases():
                     return True
@@ -1253,7 +1253,7 @@ def _construct_hgvs_for_coordinate_query(coordinate_query):
     base_hgvs = "{}:g.{}".format(chromosome, coordinate_query.start)
     variant_type = _variant_type(coordinate_query)
     if variant_type == "deletion":
-        if (coordinate_query.ref) > 1:
+        if len(coordinate_query.ref) > 1:
             return"{}_{}del".format(base_hgvs, coordinate_query.stop)
         else:
             return "{}del".format(base_hgvs)

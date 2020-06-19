@@ -134,13 +134,13 @@ class VCFWriter(DictWriter):
                 self._add_variant_record(civic_record.variant)
         elif isinstance(civic_record, civic.Gene):
             for variant in civic_record.variants:
-                if civic_record.variant.is_valid_for_vcf(emit_warnings=True):
+                if variant.is_valid_for_vcf(emit_warnings=True):
                     self._add_variant_record(variant)
         elif isinstance(civic_record, civic.Variant):
             if civic_record.is_valid_for_vcf(emit_warnings=True):
                 self._add_variant_record(civic_record)
         else:
-            raise ValueError('Expected a CIViC Variant, Assertion or Evidence record.')
+            raise ValueError('Expected a CIViC Gene, Variant, Assertion or Evidence record.')
 
     def addrecords(self, civic_records):
         """

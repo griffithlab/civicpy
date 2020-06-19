@@ -1,6 +1,7 @@
 import pytest
 from civicpy import civic, TEST_CACHE_PATH
 from civicpy.civic import CoordinateQuery
+import logging
 
 ELEMENTS = [
     'Assertion'
@@ -28,7 +29,10 @@ def v600e_assertion():
 
 
 class TestGetFunctions(object):
-    
+    def test_element_lookup_by_id(self):
+        assertion = civic.element_lookup_by_id('assertion', '1')
+        assert assertion['id'] == 1
+
     def test_get_assertions(self):
         test_ids = [1, 2, 3]
         results = civic._get_elements_by_ids('assertion', test_ids)
@@ -79,6 +83,15 @@ class TestEvidence(object):
         evidence = civic.get_all_evidence(include_status=['accepted'])
         assert len(evidence) >= 3247
 
+    #get_all_ids pulls from the live site so it will return more results than get_all_x
+    def test_get_all_ids(self):
+        evidence_ids = civic.get_all_evidence_ids()
+        assert len(evidence_ids) >= len(civic.get_all_evidence())
+
+    def test_properties(self, v600e):
+        evidence = v600e.evidence[0]
+        assert evidence.variant.name == 'V600E'
+        assert evidence.statement == evidence.description
 
 class TestVariants(object):
 
@@ -93,6 +106,11 @@ class TestVariants(object):
     def test_get_accepted_only(self):
         variants = civic.get_all_variants(include_status=['accepted'])
         assert len(variants) >= 1333
+
+    #get_all_ids pulls from the live site so it will return more results than get_all_x
+    def test_get_all_ids(self):
+        variant_ids = civic.get_all_variant_ids()
+        assert len(variant_ids) >= len(civic.get_all_variants())
 
     def test_get_by_name(self, v600e):
         variants = civic.search_variants_by_name("V600E")
@@ -110,6 +128,13 @@ class TestVariants(object):
         for v in variant1, variant2:
             assert v.coordinates.reference_bases not in ['', '-']
             assert v.coordinates.variant_bases not in ['', '-']
+
+    def test_properties(self):
+        variant = civic.get_variant_by_id(11)
+        assert sorted(variant.aliases) == sorted(variant.variant_aliases)
+        assert sorted(variant.groups) == sorted(variant.variant_groups)
+        assert sorted(variant.types) == sorted(variant.variant_types)
+        assert variant.summary == variant.description
 
 
 class TestVariantGroups(object):
@@ -137,6 +162,11 @@ class TestAssertions(object):
         assert v600e_assertion.fda_companion_test is True
         assert v600e_assertion.fda_regulatory_approval is True
 
+    def test_properties(self):
+        assertion = civic.get_assertion_by_id(18)
+        assert assertion.evidence == assertion.evidence_items
+        assert assertion.hpo_ids == [p.hpo_id for p in assertion.phenotypes if p.hpo_id]
+
 
 class TestGenes(object):
 
@@ -152,6 +182,15 @@ class TestGenes(object):
         genes = civic.get_all_genes(include_status=['accepted'])
         assert len(genes) >= 322
 
+    #get_all_ids pulls from the live site so it might return more results than get_all_x
+    def test_get_all_ids(self):
+        genes = civic.get_all_genes(include_status=['accepted'])
+        gene_ids = civic.get_all_gene_ids()
+        assert len(gene_ids) >= len(genes)
+
+    def test_get_by_id(self):
+        gene = civic.get_gene_by_id(58)
+        assert gene.name == 'VHL'
 
 class TestCoordinateSearch(object):
 
@@ -277,9 +316,62 @@ class TestCoordinateSearch(object):
         assert len(search_results) == 1
         assert search_results[0] == v600e
 
+        query = CoordinateQuery('7', 140753336, 140753337, 'TT', 'AC', 'GRCh38')
+        search_results = civic.search_variants_by_coordinates(query, search_mode='exact')
+        assert len(search_results) == 1
+        assert search_results[0].id == 563
+
+        query = CoordinateQuery('3', 10146548, 10146549, 'C', None, 'GRCh38')
+        search_results = civic.search_variants_by_coordinates(query, search_mode='exact')
+        assert len(search_results) == 1
+        assert search_results[0].id == 1918
+
+        query = CoordinateQuery('3', 10146618, 10146618, None, 'G', 'GRCh38')
+        search_results = civic.search_variants_by_coordinates(query, search_mode='exact')
+        assert len(search_results) == 1
+        assert search_results[0].id == 2042
+
+    def test_errors(self):
+        with pytest.raises(ValueError) as context:
+            query = CoordinateQuery('7', 140453136, 140453136, 'T', 'A')
+            variants_single = civic.search_variants_by_coordinates(query, search_mode='wrong_mode')
+        assert "unexpected search mode" in str(context.value)
+        with pytest.raises(ValueError) as context:
+            query = CoordinateQuery('7', 140753336, 140753336, '*', 'A', 'GRCh38')
+            search_results = civic.search_variants_by_coordinates(query, search_mode='exact')
+        assert "Can't use wildcard when searching for non-GRCh37 coordinates" in str(context.value)
+        with pytest.raises(ValueError) as context:
+            query = CoordinateQuery('7', 140753336, 140753336, None, None, 'GRCh38')
+            search_results = civic.search_variants_by_coordinates(query, search_mode='exact')
+        assert "alt or ref required for non-GRCh37 coordinate queries" in str(context.value)
+        with pytest.raises(ValueError) as context:
+            query = CoordinateQuery('7', 140753336, 140753336, 'T', 'A', 'GRCh38')
+            search_results = civic.search_variants_by_coordinates(query, search_mode='any')
+        assert "Only exact search mode is supported for non-GRCh37 coordinate queries" in str(context.value)
+
+
+
 class TestDrugs(object):
 
     def test_has_ncit_id(self, v600e_assertion):
         trametinib = v600e_assertion.drugs[0]
         assert trametinib.ncit_id == 'C77908'
         assert 'pubchem_id' not in trametinib.keys()
+
+#warning logging tests
+LOGGER = logging.getLogger(__name__)
+
+def test_is_valid_for_vcf_warnings(caplog):
+    fusion_variant = civic.get_variant_by_id(287)
+    fusion_variant.is_valid_for_vcf(emit_warnings=True)
+    assert "Variant 287 has a second set of coordinates. Skipping" in caplog.text
+
+    incomplete_coordinates_variant = civic.get_variant_by_id(27)
+    incomplete_coordinates_variant.is_valid_for_vcf(emit_warnings=True)
+    assert "Incomplete coordinates for variant 27. Skipping." in caplog.text
+
+    unsupported_var_bases_variant = civic.get_variant_by_id(613)
+    unsupported_var_bases_variant.is_valid_for_vcf(emit_warnings=True)
+    assert "Unsupported variant base(s) for variant 613. Skipping." in caplog.text
+
+    #currently no case for unsupported ref bases
