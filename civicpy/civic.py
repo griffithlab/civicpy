@@ -1265,10 +1265,14 @@ def search_variants_by_coordinates(coordinate_query, search_mode='any'):
         elif search_mode == 'exact':
             match_idx = (start == m_df.start) & (stop == m_df.stop)
             if coordinate_query.alt is not None and coordinate_query.alt != '*':
+                if coordinate_query.alt == '-':
+                    raise ValueError("Unexpected alt `-` in coordinate query. Did you mean `None`?")
                 match_idx = match_idx & (coordinate_query.alt == m_df.alt)
             elif coordinate_query.alt is None:
                 match_idx = match_idx & pd.isnull(m_df.alt)
             if (coordinate_query.ref is not None and coordinate_query.ref != '*'):
+                if coordinate_query.ref == '-':
+                    raise ValueError("Unexpected ref `-` in coordinate query. Did you mean `None`?")
                 match_idx = match_idx & (coordinate_query.ref == m_df.ref)
             elif coordinate_query.ref is None:
                 match_idx = match_idx & pd.isnull(m_df.ref)
@@ -1281,6 +1285,10 @@ def search_variants_by_coordinates(coordinate_query, search_mode='any'):
             if coordinate_query.alt or coordinate_query.ref:
                 if coordinate_query.alt == '*' or coordinate_query.ref == '*':
                     raise ValueError("Can't use wildcard when searching for non-GRCh37 coordinates")
+                if coordinate_query.alt == '-':
+                    raise ValueError("Unexpected alt `-` in coordinate query. Did you mean `None`?")
+                if coordinate_query.ref == '-':
+                    raise ValueError("Unexpected ref `-` in coordinate query. Did you mean `None`?")
                 hgvs = _construct_hgvs_for_coordinate_query(coordinate_query)
                 r = requests.get(url=_allele_registry_url(), params={'hgvs': hgvs})
                 data = r.json()
@@ -1445,6 +1453,10 @@ def bulk_search_variants_by_coordinates(sorted_queries, search_mode='any'):
             c_alt = c.alt
             q_ref = q.ref
             c_ref = c.ref
+            if q_alt == '-':
+                raise ValueError("Unexpected alt `-` in coordinate query. Did you mean `None`?")
+            if q_ref == '-':
+                raise ValueError("Unexpected ref `-` in coordinate query. Did you mean `None`?")
             if (not (q_alt != '*' and q_alt != c_alt)) and (not (q_ref != '*' and q_ref != c_ref)):
                 append_match(matches, q, c)
         elif search_mode == 'query_encompassing' and q_start <= c_start and q_stop >= c_stop:
