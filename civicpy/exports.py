@@ -78,7 +78,7 @@ class VCFWriter(DictWriter):
         'CIViC Entity Source',
         'CIViC Entity Variant Origin',
         'CIViC Entity Status',
-        'CIViC Entity Clinical Signifiance',
+        'CIViC Entity Clinical Significance',
         'CIViC Entity Direction',
         'CIViC Entity Disease',
         'CIViC Entity Drugs',
