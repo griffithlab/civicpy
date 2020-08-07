@@ -4,6 +4,7 @@ import tempfile
 
 
 class TestCli(object):
+    @pytest.mark.skip(reason="Long running test")
     def test_create_cache(self):
         tmp_file = tempfile.NamedTemporaryFile('w', delete=False)
         cli.update(['--hard', '--cache-save-path', tmp_file.name], standalone_mode=False)
