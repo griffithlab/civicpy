@@ -1,0 +1,28 @@
+[[source]]
+name = "pypi"
+url = "https://pypi.org/simple"
+verify_ssl = true
+
+[dev-packages]
+civicpy = {editable = true, path = "."}
+jupyter = "~=1.0"
+notebook = "~=5.7"
+matplotlib = "~=2.0"
+pytest-cov = "~=2.7"
+python-coveralls = "~=2.9"
+sphinx = "*"
+"sphinxjp.themes.basicstrap" = "*"
+"sphinxcontrib.programoutput" = "*"
+
+[packages]
+pytest = ">=3.5"
+requests = "~=2.18"
+obonet = "==0.2.3"
+networkx = "~=2.1"
+pandas = "~=1.0"
+click = "==7.0"
+deprecation = "~=2.1"
+backports-datetime-fromisoformat = "~=1.0"
+
+[requires]
+python_version = "3.8"
