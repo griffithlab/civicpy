@@ -6,7 +6,7 @@ verify_ssl = true
 [dev-packages]
 civicpy = {editable = true, path = "."}
 jupyter = "~=1.0"
-notebook = "~=5.7"
+notebook = "~=6.1"
 matplotlib = "~=2.0"
 pytest-cov = "~=2.7"
 python-coveralls = "~=2.9"
