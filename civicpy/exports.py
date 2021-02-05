@@ -205,7 +205,7 @@ class VCFWriter(DictWriter):
 
             info_dict = {
                 'GN': variant.gene.name,
-                'VT': variant.name,
+                'VT': variant.sanitized_name(),
                 'CSQ': ','.join(variant.csq()),
             }
 
