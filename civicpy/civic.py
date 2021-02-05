@@ -1029,7 +1029,8 @@ def _get_elements_by_ids(element, id_list=[], allow_cached=True, get_all=False):
     if id_list and get_all:
         raise ValueError('Please pass list of ids or use the get_all flag, not both.')
     if get_all:
-        payload = _construct_get_all_payload()
+        page = 1
+        payload = _construct_get_all_payload(page)
         logging.warning('Getting all {}. This may take a couple of minutes...'.format(pluralize(element)))
     elif element == 'variant_group':
         raise NotImplementedError("Bulk ID search for variant groups not supported. Use get_all=True instead.")
@@ -1038,16 +1039,31 @@ def _get_elements_by_ids(element, id_list=[], allow_cached=True, get_all=False):
     adv_search = (element != 'variant_group')
     url = search_url(element, use_search_meta=adv_search)
     if adv_search:
-        response = requests.post(url, json=payload)
+        cls = get_class(element)
         container_key = 'results'
+        response = requests.post(url, json=payload)
+        response.raise_for_status()
+        response_container = response.json()[container_key]
+        elements = [cls(**x) for x in response_container]
+        cache = [x['id'] for x in response_container]
+        if get_all:
+            while page < response.json()['_meta']['total_pages']:
+                page += 1
+                payload = _construct_get_all_payload(page)
+                response = requests.post(url, json=payload)
+                response.raise_for_status()
+                response_container = response.json()[container_key]
+                elements.extend([cls(**x) for x in response_container])
+                cache.extend([x['id'] for x in response_container])
+        CACHE['{}_all_ids'.format(pluralize(element))] = cache
     else:
         response = requests.get(url)
         container_key = 'records'
-    response.raise_for_status()
-    cls = get_class(element)
-    response_container = response.json()[container_key]
-    elements = [cls(**x) for x in response_container]
-    CACHE['{}_all_ids'.format(pluralize(element))] = [x['id'] for x in response_container]
+        response.raise_for_status()
+        cls = get_class(element)
+        response_container = response.json()[container_key]
+        elements = [cls(**x) for x in response_container]
+        CACHE['{}_all_ids'.format(pluralize(element))] = [x['id'] for x in response_container]
     return elements
 
 
@@ -1055,7 +1071,7 @@ def _get_element_by_id(element, id, allow_cached=True):
     return _get_elements_by_ids(element, [id], allow_cached)[0]
 
 
-def _construct_get_all_payload():
+def _construct_get_all_payload(page):
     queries = [
         {
             'field': 'id',
@@ -1069,7 +1085,9 @@ def _construct_get_all_payload():
     ]
     payload = {
         'operator': 'OR',
-        'queries': queries
+        'queries': queries,
+        'page': page,
+        'count': 500,
     }
     return payload
 
