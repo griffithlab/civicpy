@@ -15,6 +15,7 @@ from civicpy.__version__ import __version__
 from datetime import datetime, timedelta
 from backports.datetime_fromisoformat import MonkeyPatch
 MonkeyPatch.patch_fromisoformat()
+import re
 
 
 CACHE = dict()
@@ -610,6 +611,14 @@ class Variant(CivicRecord):
         else:
             return ''
 
+    def sanitized_name(self):
+        name = self.name
+        regex = re.compile(r"^([A-Z]+)([0-9]+)(=)(.*)$")
+        match = regex.match(name)
+        if match is not None:
+            name = "".join([match.group(1), match.group(2), match.group(1), match.group(4)])
+        return name
+
     def csq(self, include_status=None):
         if self.csq_alt() is None:
             return []
@@ -628,7 +637,7 @@ class Variant(CivicRecord):
                     str(self.coordinates.representative_transcript),
                     self.hgvs_c(),
                     self.hgvs_p(),
-                    self.name,
+                    self.sanitized_name(),
                     str(self.id),
                     '&'.join(map(lambda a: a.translate(special_character_table), self.variant_aliases)),
                     '&'.join(map(lambda e: e.translate(special_character_table), self.hgvs_expressions)),
@@ -667,7 +676,7 @@ class Variant(CivicRecord):
                     str(self.coordinates.representative_transcript),
                     self.hgvs_c(),
                     self.hgvs_p(),
-                    self.name,
+                    self.sanitized_name(),
                     str(self.id),
                     '&'.join(map(lambda a: a.translate(special_character_table), self.variant_aliases)),
                     '&'.join(map(lambda e: e.translate(special_character_table), self.hgvs_expressions)),
