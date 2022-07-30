@@ -70,6 +70,18 @@ class TestEvidence(object):
         for source in v600e.evidence_sources:
             assert source.citation_id
             assert source.source_type
+            assert hasattr(source, 'abstract')
+            assert hasattr(source, 'asco_abstract_id')
+            assert source.author_string
+            assert source.citation
+            assert source.full_journal_title
+            assert source.journal
+            assert hasattr(source, 'pmc_id')
+            assert source.publication_date
+            assert source.source_url
+            assert source.title
+            assert source.name
+            assert hasattr(source, 'clinical_trials')
 
     def test_get_all(self):
         evidence = civic.get_all_evidence()
@@ -397,6 +409,14 @@ class TestDrugs(object):
         trametinib = v600e_assertion.drugs[0]
         assert trametinib.ncit_id == 'C77908'
         assert 'pubchem_id' not in trametinib.keys()
+        assert trametinib.name == 'Trametinib'
+        assert set(trametinib.aliases) == {
+            'JTP-74057',
+            'GSK1120212',
+            'MEK Inhibitor GSK1120212',
+            'Mekinist',
+            'N-(3-{3-cyclopropyl-5-[(2-fluoro-4-iodophenyl)amino]-6,8-dimethyl-2,4,7-trioxo-3,4,6,7-tetrahydropyrido[4,3-d]pyrimidin-1(2H)-yl}phenyl)acetamide'
+        }
 
 #warning logging tests
 LOGGER = logging.getLogger(__name__)

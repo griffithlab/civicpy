@@ -1008,7 +1008,8 @@ class CivicAttribute(CivicRecord, dict):
 
 
 class Drug(CivicAttribute):
-    _SIMPLE_FIELDS = CivicRecord._SIMPLE_FIELDS.union({'ncit_id', 'drug_url'})
+    _SIMPLE_FIELDS = CivicAttribute._SIMPLE_FIELDS.union({'ncit_id', 'drug_url', 'name'})
+    _COMPLEX_FIELDS = CivicAttribute._COMPLEX_FIELDS.union({'aliases'})
 
     def __str__(self):
         if self.ncit_id is None:
@@ -1018,7 +1019,8 @@ class Drug(CivicAttribute):
 
 
 class Disease(CivicAttribute):
-    _SIMPLE_FIELDS = CivicRecord._SIMPLE_FIELDS.union({'display_name', 'doid', 'disease_url'})
+    _SIMPLE_FIELDS = CivicAttribute._SIMPLE_FIELDS.union({'display_name', 'doid', 'disease_url'})
+    _COMPLEX_FIELDS = CivicAttribute._COMPLEX_FIELDS.union({'aliases'})
 
     def __str__(self):
         if self.doid is None:
@@ -1028,14 +1030,28 @@ class Disease(CivicAttribute):
 
 
 class Phenotype(CivicAttribute):
-    _SIMPLE_FIELDS = CivicRecord._SIMPLE_FIELDS.union({'hpo_id', 'url'})
+    _SIMPLE_FIELDS = CivicAttribute._SIMPLE_FIELDS.union({'hpo_id', 'url', 'name'})
 
     def __str__(self):
         return "{} (HPO ID {})".format(self.name, self.hpo_id)
 
 
 class Source(CivicAttribute):
-    _SIMPLE_FIELDS = CivicRecord._SIMPLE_FIELDS.union({'citation', 'citation_id', 'source_type'})
+    _SIMPLE_FIELDS = CivicAttribute._SIMPLE_FIELDS.union({
+        'citation',
+        'citation_id',
+        'source_type',
+        'abstract',
+        'asco_abstract_id',
+        'author_string',
+        'full_journal_title',
+        'journal',
+        'pmc_id',
+        'publication_date',
+        'source_url',
+        'title'
+    })
+    _COMPLEX_FIELDS = CivicAttribute._COMPLEX_FIELDS.union({'clinical_trials'})
 
     def __str__(self):
         return "{} ({} {})".format(self.citation, self.source_type, self.citation_id)
@@ -1246,9 +1262,25 @@ def _construct_get_gene_payload():
                 sources {
                     id
                     name
+                    title
                     citation
                     citation_id: citationId
                     source_type: sourceType
+                    abstract
+                    asco_abstract_id: ascoAbstractId
+                    author_string: authorString
+                    full_journal_title: fullJournalTitle
+                    journal
+                    pmc_id: pmcId
+                    publication_date: publicationDate
+                    source_url: sourceUrl
+                    clinical_trials: clinicalTrials {
+                        id
+                        name
+                        description
+                        nctId
+                        url
+                    }
                 }
             }
         }"""
@@ -1272,9 +1304,25 @@ def _construct_get_all_genes_payload():
                 sources {
                     id
                     name
+                    title
                     citation
                     citation_id: citationId
                     source_type: sourceType
+                    abstract
+                    asco_abstract_id: ascoAbstractId
+                    author_string: authorString
+                    full_journal_title: fullJournalTitle
+                    journal
+                    pmc_id: pmcId
+                    publication_date: publicationDate
+                    source_url: sourceUrl
+                    clinical_trials: clinicalTrials {
+                        id
+                        name
+                        description
+                        nctId
+                        url
+                    }
                 }
               }
             }
@@ -1302,9 +1350,25 @@ def _construct_get_variant_payload():
                 sources {
                     id
                     name
+                    title
                     citation
                     citation_id: citationId
                     source_type: sourceType
+                    abstract
+                    asco_abstract_id: ascoAbstractId
+                    author_string: authorString
+                    full_journal_title: fullJournalTitle
+                    journal
+                    pmc_id: pmcId
+                    publication_date: publicationDate
+                    source_url: sourceUrl
+                    clinical_trials: clinicalTrials {
+                        id
+                        name
+                        description
+                        nctId
+                        url
+                    }
                 }
                 variantBases
                 referenceBases
@@ -1353,9 +1417,25 @@ def _construct_get_all_variants_payload():
                     sources {
                         id
                         name
+                        title
                         citation
                         citation_id: citationId
                         source_type: sourceType
+                        abstract
+                        asco_abstract_id: ascoAbstractId
+                        author_string: authorString
+                        full_journal_title: fullJournalTitle
+                        journal
+                        pmc_id: pmcId
+                        publication_date: publicationDate
+                        source_url: sourceUrl
+                        clinical_trials: clinicalTrials {
+                            id
+                            name
+                            description
+                            nctId
+                            url
+                        }
                     }
                     variantBases
                     referenceBases
@@ -1402,12 +1482,14 @@ def _construct_get_evidence_payload():
                   display_name: displayName
                   doid
                   disease_url: diseaseUrl
+                  aliases: diseaseAliases
                 }
                 drugs {
                   id
                   name
                   ncit_id: ncitId
                   drug_url: drugUrl
+                  aliases: drugAliases
                 }
                 phenotypes {
                   id
@@ -1421,9 +1503,25 @@ def _construct_get_evidence_payload():
                 source {
                     id
                     name
+                    title
                     citation
                     citation_id: citationId
                     source_type: sourceType
+                    abstract
+                    asco_abstract_id: ascoAbstractId
+                    author_string: authorString
+                    full_journal_title: fullJournalTitle
+                    journal
+                    pmc_id: pmcId
+                    publication_date: publicationDate
+                    source_url: sourceUrl
+                    clinical_trials: clinicalTrials {
+                        id
+                        name
+                        description
+                        nctId
+                        url
+                    }
                 }
                 rating: evidenceRating
             }
@@ -1463,12 +1561,14 @@ def _construct_get_all_evidence_payload():
                       display_name: displayName
                       doid
                       disease_url: diseaseUrl
+                      aliases: diseaseAliases
                     }
                     drugs {
                       id
                       name
                       ncit_id: ncitId
                       drug_url: drugUrl
+                      aliases: drugAliases
                     }
                     phenotypes {
                       id
@@ -1482,9 +1582,25 @@ def _construct_get_all_evidence_payload():
                     source {
                         id
                         name
+                        title
                         citation
                         citation_id: citationId
                         source_type: sourceType
+                        abstract
+                        asco_abstract_id: ascoAbstractId
+                        author_string: authorString
+                        full_journal_title: fullJournalTitle
+                        journal
+                        pmc_id: pmcId
+                        publication_date: publicationDate
+                        source_url: sourceUrl
+                        clinical_trials: clinicalTrials {
+                            id
+                            name
+                            description
+                            nctId
+                            url
+                        }
                     }
                     rating: evidenceRating
                 }
@@ -1530,12 +1646,14 @@ def _construct_get_assertion_payload():
                   display_name: displayName
                   doid
                   disease_url: diseaseUrl
+                  aliases: diseaseAliases
                 }
                 drugs {
                   id
                   name
                   ncit_id: ncitId
                   drug_url: drugUrl
+                  aliases: drugAliases
                 }
                 evidenceItems {
                   id
@@ -1593,12 +1711,14 @@ def _construct_get_all_assertions_payload():
                       display_name: displayName
                       doid
                       disease_url: diseaseUrl
+                      aliases: diseaseAliases
                     }
                     drugs {
                       id
                       name
                       ncit_id: ncitId
                       drug_url: drugUrl
+                      aliases: drugAliases
                     }
                     evidenceItems {
                       id
@@ -1627,11 +1747,27 @@ def _construct_get_variant_group_payload():
                   }
                 }
                 sources {
-                  id
-                  name
-                  citation
-                  citation_id: citationId
-                  source_type:sourceType
+                    id
+                    name
+                    title
+                    citation
+                    citation_id: citationId
+                    source_type: sourceType
+                    abstract
+                    asco_abstract_id: ascoAbstractId
+                    author_string: authorString
+                    full_journal_title: fullJournalTitle
+                    journal
+                    pmc_id: pmcId
+                    publication_date: publicationDate
+                    source_url: sourceUrl
+                    clinical_trials: clinicalTrials {
+                        id
+                        name
+                        description
+                        nctId
+                        url
+                    }
                 }
             }
         }"""
@@ -1655,11 +1791,27 @@ def _construct_get_all_variant_groups_payload():
                   }
                 }
                 sources {
-                  id
-                  name
-                  citation
-                  citation_id: citationId
-                  source_type:sourceType
+                    id
+                    name
+                    title
+                    citation
+                    citation_id: citationId
+                    source_type: sourceType
+                    abstract
+                    asco_abstract_id: ascoAbstractId
+                    author_string: authorString
+                    full_journal_title: fullJournalTitle
+                    journal
+                    pmc_id: pmcId
+                    publication_date: publicationDate
+                    source_url: sourceUrl
+                    clinical_trials: clinicalTrials {
+                        id
+                        name
+                        description
+                        nctId
+                        url
+                    }
                 }
               }
             }
