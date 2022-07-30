@@ -1346,6 +1346,9 @@ def _construct_get_variant_payload():
                 variant_types: variantTypes {
                     id
                     name
+                    so_id: soid
+                    description
+                    url
                 }
                 sources {
                     id
@@ -1385,6 +1388,7 @@ def _construct_get_variant_payload():
                     start
                     stop
                 }
+                ensembl_version: ensemblVersion
             }
         }"""
 
@@ -1413,6 +1417,9 @@ def _construct_get_all_variants_payload():
                     variant_types: variantTypes {
                         id
                         name
+                        so_id: soid
+                        description
+                        url
                     }
                     sources {
                         id
@@ -1452,6 +1459,7 @@ def _construct_get_all_variants_payload():
                         start
                         stop
                     }
+                    ensembl_version: ensemblVersion
                 }
             }
         }"""
