@@ -22,6 +22,10 @@ def element(request):
 def v600e():
     return civic.get_variant_by_id(12)
 
+@pytest.fixture(scope="module")
+def v600e_mp(v600e):
+    return v600e.single_variant_molecular_profile
+
 
 @pytest.fixture(scope="module")
 def v600e_assertion():
@@ -64,15 +68,15 @@ class TestElements(object):
 
 class TestEvidence(object):
 
-    def test_get_source_ids(self, v600e):
-        assert len(v600e.evidence)
-        assert len(v600e.evidence) / 2 <= len(v600e.evidence_sources)
-        for source in v600e.evidence_sources:
+    def test_get_source_ids(self, v600e_mp):
+        assert len(v600e_mp.evidence)
+        assert len(v600e_mp.evidence) / 2 <= len(v600e_mp.evidence_sources)
+        for source in v600e_mp.evidence_sources:
             assert source.citation_id
             assert source.source_type
             assert hasattr(source, 'abstract')
             assert hasattr(source, 'asco_abstract_id')
-            assert source.author_string
+            assert source.author_string != None
             assert source.citation
             assert source.full_journal_title
             assert source.journal
@@ -100,9 +104,9 @@ class TestEvidence(object):
         evidence = civic.get_all_evidence(include_status=['accepted'])
         assert len(evidence) >= 3247
 
-    def test_properties(self, v600e):
-        evidence = v600e.evidence[0]
-        assert evidence.variant.name == 'V600E'
+    def test_properties(self, v600e_mp):
+        evidence = v600e_mp.evidence[0]
+        assert evidence.molecular_profile.name == 'BRAF V600E'
         assert evidence.statement == evidence.description
 
 class TestVariants(object):

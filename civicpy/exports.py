@@ -68,10 +68,15 @@ class VCFWriter(DictWriter):
         'CIViC Variant Name',
         'CIViC Variant ID',
         'CIViC Variant Aliases',
+        'CIViC Variant URL',
+        'CIViC Molecular Profile Name',
+        'CIViC Molecular Profile ID',
+        'CIViC Molecular Profile Aliases',
+        'CIViC Molecular Profile URL',
         'CIViC HGVS',
         'Allele Registry ID',
         'ClinVar IDs',
-        'CIViC Variant Evidence Score',
+        'CIViC Evidence Score',
         'CIViC Entity Type',
         'CIViC Entity ID',
         'CIViC Entity URL',
@@ -137,14 +142,15 @@ class VCFWriter(DictWriter):
 
     def addrecord(self, civic_record):
         """
-        Takes either a :class:`civic.Evidence`, :class:`civic.Assertion`, :class:`civic.Variant`, or :class:`civic.Gene` object
+        Takes either a :class:`civic.Evidence`, :class:`civic.Assertion`, :class:`civic.Variant`, :class:`civic.Gene`, or :class:`civic.MolecularProfile` object
         and adds all :class:`civic.Variant` objects associated with it to the VCFWriter object for processing and writing to the VCF. 
 
-        :param civic.CivicRecord civic_record: Either a :class:`civic.Evidence`, :class:`civic.Assertion`, :class:`civic.Variant`, or :class:`civic.Gene` object
+        :param civic.CivicRecord civic_record: Either a :class:`civic.Evidence`, :class:`civic.Assertion`, :class:`civic.Variant`, :class:`civic.Gene`, or :class:`civic.MolecularProfile` object
         """
         if isinstance(civic_record, civic.Evidence) or isinstance(civic_record, civic.Assertion):
-            if civic_record.variant.is_valid_for_vcf(emit_warnings=True):
-                self._add_variant_record(civic_record.variant)
+            for variant in civic_record.molecular_profile.variants:
+                if variant.is_valid_for_vcf(emit_warnings=True):
+                    self._add_variant_record(variant)
         elif isinstance(civic_record, civic.Gene):
             for variant in civic_record.variants:
                 if variant.is_valid_for_vcf(emit_warnings=True):
@@ -152,8 +158,12 @@ class VCFWriter(DictWriter):
         elif isinstance(civic_record, civic.Variant):
             if civic_record.is_valid_for_vcf(emit_warnings=True):
                 self._add_variant_record(civic_record)
+        elif isinstance(civic_record, civic.MolecularProfile):
+            for variant in civic_record.variants:
+                if variant.is_valid_for_vcf(emit_warnings=True):
+                    self._add_variant_record(variant)
         else:
-            raise ValueError('Expected a CIViC Gene, Variant, Assertion or Evidence record.')
+            raise ValueError('Expected a CIViC Gene, Variant, Molecular Profile, Assertion or Evidence record.')
 
     def addrecords(self, civic_records):
         """

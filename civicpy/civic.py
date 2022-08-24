@@ -265,6 +265,7 @@ def update_cache(from_remote_cache=True, remote_cache_url=REMOTE_CACHE_URL,
         download_remote_cache(local_cache_path=local_cache_path, remote_cache_url=remote_cache_url)
         load_cache(local_cache_path=local_cache_path)
     else:
+        molecular_profiles = _get_elements_by_ids('molecular_profile', allow_cached=False, get_all=True)
         genes = _get_elements_by_ids('gene', allow_cached=False, get_all=True)
         variants = _get_elements_by_ids('variant', allow_cached=False, get_all=True)
         evidence = _get_elements_by_ids('evidence', allow_cached=False, get_all=True)
@@ -276,13 +277,11 @@ def update_cache(from_remote_cache=True, remote_cache_url=REMOTE_CACHE_URL,
             CACHE[hash(e)] = e
         for g in genes:
             g.variants = [v for v in variants if v.gene_id == g.id]
-            g.assertions = [a for a in assertions if a.gene_id == g.id]
             g._partial = False
             CACHE[hash(g)] = g
         for v in variants:
-            v.assertions = [a for a in assertions if a.variant_id == v.id]
-            v.evidence_items = [e for e in evidence if e.variant_id == v.id]
             v.variant_groups = [vg for vg in variant_groups if v.id in vg.variant_ids]
+            v.molecular_profiles = [mp for mp in molecular_profiles if v.id in mp.variant_ids]
             v._partial = False
             CACHE[hash(v)] = v
         for a in assertions:
@@ -292,6 +291,12 @@ def update_cache(from_remote_cache=True, remote_cache_url=REMOTE_CACHE_URL,
             vg.variants = [v for v in variants if v.id in vg.variant_ids]
             vg._partial = False
             CACHE[hash(vg)] = vg
+        for mp in molecular_profiles:
+            mp.evidence_items = [e for e in evidence if e.molecular_profile_id == mp.id]
+            mp.variants = [v for v in variants if v.id in mp.variant_ids]
+            mp.assertions = [a for a in assertions if a.molecular_profile_id == mp.id]
+            mp._partial = False
+            CACHE[hash(mp)] = mp
         CACHE['full_cached'] = datetime.now()
         _build_coordinate_table(variants)
         save_cache(local_cache_path=local_cache_path)
@@ -428,40 +433,25 @@ class CivicRecord:
         """Returns a URL to the record on the CIViC web application."""
         return '/'.join([LINKS_URL, self.type, str(self.id)])
 
-
-class Variant(CivicRecord):
+class MolecularProfile(CivicRecord):
     _SIMPLE_FIELDS = CivicRecord._SIMPLE_FIELDS.union({
-        'allele_registry_id',
-        'civic_actionability_score',
         'description',
-        'gene_id',
-        'name'})
+        'evidence_score',
+        'name',
+        'variant_ids',
+    })
     _COMPLEX_FIELDS = CivicRecord._COMPLEX_FIELDS.union({
+        'aliases',
         'assertions',
-        'clinvar_entries',
-        'coordinates',
-        # 'errors',
         'evidence_items',
-        'hgvs_expressions',
-        #'lifecycle_actions',
-        # 'provisional_values',
         'sources',
-        'variant_aliases',
-        'variant_groups',
-        'variant_types'})
+        'variants',
+    })
 
     def __init__(self, **kwargs):
-        # Handle overloaded evidence_items from some advanced search views
-        kwargs['type'] = 'variant'
         self._evidence_items = []
         self._assertions = []
-        self._variant_groups = []
-        coordinates = kwargs.get('coordinates')
-        if coordinates:
-            if coordinates.get('reference_bases') in ['', '-']:
-                coordinates['reference_bases'] = None
-            if coordinates.get('variant_bases') in ['', '-']:
-                coordinates['variant_bases'] = None
+        self._variants = []
         super().__init__(**kwargs)
 
     @property
@@ -471,18 +461,6 @@ class Variant(CivicRecord):
             if evidence.source is not None:
                 sources.add(evidence.source)
         return sources
-
-    @property
-    def aliases(self):
-        return self.variant_aliases
-
-    @property
-    def groups(self):
-        return self.variant_groups
-
-    @property
-    def types(self):
-        return self.variant_types
 
     @property
     def summary(self):
@@ -513,6 +491,79 @@ class Variant(CivicRecord):
         self._assertions = value
 
     @property
+    def variants(self):
+        return self._variants
+
+    @variants.setter
+    def variants(self, value):
+        self._variants = value
+
+    def sanitized_name(self):
+        name = self.name
+        words = []
+        for word in name.split(' '):
+            regex = re.compile(r"^([A-Z]+)([0-9]+)(=)(.*)$")
+            match = regex.match(word)
+            if match is not None:
+                word = "".join([match.group(1), match.group(2), match.group(1), match.group(4)])
+            words.append(word)
+        return ' '.join(words)
+
+
+class Variant(CivicRecord):
+    _SIMPLE_FIELDS = CivicRecord._SIMPLE_FIELDS.union({
+        'allele_registry_id',
+        'description',
+        'gene_id',
+        'name',
+        'single_variant_molecular_profile_id',
+    })
+    _COMPLEX_FIELDS = CivicRecord._COMPLEX_FIELDS.union({
+        'clinvar_entries',
+        'coordinates',
+        # 'errors',
+        'hgvs_expressions',
+        #'lifecycle_actions',
+        # 'provisional_values',
+        'sources',
+        'variant_aliases',
+        'variant_groups',
+        'variant_types'})
+
+    def __init__(self, **kwargs):
+        # Handle overloaded evidence_items from some advanced search views
+        kwargs['type'] = 'variant'
+        self._variant_groups = []
+        self._molecular_profiles = []
+        coordinates = kwargs.get('coordinates')
+        if coordinates:
+            if coordinates.get('reference_bases') in ['', '-']:
+                coordinates['reference_bases'] = None
+            if coordinates.get('variant_bases') in ['', '-']:
+                coordinates['variant_bases'] = None
+        super().__init__(**kwargs)
+
+    @property
+    def aliases(self):
+        return self.variant_aliases
+
+    @property
+    def groups(self):
+        return self.variant_groups
+
+    @property
+    def types(self):
+        return self.variant_types
+
+    @property
+    def summary(self):
+        return self.description
+
+    @summary.setter
+    def summary(self, value):
+        self.description = value
+
+    @property
     def variant_groups(self):
         return self._variant_groups
 
@@ -521,8 +572,22 @@ class Variant(CivicRecord):
         self._variant_groups = value
 
     @property
+    def molecular_profiles(self):
+        for mp in self._molecular_profiles:
+            mp._include_status = self._include_status
+        return [mp for mp in self._molecular_profiles if mp.evidence]
+
+    @molecular_profiles.setter
+    def molecular_profiles(self, value):
+        self._molecular_profiles = value
+
+    @property
     def gene(self):
         return _get_element_by_id('gene', self.gene_id)
+
+    @property
+    def single_variant_molecular_profile(self):
+        return _get_element_by_id('molecular_profile', self.single_variant_molecular_profile_id)
 
     @property
     def is_insertion(self):
@@ -644,85 +709,96 @@ class Variant(CivicRecord):
             return []
         else:
             csq = []
-            for evidence in self.evidence:
-                if include_status is not None and evidence.status not in include_status:
-                    continue
-                special_character_table = str.maketrans(exports.VCFWriter.SPECIAL_CHARACTERS)
-                csq.append('|'.join([
-                    self.csq_alt(),
-                    '&'.join(map(lambda t: t.name, self.variant_types)),
-                    self.gene.name,
-                    str(self.gene.entrez_id),
-                    'transcript',
-                    str(self.coordinates.representative_transcript),
-                    self.hgvs_c(),
-                    self.hgvs_p(),
-                    self.sanitized_name(),
-                    str(self.id),
-                    '&'.join(map(lambda a: a.translate(special_character_table), self.variant_aliases)),
-                    '&'.join(map(lambda e: e.translate(special_character_table), self.hgvs_expressions)),
-                    str(self.allele_registry_id),
-                    '&'.join(self.clinvar_entries),
-                    str(self.civic_actionability_score),
-                    "evidence",
-                    str(evidence.id),
-                    "https://civicdb.org/links/evidence/{}".format(evidence.id),
-                    "{} ({})".format(evidence.source.citation_id, evidence.source.source_type),
-                    str(evidence.variant_origin),
-                    evidence.status,
-                    str(evidence.clinical_significance or ''),
-                    str(evidence.evidence_direction or ''),
-                    str(evidence.disease),
-                    '&'.join([str(drug) for drug in evidence.drugs]),
-                    str(evidence.drug_interaction_type or ""),
-                    '&'.join(["{} (HPO ID {})".format(phenotype.name, phenotype.hpo_id) for phenotype in evidence.phenotypes]),
-                    evidence.evidence_level,
-                    str(evidence.rating),
-                    "",
-                    "",
-                    "",
-                    "",
-                    "",
-                ]))
-            for assertion in self.assertions:
-                if include_status is not None and assertion.status not in include_status:
-                    continue
-                csq.append('|'.join([
-                    self.csq_alt(),
-                    '&'.join(map(lambda t: t.name, self.variant_types)),
-                    self.gene.name,
-                    str(self.gene.entrez_id),
-                    'transcript',
-                    str(self.coordinates.representative_transcript),
-                    self.hgvs_c(),
-                    self.hgvs_p(),
-                    self.sanitized_name(),
-                    str(self.id),
-                    '&'.join(map(lambda a: a.translate(special_character_table), self.variant_aliases)),
-                    '&'.join(map(lambda e: e.translate(special_character_table), self.hgvs_expressions)),
-                    str(self.allele_registry_id),
-                    '&'.join(self.clinvar_entries),
-                    str(self.civic_actionability_score),
-                    "assertion",
-                    str(assertion.id),
-                    "https://civicdb.org/links/assertion/{}".format(assertion.id),
-                    "",
-                    str(assertion.variant_origin),
-                    assertion.status,
-                    assertion.clinical_significance,
-                    assertion.evidence_direction,
-                    str(assertion.disease),
-                    '&'.join([str(drug) for drug in assertion.drugs]),
-                    str(assertion.drug_interaction_type or ''),
-                    "",
-                    "",
-                    "",
-                    "&".join([acmg_code.code for acmg_code in assertion.acmg_codes]),
-                    str(assertion.amp_level or ''),
-                    assertion.format_nccn_guideline(),
-                    str(assertion.fda_regulatory_approval or ''),
-                    str(assertion.fda_companion_test or ''),
-                ]))
+            for mp in self.molecular_profiles:
+                for evidence in mp.evidence:
+                    if include_status is not None and evidence.status not in include_status:
+                        continue
+                    special_character_table = str.maketrans(exports.VCFWriter.SPECIAL_CHARACTERS)
+                    csq.append('|'.join([
+                        self.csq_alt(),
+                        '&'.join(map(lambda t: t.name, self.variant_types)),
+                        self.gene.name,
+                        str(self.gene.entrez_id),
+                        'transcript',
+                        str(self.coordinates.representative_transcript),
+                        self.hgvs_c(),
+                        self.hgvs_p(),
+                        self.sanitized_name(),
+                        str(self.id),
+                        '&'.join(map(lambda a: a.translate(special_character_table), self.variant_aliases)),
+                        "https://civicdb.org/links/variants/{}".format(self.id),
+                        mp.sanitized_name(),
+                        str(mp.id),
+                        '&'.join(map(lambda a: a.translate(special_character_table), mp.aliases)),
+                        "https://civicdb.org/links/molecular-profiles/{}".format(mp.id),
+                        '&'.join(map(lambda e: e.translate(special_character_table), self.hgvs_expressions)),
+                        str(self.allele_registry_id),
+                        '&'.join(self.clinvar_entries),
+                        str(mp.evidence_score),
+                        "evidence",
+                        str(evidence.id),
+                        "https://civicdb.org/links/evidence/{}".format(evidence.id),
+                        "{} ({})".format(evidence.source.citation_id, evidence.source.source_type),
+                        str(evidence.variant_origin),
+                        evidence.status,
+                        str(evidence.clinical_significance or ''),
+                        str(evidence.evidence_direction or ''),
+                        str(evidence.disease),
+                        '&'.join([str(drug) for drug in evidence.drugs]),
+                        str(evidence.drug_interaction_type or ""),
+                        '&'.join(["{} (HPO ID {})".format(phenotype.name, phenotype.hpo_id) for phenotype in evidence.phenotypes]),
+                        evidence.evidence_level,
+                        str(evidence.rating),
+                        "",
+                        "",
+                        "",
+                        "",
+                        "",
+                    ]))
+                for assertion in mp.assertions:
+                    if include_status is not None and assertion.status not in include_status:
+                        continue
+                    csq.append('|'.join([
+                        self.csq_alt(),
+                        '&'.join(map(lambda t: t.name, self.variant_types)),
+                        self.gene.name,
+                        str(self.gene.entrez_id),
+                        'transcript',
+                        str(self.coordinates.representative_transcript),
+                        self.hgvs_c(),
+                        self.hgvs_p(),
+                        self.sanitized_name(),
+                        str(self.id),
+                        '&'.join(map(lambda a: a.translate(special_character_table), self.variant_aliases)),
+                        "https://civicdb.org/links/variants/{}".format(self.id),
+                        mp.sanitized_name(),
+                        str(mp.id),
+                        '&'.join(map(lambda a: a.translate(special_character_table), mp.aliases)),
+                        "https://civicdb.org/links/molecular-profiles/{}".format(mp.id),
+                        '&'.join(map(lambda e: e.translate(special_character_table), self.hgvs_expressions)),
+                        str(self.allele_registry_id),
+                        '&'.join(self.clinvar_entries),
+                        str(mp.evidence_score),
+                        "assertion",
+                        str(assertion.id),
+                        "https://civicdb.org/links/assertion/{}".format(assertion.id),
+                        "",
+                        str(assertion.variant_origin),
+                        assertion.status,
+                        assertion.clinical_significance,
+                        assertion.evidence_direction,
+                        str(assertion.disease),
+                        '&'.join([str(drug) for drug in assertion.drugs]),
+                        str(assertion.drug_interaction_type or ''),
+                        "",
+                        "",
+                        "",
+                        "&".join([acmg_code.code for acmg_code in assertion.acmg_codes]),
+                        str(assertion.amp_level or ''),
+                        assertion.format_nccn_guideline(),
+                        str(assertion.fda_regulatory_approval or ''),
+                        str(assertion.fda_companion_test or ''),
+                    ]))
             return csq
 
 
@@ -745,7 +821,7 @@ class VariantGroup(CivicRecord):
     def variants(self):
         for variant in self._variants:
             variant._include_status = self._include_status
-        return [v for v in self._variants if v.evidence]
+        return self._variants
 
     @variants.setter
     def variants(self, value):
@@ -774,7 +850,7 @@ class Gene(CivicRecord):
     def variants(self):
         for variant in self._variants:
             variant._include_status = self._include_status
-        return [v for v in self._variants if v.evidence]
+        return [v for v in self._variants if v.molecular_profiles]
 
     @variants.setter
     def variants(self, value):
@@ -797,12 +873,11 @@ class Evidence(CivicRecord):
         'evidence_direction',
         'evidence_level',
         'evidence_type',
-        'gene_id',
         'name',
         # 'open_change_count',
         'rating',
         'status',
-        'variant_id',
+        'molecular_profile_id',
         'variant_origin',
         'assertion_ids',
     })
@@ -821,12 +896,8 @@ class Evidence(CivicRecord):
         super().__init__(**kwargs)
 
     @property
-    def variant(self):
-        return get_variant_by_id(self.variant_id)
-
-    @property
-    def gene(self):
-        return get_gene_by_id(self.gene_id)
+    def molecular_profile(self):
+        return get_molecular_profile_by_id(self.molecular_profile_id)
 
     @property
     def assertions(self):
@@ -864,8 +935,7 @@ class Assertion(CivicRecord):
         'status',
         'summary',
         'variant_origin',
-        'gene_id',
-        'variant_id',
+        'molecular_profile_id',
         'evidence_ids',
     })
 
@@ -893,6 +963,10 @@ class Assertion(CivicRecord):
     @evidence_items.setter
     def evidence_items(self, value):
         self._evidence_items = value
+
+    @property
+    def molecular_profile(self):
+        return get_molecular_profile_by_id(self.molecular_profile_id)
 
     @property
     def hpo_ids(self):
@@ -1156,13 +1230,11 @@ def _get_elements_by_ids(element, id_list=[], allow_cached=True, get_all=False):
 def _postprocess_response_element(e, element):
     e['type'] = element
     if element == 'assertion':
-        e['gene_id'] = e['gene']['id']
-        e['variant_id'] = e['variant']['id']
+        e['molecular_profile_id'] = e['molecular_profile']['id']
         e['evidence_ids'] = [evidence['id'] for evidence in e['evidenceItems']]
         e['status'] = e['status'].lower()
     elif element == 'evidence':
-        e['gene_id'] = e['gene']['id']
-        e['variant_id'] = e['variant']['id']
+        e['molecular_profile_id'] = e['molecular_profile']['id']
         e['assertion_ids'] = [a['id'] for a in e['assertions']]
         e['status'] = e['status'].lower()
     elif element == 'variant':
@@ -1188,6 +1260,9 @@ def _postprocess_response_element(e, element):
     elif element == 'variant_group':
         e['variant_ids'] = [v['id'] for v in e['variants']['nodes']]
         del e['variants']
+    elif element == 'molecular_profile':
+        e['variant_ids'] = [v['id'] for v in e['variants']]
+        del e['variants']
     return e
 
 
@@ -1202,6 +1277,7 @@ def _request_by_ids(element, ids):
         'variant': _construct_get_variant_payload,
         'assertion': _construct_get_assertion_payload,
         'variant_group': _construct_get_variant_group_payload,
+        'molecular_profile': _construct_get_molecular_profile_payload,
     }
     payload_method = payload_methods[element]
     payload = payload_method()
@@ -1222,6 +1298,7 @@ def _request_all(element):
         'variant': _construct_get_all_variants_payload,
         'assertion': _construct_get_all_assertions_payload,
         'variant_group': _construct_get_all_variant_groups_payload,
+        'molecular_profile': _construct_get_all_molecular_profiles_payload,
     }
     payload_method = payload_methods[element]
     payload = payload_method()
@@ -1328,6 +1405,92 @@ def _construct_get_all_genes_payload():
             }
         }"""
 
+
+def _construct_get_molecular_profile_payload():
+    return """
+        query molecularProfile($id: Int!) {
+            molecular_profile: molecularProfile(id: $id) {
+                id
+                description
+                evidence_score: evidenceScore
+                name
+                variants {
+                  id
+                }
+                aliases: molecularProfileAliases
+                sources {
+                    id
+                    name
+                    title
+                    citation
+                    citation_id: citationId
+                    source_type: sourceType
+                    abstract
+                    asco_abstract_id: ascoAbstractId
+                    author_string: authorString
+                    full_journal_title: fullJournalTitle
+                    journal
+                    pmc_id: pmcId
+                    publication_date: publicationDate
+                    source_url: sourceUrl
+                    clinical_trials: clinicalTrials {
+                        id
+                        name
+                        description
+                        nctId
+                        url
+                    }
+                }
+            }
+        }"""
+
+
+
+def _construct_get_all_molecular_profiles_payload():
+    return """
+        query molecularProfiles($after: String) {
+            molecular_profiles: molecularProfiles(after: $after, evidenceStatusFilter: ALL) {
+              totalCount
+              pageInfo {
+                hasNextPage
+                endCursor
+              }
+              nodes {
+                id
+                description
+                evidence_score: evidenceScore
+                name
+                variants {
+                  id
+                }
+                aliases: molecularProfileAliases
+                sources {
+                    id
+                    name
+                    title
+                    citation
+                    citation_id: citationId
+                    source_type: sourceType
+                    abstract
+                    asco_abstract_id: ascoAbstractId
+                    author_string: authorString
+                    full_journal_title: fullJournalTitle
+                    journal
+                    pmc_id: pmcId
+                    publication_date: publicationDate
+                    source_url: sourceUrl
+                    clinical_trials: clinicalTrials {
+                        id
+                        name
+                        description
+                        nctId
+                        url
+                    }
+                }
+              }
+            }
+        }"""
+
 def _construct_get_variant_payload():
     return """
         query variant($id: Int!) {
@@ -1335,11 +1498,10 @@ def _construct_get_variant_payload():
                 id
                 name
                 allele_registry_id: alleleRegistryId
-                civic_actionability_score: evidenceScore
-                description
                 gene {
                     id
                 }
+                single_variant_molecular_profile_id: singleVariantMolecularProfileId
                 clinvar_entries: clinvarIds
                 hgvs_expressions: hgvsDescriptions
                 variant_aliases: variantAliases
@@ -1396,7 +1558,7 @@ def _construct_get_variant_payload():
 def _construct_get_all_variants_payload():
     return """
         query variants($after: String) {
-            variants(after: $after, evidenceStatusFilter: ALL) {
+            variants(after: $after) {
                 totalCount
                 pageInfo {
                   hasNextPage
@@ -1406,11 +1568,11 @@ def _construct_get_all_variants_payload():
                     id
                     name
                     allele_registry_id: alleleRegistryId
-                    civic_actionability_score: evidenceScore
                     description
                     gene {
                         id
                     }
+                    single_variant_molecular_profile_id: singleVariantMolecularProfileId
                     clinvar_entries: clinvarIds
                     hgvs_expressions: hgvsDescriptions
                     variant_aliases: variantAliases
@@ -1478,10 +1640,7 @@ def _construct_get_evidence_payload():
                 evidence_type: evidenceType
                 status
                 variant_origin: variantOrigin
-                gene {
-                  id
-                }
-                variant {
+                molecular_profile: molecularProfile {
                   id
                 }
                 disease {
@@ -1557,10 +1716,7 @@ def _construct_get_all_evidence_payload():
                     evidence_type: evidenceType
                     status
                     variant_origin: variantOrigin
-                    gene {
-                      id
-                    }
-                    variant {
+                    molecular_profile: molecularProfile {
                       id
                     }
                     disease {
@@ -1639,10 +1795,7 @@ def _construct_get_assertion_payload():
                 status
                 summary
                 variant_origin: variantOrigin
-                gene {
-                  id
-                }
-                variant {
+                molecular_profile: molecularProfile {
                   id
                 }
                 acmg_codes: acmgCodes {
@@ -1704,10 +1857,7 @@ def _construct_get_all_assertions_payload():
                     status
                     summary
                     variant_origin: variantOrigin
-                    gene {
-                      id
-                    }
-                    variant {
+                    molecular_profile: molecularProfile {
                       id
                     }
                     acmg_codes: acmgCodes {
@@ -1826,59 +1976,14 @@ def _construct_get_all_variant_groups_payload():
         }"""
 
 
-def _construct_get_all_payload(page):
-    queries = [
-        {
-            'field': 'id',
-            'condition': {
-                'name': 'is_greater_than',
-                'parameters': [
-                    -1
-                ]
-            }
-        }
-    ]
-    payload = {
-        'operator': 'OR',
-        'queries': queries,
-        'page': page,
-        'count': 500,
-    }
-    return payload
-
-
-def _construct_query_payload(id_list):
-    queries = list()
-    for element_id in id_list:
-        query = {
-            'field': 'id',
-            'condition': {
-                'name': 'is_equal_to',
-                'parameters': [
-                    element_id
-                ]
-            }
-        }
-        queries.append(query)
-    payload = {
-        'operator': 'OR',
-        'queries': queries
-    }
-    return payload
-
-
 def get_evidence_by_ids(evidence_id_list):
     logging.info('Getting evidence...')
     evidence = _get_elements_by_ids('evidence', evidence_id_list)
-    logging.info('Caching variant details...')
-    variant_ids = [x.variant.id for x in evidence]    # Add variants to cache
-    _get_elements_by_ids('variant', variant_ids)
-    logging.info('Caching gene details...')
-    gene_ids = [x.gene.id for x in evidence]          # Add genes to cache
-    _get_elements_by_ids('gene', gene_ids)
+    logging.info('Caching evidence details...')
+    mp_ids = [x.molecular_profile.id for x in evidence]    # Add molecular profiles to cache
+    _get_elements_by_ids('molecular_profile', mp_ids)
     for e in evidence:                        # Load from cache
-        e.variant.update()
-        e.gene.update()
+        e.molecular_profile.update()
     return evidence
 
 
@@ -1886,18 +1991,25 @@ def get_evidence_by_id(evidence_id):
     return get_evidence_by_ids([evidence_id])[0]
 
 
+def get_molecular_profile_by_id(mp_id):
+    return get_molecular_profiles_by_ids([mp_id])[0]
+
+
+def get_molecular_profiles_by_ids(mp_id_list):
+    logging.info('Getting molecular profiles...')
+    mps = _get_elements_by_ids('molecular_profile', mp_id_list)
+    #logging.info('Caching molecular profile details...')
+    return mps
+
+
 def get_assertions_by_ids(assertion_id_list=[], get_all=False):
     logging.info('Getting assertions...')
     assertions = _get_elements_by_ids('assertion', assertion_id_list, get_all=get_all)
     logging.info('Caching variant details...')
-    variant_ids = [x.variant.id for x in assertions]    # Add variants to cache
-    _get_elements_by_ids('variant', variant_ids)
-    logging.info('Caching gene details...')
-    gene_ids = [x.gene.id for x in assertions]          # Add genes to cache
-    _get_elements_by_ids('gene', gene_ids)
+    mp_ids = [x.molecular_profile.id for x in assertions]    # Add molecular profile to cache
+    _get_elements_by_ids('molecular_profile', mp_ids)
     for assertion in assertions:                        # Load from cache
-        assertion.variant.update()
-        assertion.gene.update()
+        assertion.molecular_profile.update()
     return assertions
 
 
@@ -1914,8 +2026,8 @@ def search_assertions_by_coordinates(coordinates, search_mode='any'):
     variants = search_variants_by_coordinates(coordinates, search_mode=search_mode)
     assertions = set()
     for v in variants:
-        if v.assertions:
-            assertions.update(v.assertions)
+        if v.single_variant_molecular_profile.assertions:
+            assertions.update(v.single_variant_molecular_profile.assertions)
     return list(assertions)
 
 
@@ -1972,14 +2084,27 @@ def _build_coordinate_table(variants):
     MODULE.COORDINATE_TABLE_CHR = df.chr.sort_values()
 
 
-def get_all_variants(include_status=['accepted','submitted','rejected'], allow_cached=True):
-    variants = _get_elements_by_ids('variant', allow_cached=allow_cached, get_all=True)
+def get_all_molecular_profiles(include_status=['accepted', 'submitted', 'rejected'], allow_cached=True):
+    mps = _get_elements_by_ids('molecular_profile', allow_cached=allow_cached, get_all=True)
     if include_status:
         assert CACHE.get('evidence_items_all_ids', False)
         resp = list()
+        for mp in mps:
+            mp._include_status = include_status
+            if mp.evidence:
+                resp.append(mp)
+        return resp
+    else:
+        return mps
+
+
+def get_all_variants(include_status=['accepted', 'submitted', 'rejected'], allow_cached=True):
+    variants = _get_elements_by_ids('variant', allow_cached=allow_cached, get_all=True)
+    if include_status:
+        resp = list()
         for v in variants:
             v._include_status = include_status
-            if v.evidence:
+            if v.molecular_profiles:
                 resp.append(v)
         return resp
     else:

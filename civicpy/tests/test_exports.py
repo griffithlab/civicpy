@@ -97,7 +97,7 @@ class TestVcfExport(object):
         evidence = civic._get_element_by_id('evidence', 373)
         vcf_writer.addrecord(evidence)
         assert len(vcf_writer.variant_records) == 1
-        assert list(vcf_writer.variant_records)[0].id == evidence.variant.id
+        assert list(vcf_writer.variant_records)[0].id == evidence.molecular_profile.variants[0].id
 
     def test_addrecords(self, vcf_writer, v600e, l158fs):
         vcf_writer.addrecords([v600e, l158fs])
@@ -107,4 +107,4 @@ class TestVcfExport(object):
         evidence = civic._get_element_by_id('evidence', 373)
         with pytest.raises(ValueError) as context:
             vcf_writer.addrecord(evidence.source)
-        assert "Expected a CIViC Gene, Variant, Assertion or Evidence record" in str(context.value)
+        assert "Expected a CIViC Gene, Variant, Molecular Profile, Assertion or Evidence record" in str(context.value)
