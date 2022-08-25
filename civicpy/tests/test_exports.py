@@ -99,6 +99,18 @@ class TestVcfExport(object):
         assert len(vcf_writer.variant_records) == 1
         assert list(vcf_writer.variant_records)[0].id == evidence.molecular_profile.variants[0].id
 
+    def test_addrecord_from_assertion(self, vcf_writer):
+        assertion = civic._get_element_by_id('assertion', 7)
+        vcf_writer.addrecord(assertion)
+        assert len(vcf_writer.variant_records) == 1
+        assert list(vcf_writer.variant_records)[0].id == assertion.molecular_profile.variants[0].id
+
+    def test_add_record_from_molecular_profile(self, vcf_writer):
+        mp = civic._get_element_by_id('molecular_profile', 6353)
+        vcf_writer.addrecord(mp)
+        assert len(vcf_writer.variant_records) == 1
+        assert list(vcf_writer.variant_records)[0].id == mp.variants[0].id
+
     def test_addrecords(self, vcf_writer, v600e, l158fs):
         vcf_writer.addrecords([v600e, l158fs])
         assert len(vcf_writer.variant_records) == 2

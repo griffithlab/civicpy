@@ -157,6 +157,25 @@ class TestVariants(object):
         assert sorted(variant.types) == sorted(variant.variant_types)
         assert variant.summary == variant.description
 
+class TestMolecularProfiles(object):
+    def test_get_all(self):
+        mps = civic.get_all_molecular_profiles()
+        assert len(mps) >= 2396
+
+    def test_get_non_rejected(self):
+        mps = civic.get_all_molecular_profiles(include_status=['accepted', 'submitted'])
+        assert len(mps) >= 2374
+
+    def test_get_accepted_only(self):
+        mps = civic.get_all_molecular_profiles(include_status=['accepted'])
+        assert len(mps) >= 1333
+
+    def test_get_by_id(self):
+        mp = civic.get_molecular_profile_by_id(6353)
+        assert mp.type == 'molecular_profile'
+        assert mp.id == 6353
+
+
 
 class TestVariantGroups(object):
 
