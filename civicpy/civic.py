@@ -974,14 +974,6 @@ class Assertion(CivicRecord):
     def hpo_ids(self):
         return [x.hpo_id for x in self.phenotypes if x.hpo_id]
 
-    @property
-    def variant(self):
-        return get_variant_by_id(self.variant_id)
-
-    @property
-    def gene(self):
-        return get_gene_by_id(self.gene_id)
-
     def format_nccn_guideline(self):
         if self.nccn_guideline is None:
             return ""
