@@ -587,7 +587,9 @@ class Variant(CivicRecord):
 
     @property
     def single_variant_molecular_profile(self):
-        return _get_element_by_id('molecular_profile', self.single_variant_molecular_profile_id)
+        mp = _get_element_by_id('molecular_profile', self.single_variant_molecular_profile_id)
+        mp._include_status = self._include_status
+        return mp
 
     @property
     def is_insertion(self):
