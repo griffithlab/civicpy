@@ -1982,6 +1982,8 @@ def get_evidence_by_ids(evidence_id_list):
     logging.info('Getting evidence...')
     evidence = _get_elements_by_ids('evidence', evidence_id_list)
     logging.info('Caching evidence details...')
+    for e in evidence:
+        e._include_status = ['accepted', 'submitted', 'rejected']
     mp_ids = [x.molecular_profile.id for x in evidence]    # Add molecular profiles to cache
     _get_elements_by_ids('molecular_profile', mp_ids)
     for e in evidence:                        # Load from cache
@@ -2000,6 +2002,8 @@ def get_molecular_profile_by_id(mp_id):
 def get_molecular_profiles_by_ids(mp_id_list):
     logging.info('Getting molecular profiles...')
     mps = _get_elements_by_ids('molecular_profile', mp_id_list)
+    for mp in mps:
+        mp._include_status = ['accepted', 'submitted', 'rejected']
     #logging.info('Caching molecular profile details...')
     return mps
 
@@ -2007,6 +2011,8 @@ def get_molecular_profiles_by_ids(mp_id_list):
 def get_assertions_by_ids(assertion_id_list=[], get_all=False):
     logging.info('Getting assertions...')
     assertions = _get_elements_by_ids('assertion', assertion_id_list, get_all=get_all)
+    for a in assertions:
+        a._include_status = ['accepted', 'submitted', 'rejected']
     logging.info('Caching variant details...')
     mp_ids = [x.molecular_profile.id for x in assertions]    # Add molecular profile to cache
     _get_elements_by_ids('molecular_profile', mp_ids)
@@ -2039,6 +2045,7 @@ def get_variants_by_ids(variant_id_list):
     gene_ids = set()
     for variant in variants:
         gene_ids.add(variant.gene_id)
+        variant._include_status = ['accepted', 'submitted', 'rejected']
     if gene_ids:
         logging.info('Caching gene details...')
         _get_elements_by_ids('gene', gene_ids)
@@ -2051,7 +2058,10 @@ def get_variant_by_id(variant_id):
 
 def get_variant_groups_by_ids(variant_group_id_list):
     logging.info('Getting variant groups...')
-    return _get_elements_by_ids('variant_group', variant_group_id_list)
+    vgs = _get_elements_by_ids('variant_group', variant_group_id_list)
+    for vg in vgs:
+        vg._include_status = ['accepted', 'submitted', 'rejected']
+    return vgs
 
 
 def get_variant_group_by_id(variant_group_id):
@@ -2103,6 +2113,8 @@ def get_all_molecular_profiles(include_status=['accepted', 'submitted', 'rejecte
 def get_all_variants(include_status=['accepted', 'submitted', 'rejected'], allow_cached=True):
     variants = _get_elements_by_ids('variant', allow_cached=allow_cached, get_all=True)
     if include_status:
+        assert CACHE.get('evidence_items_all_ids', False)
+        assert CACHE.get('assertions_all_ids', False)
         resp = list()
         for v in variants:
             v._include_status = include_status
@@ -2466,6 +2478,7 @@ def get_genes_by_ids(gene_id_list):
     genes = _get_elements_by_ids('gene', gene_id_list)  # Advanced search results are incomplete
     variant_ids = set()
     for gene in genes:
+        gene._include_status = ['accepted', 'submitted', 'rejected']
         for variant in gene.variants:
             variant_ids.add(variant.id)
     if variant_ids:
