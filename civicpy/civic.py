@@ -435,7 +435,9 @@ class Variant(CivicRecord):
         'civic_actionability_score',
         'description',
         'gene_id',
-        'name'})
+        'name',
+        'entrez_name',
+        'entrez_id'})
     _COMPLEX_FIELDS = CivicRecord._COMPLEX_FIELDS.union({
         'assertions',
         'clinvar_entries',
@@ -1167,12 +1169,15 @@ def _postprocess_response_element(e, element):
         e['status'] = e['status'].lower()
     elif element == 'variant':
         e['gene_id'] = e['gene']['id']
+        e['entrez_name'] = e['gene']['name']
+        e['entrez_id'] = e['gene']['entrezId']
         build = e['referenceBuild']
         if build == 'GRCH37':
             build = 'GRCh37'
         elif build == 'GRCH38':
             build = 'GRCh38'
         e['coordinates'] = {
+            'ensembl_version': e['ensemblVersion'],
             'reference_build': build,
             'reference_bases': e['referenceBases'],
             'variant_bases': e['variantBases'],
@@ -1339,6 +1344,8 @@ def _construct_get_variant_payload():
                 description
                 gene {
                     id
+                    name
+                    entrezId
                 }
                 clinvar_entries: clinvarIds
                 hgvs_expressions: hgvsDescriptions
@@ -1388,7 +1395,7 @@ def _construct_get_variant_payload():
                     start
                     stop
                 }
-                ensembl_version: ensemblVersion
+                ensemblVersion
             }
         }"""
 
@@ -1409,7 +1416,9 @@ def _construct_get_all_variants_payload():
                     civic_actionability_score: evidenceScore
                     description
                     gene {
-                        id
+                      id
+                      name
+                      entrezId
                     }
                     clinvar_entries: clinvarIds
                     hgvs_expressions: hgvsDescriptions
@@ -1459,7 +1468,7 @@ def _construct_get_all_variants_payload():
                         start
                         stop
                     }
-                    ensembl_version: ensemblVersion
+                    ensemblVersion
                 }
             }
         }"""
@@ -1646,7 +1655,9 @@ def _construct_get_assertion_payload():
                   id
                 }
                 acmg_codes: acmgCodes {
+                  id
                   code
+                  description
                 }
                 disease {
                   id
@@ -1711,7 +1722,9 @@ def _construct_get_all_assertions_payload():
                       id
                     }
                     acmg_codes: acmgCodes {
+                      id
                       code
+                      description
                     }
                     disease {
                       id
