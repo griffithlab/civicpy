@@ -152,6 +152,9 @@ class TestVariants(object):
         assert sorted(variant.groups) == sorted(variant.variant_groups)
         assert sorted(variant.types) == sorted(variant.variant_types)
         assert variant.summary == variant.description
+        assert variant.coordinates.ensembl_version == 75
+        assert variant.entrez_name == "BRAF"
+        assert variant.entrez_id == 673
 
 
 class TestVariantGroups(object):
@@ -193,6 +196,19 @@ class TestAssertions(object):
         assertion = civic.get_assertion_by_id(18)
         assert assertion.evidence == assertion.evidence_items
         assert assertion.hpo_ids == [p.hpo_id for p in assertion.phenotypes if p.hpo_id]
+        assert assertion.acmg_codes
+        for acmg_code in assertion.acmg_codes:
+            assert acmg_code.id
+            assert acmg_code.code
+            assert acmg_code.description
+
+        # Test assertion with clingen_codes
+        assertion = civic.get_assertion_by_id(53)
+        assert assertion.clingen_codes
+        for clingen_code in assertion.clingen_codes:
+            assert clingen_code.id
+            assert clingen_code.code
+            assert clingen_code.description
 
 
 class TestGenes(object):

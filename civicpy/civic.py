@@ -720,6 +720,7 @@ class Variant(CivicRecord):
                     "",
                     "",
                     "&".join([acmg_code.code for acmg_code in assertion.acmg_codes]),
+                    "&".join([clingen_code.code for clingen_code in assertion.clingen_codes]),
                     str(assertion.amp_level or ''),
                     assertion.format_nccn_guideline(),
                     str(assertion.fda_regulatory_approval or ''),
@@ -873,6 +874,7 @@ class Assertion(CivicRecord):
 
     _COMPLEX_FIELDS = CivicRecord._COMPLEX_FIELDS.union({
         'acmg_codes',
+        'clingen_codes',
         'disease',
         'drugs',
         'evidence_items',
@@ -1659,6 +1661,11 @@ def _construct_get_assertion_payload():
                   code
                   description
                 }
+                clingen_codes: clingenCodes {
+                    id
+                    code
+                    description
+                }
                 disease {
                   id
                   name
@@ -1725,6 +1732,11 @@ def _construct_get_all_assertions_payload():
                       id
                       code
                       description
+                    }
+                    clingen_codes: clingenCodes {
+                        id
+                        code
+                        description
                     }
                     disease {
                       id
