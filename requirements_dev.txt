@@ -3,3 +3,4 @@ notebook~=5.7
 matplotlib~=2.0
 pytest-cov~=2.7
 python-coveralls~=2.9
+autopep8
