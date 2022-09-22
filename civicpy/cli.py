@@ -3,7 +3,6 @@ from civicpy import LOCAL_CACHE_PATH, civic
 from civicpy.exports import VCFWriter
 from civicpy.civic import CoordinateQuery
 import vcfpy
-import binascii
 from collections import OrderedDict
 
 
@@ -26,6 +25,7 @@ def update(soft, cache_save_path):
     """Updates CIViC content from server and stores to local cache file"""
     civic.update_cache(from_remote_cache=soft, local_cache_path=cache_save_path)
 
+
 @cli.command(context_settings=CONTEXT_SETTINGS)
 @click.option('-v', '--vcf-file-path', required=True,
               help="The file path to write the VCF to.")
@@ -40,6 +40,7 @@ def create_vcf(vcf_file_path, include_status):
             if variant.is_valid_for_vcf():
                 writer.addrecord(variant)
         writer.writerecords()
+
 
 @cli.command(context_settings=CONTEXT_SETTINGS)
 @click.option('--input-vcf', required=True,
@@ -92,7 +93,8 @@ def annotate_vcf(input_vcf, output_vcf, reference, include_status):
                     if len(csq) > 0:
                         entry.INFO['CIVIC'] = variants[0].csq(include_status)
                 elif len(variants) > 1:
-                    print("More than one variant found for start {} stop {} ref {} alt {}. CIViC Variants IDs: {}".format(start, end, ref, alt, ",".join(list(map(lambda v: str(v.id), variants)))))
+                    print("More than one variant found for start {} stop {} ref {} alt {}. CIViC Variants IDs: {}".format(
+                        start, end, ref, alt, ",".join(list(map(lambda v: str(v.id), variants)))))
             writer.write_record(entry)
     writer.close()
     reader.close()

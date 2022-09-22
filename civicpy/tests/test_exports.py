@@ -13,30 +13,41 @@ def vcf_stream():
 def vcf_writer(vcf_stream):
     return VCFWriter(vcf_stream)
 
-#snv
+# snv
+
+
 @pytest.fixture(scope="module")
 def v600e():
     return civic.get_variant_by_id(12)
 
-#simple insertion
+# simple insertion
+
+
 @pytest.fixture(scope="module")
 def a56fs():
     return civic.get_variant_by_id(1785)
 
-#simple deletion
+# simple deletion
+
+
 @pytest.fixture(scope="module")
 def v273fs():
     return civic.get_variant_by_id(762)
 
-#complex insertion
+# complex insertion
+
+
 @pytest.fixture(scope="module")
 def v2444fs():
     return civic.get_variant_by_id(137)
 
-#complex deletion
+# complex deletion
+
+
 @pytest.fixture(scope="module")
 def l158fs():
     return civic.get_variant_by_id(2137)
+
 
 class TestVcfExport(object):
     def test_protein_altering(self, vcf_writer, caplog, v600e):

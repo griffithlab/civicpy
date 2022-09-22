@@ -105,6 +105,7 @@ class TestEvidence(object):
         assert evidence.variant.name == 'V600E'
         assert evidence.statement == evidence.description
 
+
 class TestVariants(object):
 
     def test_get_all(self):
@@ -230,6 +231,7 @@ class TestGenes(object):
         assert gene.type == 'gene'
         assert gene.id == 58
         assert gene.name == 'VHL'
+
 
 class TestCoordinateSearch(object):
 
@@ -379,43 +381,43 @@ class TestCoordinateSearch(object):
     def test_errors(self):
         with pytest.raises(ValueError) as context:
             query = CoordinateQuery('7', 140453136, 140453136, 'T', 'A')
-            variants_single = civic.search_variants_by_coordinates(query, search_mode='wrong_mode')
+            civic.search_variants_by_coordinates(query, search_mode='wrong_mode')
         assert "unexpected search mode" in str(context.value)
         with pytest.raises(ValueError) as context:
             query = CoordinateQuery('7', 140753336, 140753336, '*', 'A', 'GRCh38')
-            search_results = civic.search_variants_by_coordinates(query, search_mode='exact')
+            civic.search_variants_by_coordinates(query, search_mode='exact')
         assert "Can't use wildcard when searching for non-GRCh37 coordinates" in str(context.value)
         with pytest.raises(ValueError) as context:
             query = CoordinateQuery('7', 140753336, 140753336, None, None, 'GRCh38')
-            search_results = civic.search_variants_by_coordinates(query, search_mode='exact')
+            civic.search_variants_by_coordinates(query, search_mode='exact')
         assert "alt or ref required for non-GRCh37 coordinate queries" in str(context.value)
         with pytest.raises(ValueError) as context:
             query = CoordinateQuery('7', 140753336, 140753336, 'T', 'A', 'GRCh38')
-            search_results = civic.search_variants_by_coordinates(query, search_mode='any')
+            civic.search_variants_by_coordinates(query, search_mode='any')
         assert "Only exact search mode is supported for non-GRCh37 coordinate queries" in str(context.value)
         with pytest.raises(ValueError) as context:
             query = CoordinateQuery('7', 140453136, 140453136, '-', 'A')
-            variants_single = civic.search_variants_by_coordinates(query, search_mode='exact')
+            civic.search_variants_by_coordinates(query, search_mode='exact')
         assert "Unexpected alt `-` in coordinate query. Did you mean `None`?" in str(context.value)
         with pytest.raises(ValueError) as context:
             query = CoordinateQuery('7', 140453136, 140453136, 'T', '-')
-            variants_single = civic.search_variants_by_coordinates(query, search_mode='exact')
+            civic.search_variants_by_coordinates(query, search_mode='exact')
         assert "Unexpected ref `-` in coordinate query. Did you mean `None`?" in str(context.value)
         with pytest.raises(ValueError) as context:
             query = CoordinateQuery('7', 140453136, 140453136, '-', 'A', 'GRCh38')
-            variants_single = civic.search_variants_by_coordinates(query, search_mode='exact')
+            civic.search_variants_by_coordinates(query, search_mode='exact')
         assert "Unexpected alt `-` in coordinate query. Did you mean `None`?" in str(context.value)
         with pytest.raises(ValueError) as context:
             query = CoordinateQuery('7', 140453136, 140453136, 'T', '-', 'GRCh38')
-            variants_single = civic.search_variants_by_coordinates(query, search_mode='exact')
+            civic.search_variants_by_coordinates(query, search_mode='exact')
         assert "Unexpected ref `-` in coordinate query. Did you mean `None`?" in str(context.value)
         with pytest.raises(ValueError) as context:
             query = CoordinateQuery('7', 140453136, 140453136, '-', 'A')
-            variants_bulk = civic.bulk_search_variants_by_coordinates([query], search_mode='exact')
+            civic.bulk_search_variants_by_coordinates([query], search_mode='exact')
         assert "Unexpected alt `-` in coordinate query. Did you mean `None`?" in str(context.value)
         with pytest.raises(ValueError) as context:
             query = CoordinateQuery('7', 140453136, 140453136, 'T', '-')
-            variants_bulk = civic.bulk_search_variants_by_coordinates([query], search_mode='exact')
+            civic.bulk_search_variants_by_coordinates([query], search_mode='exact')
         assert "Unexpected ref `-` in coordinate query. Did you mean `None`?" in str(context.value)
 
 
@@ -434,8 +436,10 @@ class TestDrugs(object):
             'N-(3-{3-cyclopropyl-5-[(2-fluoro-4-iodophenyl)amino]-6,8-dimethyl-2,4,7-trioxo-3,4,6,7-tetrahydropyrido[4,3-d]pyrimidin-1(2H)-yl}phenyl)acetamide'
         }
 
-#warning logging tests
+
+# warning logging tests
 LOGGER = logging.getLogger(__name__)
+
 
 def test_is_valid_for_vcf_warnings(caplog):
     fusion_variant = civic.get_variant_by_id(287)
@@ -450,4 +454,4 @@ def test_is_valid_for_vcf_warnings(caplog):
     unsupported_var_bases_variant.is_valid_for_vcf(emit_warnings=True)
     assert "Unsupported variant base(s) for variant 613. Skipping." in caplog.text
 
-    #currently no case for unsupported ref bases
+    # currently no case for unsupported ref bases

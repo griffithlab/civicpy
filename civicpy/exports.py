@@ -2,7 +2,6 @@ from civicpy import civic
 from csv import DictWriter
 import datetime
 from civicpy.__version__ import __version__
-import requests
 
 
 class VCFWriter(DictWriter):
@@ -93,7 +92,6 @@ class VCFWriter(DictWriter):
         'CIVIC Assertion FDA Companion Test ',
     ]))
 
-
     SUPPORTED_VERSIONS = [4.2]
 
     VCF_RESERVED_FIELDS = {
@@ -138,7 +136,7 @@ class VCFWriter(DictWriter):
     def addrecord(self, civic_record):
         """
         Takes either a :class:`civic.Evidence`, :class:`civic.Assertion`, :class:`civic.Variant`, or :class:`civic.Gene` object
-        and adds all :class:`civic.Variant` objects associated with it to the VCFWriter object for processing and writing to the VCF. 
+        and adds all :class:`civic.Variant` objects associated with it to the VCFWriter object for processing and writing to the VCF.
 
         :param civic.CivicRecord civic_record: Either a :class:`civic.Evidence`, :class:`civic.Assertion`, :class:`civic.Variant`, or :class:`civic.Gene` object
         """
@@ -185,7 +183,6 @@ class VCFWriter(DictWriter):
         int_chromosomes.sort(key=lambda x: int(x.coordinates.chromosome))
         string_chromosomes.sort(key=lambda x: x.coordinates.chromosome)
         sorted_records = int_chromosomes + string_chromosomes
-
 
         # write them
         rows = []

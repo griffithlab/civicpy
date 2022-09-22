@@ -1,3 +1,4 @@
+import re
 import requests
 from requests.packages.urllib3.util.retry import Retry
 import importlib
@@ -8,14 +9,10 @@ import os
 from pathlib import Path
 from collections import defaultdict, namedtuple
 from civicpy import REMOTE_CACHE_URL, LOCAL_CACHE_PATH, CACHE_TIMEOUT_DAYS
-import requests
 from civicpy import exports
-import deprecation
-from civicpy.__version__ import __version__
 from datetime import datetime, timedelta
 from backports.datetime_fromisoformat import MonkeyPatch
 MonkeyPatch.patch_fromisoformat()
-import re
 
 
 CACHE = dict()
@@ -375,7 +372,7 @@ class CivicRecord:
         if not isinstance(self, CivicAttribute) and not self._partial and self.__class__.__name__ != 'CivicRecord':
             CACHE[hash(self)] = self
 
-        self._include_status = ['accepted','submitted','rejected']
+        self._include_status = ['accepted', 'submitted', 'rejected']
 
     def __dir__(self):
         return [attribute for attribute in super().__dir__() if not attribute.startswith('_')]
@@ -445,7 +442,7 @@ class Variant(CivicRecord):
         # 'errors',
         'evidence_items',
         'hgvs_expressions',
-        #'lifecycle_actions',
+        # 'lifecycle_actions',
         # 'provisional_values',
         'sources',
         'variant_aliases',
@@ -579,8 +576,8 @@ class Variant(CivicRecord):
             else:
                 start = self.coordinates.start
                 ext = "/sequence/region/human/{}:{}-{}".format(self.coordinates.chromosome, start, start)
-                r = requests.get(ensembl_server+ext, headers={ "Content-Type" : "text/plain"})
-                if self.coordinates.reference_bases == None or self.coordinates.reference_bases == '-' or self.coordinates.reference_bases == '':
+                r = requests.get(ensembl_server + ext, headers={"Content-Type": "text/plain"})
+                if self.coordinates.reference_bases is None or self.coordinates.reference_bases == '-' or self.coordinates.reference_bases == '':
                     ref = r.text
                 else:
                     ref = "{}{}".format(r.text, self.coordinates.reference_bases)
@@ -591,9 +588,9 @@ class Variant(CivicRecord):
             else:
                 start = self.coordinates.start - 1
                 ext = "/sequence/region/human/{}:{}-{}".format(self.coordinates.chromosome, start, start)
-                r = requests.get(ensembl_server+ext, headers={ "Content-Type" : "text/plain"})
+                r = requests.get(ensembl_server + ext, headers={"Content-Type": "text/plain"})
                 ref = "{}{}".format(r.text, self.coordinates.reference_bases)
-                if self.coordinates.variant_bases == None or self.coordinates.variant_bases == '-' or self.coordinates.variant_bases == '':
+                if self.coordinates.variant_bases is None or self.coordinates.variant_bases == '-' or self.coordinates.variant_bases == '':
                     alt = r.text
                 else:
                     alt = "{}{}".format(r.text, self.coordinates.variant_bases)
@@ -734,7 +731,7 @@ class VariantGroup(CivicRecord):
         {'description', 'name', 'variant_ids'})
     _COMPLEX_FIELDS = CivicRecord._COMPLEX_FIELDS.union({
         # 'errors',                 # TODO: Add support for these fields in advanced search endpoint
-         # 'lifecycle_actions',
+        # 'lifecycle_actions',
         # 'provisional_values',
         'sources',
         'variants'
@@ -815,7 +812,7 @@ class Evidence(CivicRecord):
         'drugs',
         # 'errors',
         # 'fields_with_pending_changes',
-        #'lifecycle_actions',
+        # 'lifecycle_actions',
         'phenotypes',
         'source'})
 
@@ -878,7 +875,7 @@ class Assertion(CivicRecord):
         'disease',
         'drugs',
         'evidence_items',
-        #'lifecycle_actions',
+        # 'lifecycle_actions',
         'phenotypes',
     })
 
@@ -981,7 +978,7 @@ class CivicAttribute(CivicRecord, dict):
 
     def __repr__(self):
         try:
-            _id = self.id
+            _ = self.id
         except AttributeError:
             return '<CIViC Attribute {}>'.format(self.type)
         else:
@@ -1215,7 +1212,7 @@ def _request_by_ids(element, ids):
 
     response_elements = []
     for i in ids:
-        resp = requests.post(API_URL, json={'query': payload, 'variables': {'id': i}}, timeout=(10,200))
+        resp = requests.post(API_URL, json={'query': payload, 'variables': {'id': i}}, timeout=(10, 200))
         resp.raise_for_status()
         response = resp.json()['data'][element]
         response_elements.append(response)
@@ -1234,8 +1231,8 @@ def _request_all(element):
     payload = payload_method()
 
     after_cursor = None
-    variables = { "after": after_cursor }
-    resp = requests.post(API_URL, json={'query': payload, 'variables': variables}, timeout=(10,200))
+    variables = {"after": after_cursor}
+    resp = requests.post(API_URL, json={'query': payload, 'variables': variables}, timeout=(10, 200))
     resp.raise_for_status()
     response = resp.json()['data'][pluralize(element)]
     response_elements = response['nodes']
@@ -1244,9 +1241,9 @@ def _request_all(element):
 
     while has_next_page:
         variables = {
-          "after": after_cursor
+            "after": after_cursor
         }
-        resp = requests.post(API_URL, json={'query': payload, 'variables': variables}, timeout=(10,200))
+        resp = requests.post(API_URL, json={'query': payload, 'variables': variables}, timeout=(10, 200))
         resp.raise_for_status()
         response = resp.json()['data'][pluralize(element)]
         response_elements.extend(response['nodes'])
@@ -1254,7 +1251,6 @@ def _request_all(element):
         after_cursor = response['pageInfo']['endCursor']
 
     return response_elements
-
 
 
 def _construct_get_gene_payload():
@@ -1334,6 +1330,7 @@ def _construct_get_all_genes_payload():
               }
             }
         }"""
+
 
 def _construct_get_variant_payload():
     return """
@@ -1475,6 +1472,7 @@ def _construct_get_all_variants_payload():
             }
         }"""
 
+
 def _construct_get_evidence_payload():
     return """
         query evidenceItem($id: Int!) {
@@ -1545,7 +1543,6 @@ def _construct_get_evidence_payload():
                 rating: evidenceRating
             }
         }"""
-
 
 
 def _construct_get_all_evidence_payload():
@@ -1625,7 +1622,6 @@ def _construct_get_all_evidence_payload():
                 }
             }
         }"""
-
 
 
 def _construct_get_assertion_payload():
@@ -1805,6 +1801,7 @@ def _construct_get_variant_group_payload():
             }
         }"""
 
+
 def _construct_get_all_variant_groups_payload():
     return """
         query variantGroups($after: String) {
@@ -1930,7 +1927,7 @@ def get_assertion_by_id(assertion_id):
     return get_assertions_by_ids([assertion_id])[0]
 
 
-def get_all_assertions(include_status=['accepted','submitted','rejected'], allow_cached=True):
+def get_all_assertions(include_status=['accepted', 'submitted', 'rejected'], allow_cached=True):
     assertions = _get_elements_by_ids('assertion', allow_cached=allow_cached, get_all=True)
     return [a for a in assertions if a.status in include_status]
 
@@ -1997,7 +1994,7 @@ def _build_coordinate_table(variants):
     MODULE.COORDINATE_TABLE_CHR = df.chr.sort_values()
 
 
-def get_all_variants(include_status=['accepted','submitted','rejected'], allow_cached=True):
+def get_all_variants(include_status=['accepted', 'submitted', 'rejected'], allow_cached=True):
     variants = _get_elements_by_ids('variant', allow_cached=allow_cached, get_all=True)
     if include_status:
         assert CACHE.get('evidence_items_all_ids', False)
@@ -2015,6 +2012,7 @@ def get_all_variant_groups(allow_cached=True):
     variant_groups = _get_elements_by_ids('variant_group', allow_cached=allow_cached, get_all=True)
     return variant_groups
 
+
 def search_variants_by_allele_registry_id(caid):
     """
     Search the cache for variants matching the queried Allele Registry ID (CAID)
@@ -2024,6 +2022,7 @@ def search_variants_by_allele_registry_id(caid):
     :return: Returns a list of variant hashes matching the Allele Registry ID
     """
     return search_variants_by_attribute('allele_registry_id', caid)
+
 
 def search_variants_by_name(name):
     """
@@ -2035,6 +2034,7 @@ def search_variants_by_name(name):
     """
     return search_variants_by_attribute('name', name)
 
+
 def search_variants_by_hgvs(hgvs):
     """
     Search the cache for variants matching the queried HGVS expression
@@ -2045,14 +2045,16 @@ def search_variants_by_hgvs(hgvs):
     """
     return search_variants_by_list_field('hgvs_expressions', hgvs)
 
+
 def search_variants_by_attribute(attribute, value):
     variants = get_all_variants()
     return [v for v in variants if getattr(v, attribute) == value]
 
+
 def search_variants_by_list_field(field, value):
     variants = get_all_variants()
-    matched_variants = []
     return [v for v in variants if value in getattr(v, field)]
+
 
 def search_variants_by_coordinates(coordinate_query, search_mode='any'):
     """
@@ -2114,7 +2116,7 @@ def search_variants_by_coordinates(coordinate_query, search_mode='any'):
                 match_idx = match_idx & pd.isnull(m_df.ref)
         else:
             raise ValueError("unexpected search mode")
-        var_digests = m_df.loc[match_idx,].v_hash.to_list()
+        var_digests = m_df.loc[match_idx, ].v_hash.to_list()
         return [CACHE[v] for v in var_digests]
     else:
         if search_mode == 'exact':
@@ -2148,8 +2150,10 @@ def search_variants_by_coordinates(coordinate_query, search_mode='any'):
         else:
             raise ValueError("Only exact search mode is supported for non-GRCh37 coordinate queries")
 
+
 def _allele_registry_url():
     return "http://reg.genome.network/allele"
+
 
 def _construct_hgvs_for_coordinate_query(coordinate_query):
     if coordinate_query.build == 'GRCh38':
@@ -2164,7 +2168,7 @@ def _construct_hgvs_for_coordinate_query(coordinate_query):
     variant_type = _variant_type(coordinate_query)
     if variant_type == "deletion":
         if len(coordinate_query.ref) > 1:
-            return"{}_{}del".format(base_hgvs, coordinate_query.stop)
+            return "{}_{}del".format(base_hgvs, coordinate_query.stop)
         else:
             return "{}del".format(base_hgvs)
     elif variant_type == "substitution":
@@ -2173,11 +2177,12 @@ def _construct_hgvs_for_coordinate_query(coordinate_query):
         return "{}_{}ins{}".format(base_hgvs, coordinate_query.stop, coordinate_query.alt)
     elif variant_type == "indel":
         if len(coordinate_query.ref) > 1:
-          return "{}_{}delins{}".format(base_hgvs, coordinate_query.stop, coordinate_query.alt)
+            return "{}_{}delins{}".format(base_hgvs, coordinate_query.stop, coordinate_query.alt)
         else:
-          return "{}delins{}".format(base_hgvs, coordinate_query.alt)
+            return "{}delins{}".format(base_hgvs, coordinate_query.alt)
     else:
         return None
+
 
 def _variant_type(coordinate_query):
     if not coordinate_query.ref and not coordinate_query.alt:
@@ -2193,71 +2198,75 @@ def _variant_type(coordinate_query):
     else:
         return None
 
+
 def _refseq_sequence_b36(chromosome):
     chromosome = chromosome.replace('chr', '')
     sequences = {
-      '1' : 'NC_000001.9',
-      '2' : 'NC_000002.10',
-      '3' : 'NC_000003.10',
-      '4' : 'NC_000004.10',
-      '5' : 'NC_000005.8',
-      '6' : 'NC_000006.10',
-      '7' : 'NC_000007.12',
-      '8' : 'NC_000008.9',
-      '9' : 'NC_000009.10',
-      '10' : 'NC_000010.9',
-      '11' : 'NC_000011.8',
-      '12' : 'NC_000012.10',
-      '13' : 'NC_000013.9',
-      '14' : 'NC_000014.7',
-      '15' : 'NC_000015.8',
-      '16' : 'NC_000016.8',
-      '17' : 'NC_000017.9',
-      '18' : 'NC_000018.8',
-      '19' : 'NC_000019.8',
-      '20' : 'NC_000020.9',
-      '21' : 'NC_000021.7',
-      '22' : 'NC_000022.9',
-      'X' : 'NC_000023.9',
-      'Y' : 'NC_000024.8',
+        '1': 'NC_000001.9',
+        '2': 'NC_000002.10',
+        '3': 'NC_000003.10',
+        '4': 'NC_000004.10',
+        '5': 'NC_000005.8',
+        '6': 'NC_000006.10',
+        '7': 'NC_000007.12',
+        '8': 'NC_000008.9',
+        '9': 'NC_000009.10',
+        '10': 'NC_000010.9',
+        '11': 'NC_000011.8',
+        '12': 'NC_000012.10',
+        '13': 'NC_000013.9',
+        '14': 'NC_000014.7',
+        '15': 'NC_000015.8',
+        '16': 'NC_000016.8',
+        '17': 'NC_000017.9',
+        '18': 'NC_000018.8',
+        '19': 'NC_000019.8',
+        '20': 'NC_000020.9',
+        '21': 'NC_000021.7',
+        '22': 'NC_000022.9',
+        'X': 'NC_000023.9',
+        'Y': 'NC_000024.8',
     }
     if chromosome not in sequences:
         return None
     return sequences[chromosome]
 
+
 def _refseq_sequence_b38(chromosome):
     chromosome = chromosome.replace('chr', '')
     sequences = {
-      '1' : 'NC_000001.11',
-      '2' : 'NC_000002.12',
-      '3' : 'NC_000003.12',
-      '4' : 'NC_000004.12',
-      '5' : 'NC_000005.10',
-      '6' : 'NC_000006.12',
-      '7' : 'NC_000007.14',
-      '8' : 'NC_000008.11',
-      '9' : 'NC_000009.12',
-      '10' : 'NC_000010.11',
-      '11' : 'NC_000011.10',
-      '12' : 'NC_000012.12',
-      '13' : 'NC_000013.11',
-      '14' : 'NC_000014.9',
-      '15' : 'NC_000015.10',
-      '16' : 'NC_000016.10',
-      '17' : 'NC_000017.11',
-      '18' : 'NC_000018.10',
-      '19' : 'NC_000019.10',
-      '20' : 'NC_000020.11',
-      '21' : 'NC_000021.9',
-      '22' : 'NC_000022.11',
-      'X' : 'NC_000023.11',
-      'Y' : 'NC_000024.10',
+        '1': 'NC_000001.11',
+        '2': 'NC_000002.12',
+        '3': 'NC_000003.12',
+        '4': 'NC_000004.12',
+        '5': 'NC_000005.10',
+        '6': 'NC_000006.12',
+        '7': 'NC_000007.14',
+        '8': 'NC_000008.11',
+        '9': 'NC_000009.12',
+        '10': 'NC_000010.11',
+        '11': 'NC_000011.10',
+        '12': 'NC_000012.12',
+        '13': 'NC_000013.11',
+        '14': 'NC_000014.9',
+        '15': 'NC_000015.10',
+        '16': 'NC_000016.10',
+        '17': 'NC_000017.11',
+        '18': 'NC_000018.10',
+        '19': 'NC_000019.10',
+        '20': 'NC_000020.11',
+        '21': 'NC_000021.9',
+        '22': 'NC_000022.11',
+        'X': 'NC_000023.11',
+        'Y': 'NC_000024.10',
     }
     if chromosome not in sequences:
         return None
     return sequences[chromosome]
 
 # TODO: Refactor this method
+
+
 def bulk_search_variants_by_coordinates(sorted_queries, search_mode='any'):
     """
     An interator to search the cache for variants matching the set of sorted coordinates and yield
@@ -2383,7 +2392,7 @@ def get_gene_by_id(gene_id):
     return get_genes_by_ids([gene_id])[0]
 
 
-def get_all_genes(include_status=['accepted','submitted','rejected'], allow_cached=True):
+def get_all_genes(include_status=['accepted', 'submitted', 'rejected'], allow_cached=True):
     """
     Queries CIViC for all genes.
 
@@ -2405,7 +2414,7 @@ def get_all_genes(include_status=['accepted','submitted','rejected'], allow_cach
         return genes
 
 
-def get_all_evidence(include_status=['accepted','submitted','rejected'], allow_cached=True):
+def get_all_evidence(include_status=['accepted', 'submitted', 'rejected'], allow_cached=True):
     evidence = _get_elements_by_ids('evidence', get_all=True, allow_cached=allow_cached)
     return [e for e in evidence if e.status in include_status]
 
