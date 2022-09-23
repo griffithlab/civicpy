@@ -2,10 +2,9 @@ import pytest
 from civicpy import civic, TEST_CACHE_PATH
 from civicpy.civic import CoordinateQuery
 import logging
-import deprecation
 
 ELEMENTS = [
-    'Assertion'
+    'assertion'
 ]
 
 
@@ -71,10 +70,27 @@ class TestEvidence(object):
         for source in v600e.evidence_sources:
             assert source.citation_id
             assert source.source_type
+            assert hasattr(source, 'abstract')
+            assert hasattr(source, 'asco_abstract_id')
+            assert source.author_string
+            assert source.citation
+            assert source.full_journal_title
+            assert source.journal
+            assert hasattr(source, 'pmc_id')
+            assert source.publication_date
+            assert source.source_url
+            assert source.title
+            assert source.name
+            assert hasattr(source, 'clinical_trials')
 
     def test_get_all(self):
         evidence = civic.get_all_evidence()
         assert len(evidence) >= 6656
+
+    def test_get_by_id(self):
+        evidence = civic.get_evidence_by_id(1637)
+        assert evidence.type == 'evidence'
+        assert evidence.id == 1637
 
     def test_get_non_rejected(self):
         evidence = civic.get_all_evidence(include_status=['accepted', 'submitted'])
@@ -83,12 +99,6 @@ class TestEvidence(object):
     def test_get_accepted_only(self):
         evidence = civic.get_all_evidence(include_status=['accepted'])
         assert len(evidence) >= 3247
-
-    #get_all_ids pulls from the live site so it will return more results than get_all_x
-    @deprecation.fail_if_not_removed
-    def test_get_all_ids(self):
-        evidence_ids = civic.get_all_evidence_ids()
-        assert len(evidence_ids) >= len(civic.get_all_evidence())
 
     def test_properties(self, v600e):
         evidence = v600e.evidence[0]
@@ -109,11 +119,10 @@ class TestVariants(object):
         variants = civic.get_all_variants(include_status=['accepted'])
         assert len(variants) >= 1333
 
-    #get_all_ids pulls from the live site so it will return more results than get_all_x
-    @deprecation.fail_if_not_removed
-    def test_get_all_ids(self):
-        variant_ids = civic.get_all_variant_ids()
-        assert len(variant_ids) >= len(civic.get_all_variants())
+    def test_get_by_id(self):
+        variant = civic.get_variant_by_id(12)
+        assert variant.type == 'variant'
+        assert variant.id == 12
 
     def test_get_by_name(self, v600e):
         variants = civic.search_variants_by_name("V600E")
@@ -143,6 +152,9 @@ class TestVariants(object):
         assert sorted(variant.groups) == sorted(variant.variant_groups)
         assert sorted(variant.types) == sorted(variant.variant_types)
         assert variant.summary == variant.description
+        assert variant.coordinates.ensembl_version == 75
+        assert variant.entrez_name == "BRAF"
+        assert variant.entrez_id == 673
 
 
 class TestVariantGroups(object):
@@ -150,6 +162,11 @@ class TestVariantGroups(object):
     def test_get_all(self):
         variant_groups = civic.get_all_variant_groups()
         assert len(variant_groups) >= 25
+
+    def test_get_by_id(self):
+        variant_group = civic.get_variant_group_by_id(1)
+        assert variant_group.type == 'variant_group'
+        assert variant_group.id == 1
 
 
 class TestAssertions(object):
@@ -166,6 +183,11 @@ class TestAssertions(object):
         assertions = civic.get_all_assertions(include_status=['accepted'])
         assert len(assertions) >= 16
 
+    def test_get_by_id(self):
+        assertion = civic.get_assertion_by_id(7)
+        assert assertion.type == 'assertion'
+        assert assertion.id == 7
+
     def test_has_boolean_flags(self, v600e_assertion):
         assert v600e_assertion.fda_companion_test is True
         assert v600e_assertion.fda_regulatory_approval is True
@@ -174,6 +196,19 @@ class TestAssertions(object):
         assertion = civic.get_assertion_by_id(18)
         assert assertion.evidence == assertion.evidence_items
         assert assertion.hpo_ids == [p.hpo_id for p in assertion.phenotypes if p.hpo_id]
+        assert assertion.acmg_codes
+        for acmg_code in assertion.acmg_codes:
+            assert acmg_code.id
+            assert acmg_code.code
+            assert acmg_code.description
+
+        # Test assertion with clingen_codes
+        assertion = civic.get_assertion_by_id(53)
+        assert assertion.clingen_codes
+        for clingen_code in assertion.clingen_codes:
+            assert clingen_code.id
+            assert clingen_code.code
+            assert clingen_code.description
 
 
 class TestGenes(object):
@@ -190,15 +225,10 @@ class TestGenes(object):
         genes = civic.get_all_genes(include_status=['accepted'])
         assert len(genes) >= 322
 
-    #get_all_ids pulls from the live site so it might return more results than get_all_x
-    @deprecation.fail_if_not_removed
-    def test_get_all_ids(self):
-        genes = civic.get_all_genes(include_status=['accepted'])
-        gene_ids = civic.get_all_gene_ids()
-        assert len(gene_ids) >= len(genes)
-
     def test_get_by_id(self):
         gene = civic.get_gene_by_id(58)
+        assert gene.type == 'gene'
+        assert gene.id == 58
         assert gene.name == 'VHL'
 
 class TestCoordinateSearch(object):
@@ -207,7 +237,7 @@ class TestCoordinateSearch(object):
         query = CoordinateQuery('7', 140453136, 140453136, 'T', '*')
         assertions = civic.search_assertions_by_coordinates(query)
         assertion_ids = [x.id for x in assertions]
-        v600e_assertion_ids = (7, 10, 12, 20)
+        v600e_assertion_ids = (7, 10, 12, 20, 23)
         v600k_assertion_ids = (11, 13)
         assert set(assertion_ids) >= set(v600e_assertion_ids + v600k_assertion_ids)
         assertions = civic.search_assertions_by_coordinates(query, search_mode='exact')
@@ -285,7 +315,7 @@ class TestCoordinateSearch(object):
             CoordinateQuery('7', 140453136, 140453137, 'TT')
         ]
         search_results = civic.bulk_search_variants_by_coordinates(sorted_queries, search_mode='any')
-        assert len(search_results[sorted_queries[0]]) == 19
+        assert len(search_results[sorted_queries[0]]) == 20
         assert len(search_results[sorted_queries[1]]) >= 19
 
     def test_bulk_exact_search_variants(self):
@@ -308,7 +338,7 @@ class TestCoordinateSearch(object):
         ]
         search_results = civic.bulk_search_variants_by_coordinates(sorted_queries, search_mode='query_encompassing')
         assert len(search_results[sorted_queries[0]]) == 1
-        assert len(search_results[sorted_queries[1]]) == 4
+        assert len(search_results[sorted_queries[1]]) == 6
 
     def test_bulk_re_search_variants(self):
         sorted_queries = [
@@ -316,8 +346,8 @@ class TestCoordinateSearch(object):
             CoordinateQuery('7', 140453136, 140453137)
         ]
         search_results = civic.bulk_search_variants_by_coordinates(sorted_queries, search_mode='record_encompassing')
-        assert len(search_results[sorted_queries[0]]) == 19
-        assert len(search_results[sorted_queries[1]]) == 16
+        assert len(search_results[sorted_queries[0]]) == 20
+        assert len(search_results[sorted_queries[1]]) == 17
 
     def test_build38_exact_search_variants(self, v600e):
         query = CoordinateQuery('7', 140753336, 140753336, 'T', 'A', 'GRCh38')
@@ -395,6 +425,14 @@ class TestDrugs(object):
         trametinib = v600e_assertion.drugs[0]
         assert trametinib.ncit_id == 'C77908'
         assert 'pubchem_id' not in trametinib.keys()
+        assert trametinib.name == 'Trametinib'
+        assert set(trametinib.aliases) == {
+            'JTP-74057',
+            'GSK1120212',
+            'MEK Inhibitor GSK1120212',
+            'Mekinist',
+            'N-(3-{3-cyclopropyl-5-[(2-fluoro-4-iodophenyl)amino]-6,8-dimethyl-2,4,7-trioxo-3,4,6,7-tetrahydropyrido[4,3-d]pyrimidin-1(2H)-yl}phenyl)acetamide'
+        }
 
 #warning logging tests
 LOGGER = logging.getLogger(__name__)
