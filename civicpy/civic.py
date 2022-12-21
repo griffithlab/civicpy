@@ -267,22 +267,26 @@ def update_cache(from_remote_cache=True, remote_cache_url=REMOTE_CACHE_URL,
     else:
         genes = _get_elements_by_ids('gene', allow_cached=False, get_all=True)
         variants = _get_elements_by_ids('variant', allow_cached=False, get_all=True)
+        molecular_profiles = _get_elements_by_ids('molecular_profile', allow_cached=False, get_all=True)
         evidence = _get_elements_by_ids('evidence', allow_cached=False, get_all=True)
         assertions = _get_elements_by_ids('assertion', allow_cached=False, get_all=True)
         variant_groups = _get_elements_by_ids('variant_group', allow_cached=False, get_all=True)
+        for mp in molecular_profiles:
+            mp.variants = [v for v in variants if v.id in mp.variant_ids]
+            mp.evidence_items = [e for e in evidence if e.molecular_profile_id == mp.id]
+            mp.assertions = [a for a in assertions if a.molecular_profile_id == mp.id]
+            CACHE[hash(mp)] = mp
         for e in evidence:
             e.assertions = [a for a in assertions if a.id in e.assertion_ids]
             e._partial = False
             CACHE[hash(e)] = e
         for g in genes:
             g.variants = [v for v in variants if v.gene_id == g.id]
-            g.assertions = [a for a in assertions if a.gene_id == g.id]
             g._partial = False
             CACHE[hash(g)] = g
         for v in variants:
-            v.assertions = [a for a in assertions if a.variant_id == v.id]
-            v.evidence_items = [e for e in evidence if e.variant_id == v.id]
             v.variant_groups = [vg for vg in variant_groups if v.id in vg.variant_ids]
+            v.molecular_profiles = [mp for mp in molecular_profiles if mp.id in mp.variant_ids]
             v._partial = False
             CACHE[hash(v)] = v
         for a in assertions:
@@ -432,22 +436,20 @@ class CivicRecord:
 class Variant(CivicRecord):
     _SIMPLE_FIELDS = CivicRecord._SIMPLE_FIELDS.union({
         'allele_registry_id',
-        'civic_actionability_score',
-        'description',
         'gene_id',
         'name',
         'entrez_name',
+        'deprecated',
         'entrez_id'})
     _COMPLEX_FIELDS = CivicRecord._COMPLEX_FIELDS.union({
         'assertions',
+        'molecular_profiles',
         'clinvar_entries',
         'coordinates',
         # 'errors',
-        'evidence_items',
         'hgvs_expressions',
         #'lifecycle_actions',
         # 'provisional_values',
-        'sources',
         'variant_aliases',
         'variant_groups',
         'variant_types'})
@@ -455,8 +457,6 @@ class Variant(CivicRecord):
     def __init__(self, **kwargs):
         # Handle overloaded evidence_items from some advanced search views
         kwargs['type'] = 'variant'
-        self._evidence_items = []
-        self._assertions = []
         self._variant_groups = []
         coordinates = kwargs.get('coordinates')
         if coordinates:
@@ -465,14 +465,6 @@ class Variant(CivicRecord):
             if coordinates.get('variant_bases') in ['', '-']:
                 coordinates['variant_bases'] = None
         super().__init__(**kwargs)
-
-    @property
-    def evidence_sources(self):
-        sources = set()
-        for evidence in self.evidence_items:
-            if evidence.source is not None:
-                sources.add(evidence.source)
-        return sources
 
     @property
     def aliases(self):
@@ -487,34 +479,6 @@ class Variant(CivicRecord):
         return self.variant_types
 
     @property
-    def summary(self):
-        return self.description
-
-    @summary.setter
-    def summary(self, value):
-        self.description = value
-
-    @property
-    def evidence(self):
-        return self.evidence_items
-
-    @property
-    def evidence_items(self):
-        return [e for e in self._evidence_items if e.status in self._include_status]
-
-    @evidence_items.setter
-    def evidence_items(self, value):
-        self._evidence_items = value
-
-    @property
-    def assertions(self):
-        return [a for a in self._assertions if a.status in self._include_status]
-
-    @assertions.setter
-    def assertions(self, value):
-        self._assertions = value
-
-    @property
     def variant_groups(self):
         return self._variant_groups
 
@@ -523,8 +487,8 @@ class Variant(CivicRecord):
         self._variant_groups = value
 
     @property
-    def gene(self):
-        return _get_element_by_id('gene', self.gene_id)
+    def single_variant_molecular_profile(self):
+        return _get_element_by_id('molecular_profile', self.single_variant_molecular_profile_id)
 
     @property
     def is_insertion(self):
@@ -672,11 +636,11 @@ class Variant(CivicRecord):
                     "{} ({})".format(evidence.source.citation_id, evidence.source.source_type),
                     str(evidence.variant_origin),
                     evidence.status,
-                    str(evidence.clinical_significance or ''),
+                    str(evidence.significance or ''),
                     str(evidence.evidence_direction or ''),
                     str(evidence.disease),
-                    '&'.join([str(drug) for drug in evidence.drugs]),
-                    str(evidence.drug_interaction_type or ""),
+                    '&'.join([str(therapy) for therapy in evidence.therapies]),
+                    str(evidence.therapy_interaction_type or ""),
                     '&'.join(["{} (HPO ID {})".format(phenotype.name, phenotype.hpo_id) for phenotype in evidence.phenotypes]),
                     evidence.evidence_level,
                     str(evidence.rating),
@@ -711,11 +675,11 @@ class Variant(CivicRecord):
                     "",
                     str(assertion.variant_origin),
                     assertion.status,
-                    assertion.clinical_significance,
+                    assertion.significance,
                     assertion.evidence_direction,
                     str(assertion.disease),
-                    '&'.join([str(drug) for drug in assertion.drugs]),
-                    str(assertion.drug_interaction_type or ''),
+                    '&'.join([str(therapy) for therapy in assertion.therapies]),
+                    str(assertion.therapy_interaction_type or ''),
                     "",
                     "",
                     "",
@@ -753,6 +717,66 @@ class VariantGroup(CivicRecord):
     @variants.setter
     def variants(self, value):
         self._variants = value
+
+class MolecularProfile(CivicRecord):
+    def __init__(self, **kwargs):
+        self._variants = []
+        self._molecular_profiles = []
+        self._evidence_items = []
+        super().__init__(**kwargs)
+
+    _SIMPLE_FIELDS = CivicRecord._SIMPLE_FIELDS.union({
+        'name'
+        'description',
+        'civic_actionability_score',
+        'deprecated'
+
+    })
+    _COMPLEX_FIELDS = CivicRecord._COMPLEX_FIELDS.union({
+        'sources',
+        'single_variant_molecular_profile',
+        'assertions',
+        'evidence_items',
+        'variants',
+        'molecular_profile_aliases',
+    })
+
+    @property
+    def summary(self):
+        return self.description
+
+    @summary.setter
+    def summary(self, value):
+        self.description = value
+
+    @property
+    def evidence(self):
+        return self.evidence_items
+
+    @property
+    def evidence_items(self):
+        return [e for e in self._evidence_items if e.status in self._include_status]
+
+    @evidence_items.setter
+    def evidence_items(self, value):
+        self._evidence_items = value
+
+    @property
+    def assertions(self):
+        return [a for a in self._assertions if a.status in self._include_status]
+
+    @assertions.setter
+    def assertions(self, value):
+        self._assertions = value
+
+
+    @property
+    def variants(self):
+        return self._variant_groups
+
+    @variants.setter
+    def variants(self, value):
+        self._variant = value
 
 
 class Gene(CivicRecord):
@@ -794,25 +818,24 @@ class Gene(CivicRecord):
 
 class Evidence(CivicRecord):
     _SIMPLE_FIELDS = CivicRecord._SIMPLE_FIELDS.union({
-        'clinical_significance',
+        'significance',
         'description',
-        'drug_interaction_type',
+        'therapy_interaction_type',
         'evidence_direction',
         'evidence_level',
         'evidence_type',
-        'gene_id',
         'name',
         # 'open_change_count',
         'rating',
         'status',
-        'variant_id',
+        'molecular_profile_id',
         'variant_origin',
         'assertion_ids',
     })
     _COMPLEX_FIELDS = CivicRecord._COMPLEX_FIELDS.union({
         'assertions',
         'disease',
-        'drugs',
+        'therapies',
         # 'errors',
         # 'fields_with_pending_changes',
         #'lifecycle_actions',
@@ -824,12 +847,8 @@ class Evidence(CivicRecord):
         super().__init__(**kwargs)
 
     @property
-    def variant(self):
-        return get_variant_by_id(self.variant_id)
-
-    @property
-    def gene(self):
-        return get_gene_by_id(self.gene_id)
+    def molecular_profile(self):
+        return get_molecular_profile_by_id(self.molecular_profile_id)
 
     @property
     def assertions(self):
@@ -851,9 +870,9 @@ class Evidence(CivicRecord):
 class Assertion(CivicRecord):
     _SIMPLE_FIELDS = CivicRecord._SIMPLE_FIELDS.union({
         'amp_level',
-        'clinical_significance',
+        'significance',
         'description',
-        'drug_interaction_type',
+        'therapy_interaction_type',
         'evidence_direction',
         # 'evidence_item_count',
         'evidence_type',
@@ -867,8 +886,7 @@ class Assertion(CivicRecord):
         'status',
         'summary',
         'variant_origin',
-        'gene_id',
-        'variant_id',
+        'molecular_profile_id',
         'evidence_ids',
     })
 
@@ -876,7 +894,7 @@ class Assertion(CivicRecord):
         'acmg_codes',
         'clingen_codes',
         'disease',
-        'drugs',
+        'therapies',
         'evidence_items',
         #'lifecycle_actions',
         'phenotypes',
@@ -903,12 +921,8 @@ class Assertion(CivicRecord):
         return [x.hpo_id for x in self.phenotypes if x.hpo_id]
 
     @property
-    def variant(self):
-        return get_variant_by_id(self.variant_id)
-
-    @property
-    def gene(self):
-        return get_gene_by_id(self.gene_id)
+    def molecular_profile(self):
+        return get_molecular_profile_by_id(self.molecular_profile_id)
 
     def format_nccn_guideline(self):
         if self.nccn_guideline is None:
@@ -1011,8 +1025,8 @@ class CivicAttribute(CivicRecord, dict):
         return NotImplementedError
 
 
-class Drug(CivicAttribute):
-    _SIMPLE_FIELDS = CivicAttribute._SIMPLE_FIELDS.union({'ncit_id', 'drug_url', 'name'})
+class Therapy(CivicAttribute):
+    _SIMPLE_FIELDS = CivicAttribute._SIMPLE_FIELDS.union({'ncit_id', 'therapy_url', 'name'})
     _COMPLEX_FIELDS = CivicAttribute._COMPLEX_FIELDS.union({'aliases'})
 
     def __str__(self):
@@ -1160,19 +1174,15 @@ def _get_elements_by_ids(element, id_list=[], allow_cached=True, get_all=False):
 def _postprocess_response_element(e, element):
     e['type'] = element
     if element == 'assertion':
-        e['gene_id'] = e['gene']['id']
-        e['variant_id'] = e['variant']['id']
         e['evidence_ids'] = [evidence['id'] for evidence in e['evidenceItems']]
         e['status'] = e['status'].lower()
     elif element == 'evidence':
-        e['gene_id'] = e['gene']['id']
-        e['variant_id'] = e['variant']['id']
+        e['molecular_profile_id'] = e['molecular_profile']['id']
         e['assertion_ids'] = [a['id'] for a in e['assertions']]
         e['status'] = e['status'].lower()
+    elif element == 'molecular_profile':
+        e['variant_ids'] = e['variants']['id']
     elif element == 'variant':
-        e['gene_id'] = e['gene']['id']
-        e['entrez_name'] = e['gene']['name']
-        e['entrez_id'] = e['gene']['entrezId']
         build = e['referenceBuild']
         if build == 'GRCH37':
             build = 'GRCh37'
@@ -1209,6 +1219,7 @@ def _request_by_ids(element, ids):
         'variant': _construct_get_variant_payload,
         'assertion': _construct_get_assertion_payload,
         'variant_group': _construct_get_variant_group_payload,
+        'molecular_profile': _construct_get_molecular_profile_payload,
     }
     payload_method = payload_methods[element]
     payload = payload_method()
@@ -1229,6 +1240,7 @@ def _request_all(element):
         'variant': _construct_get_all_variants_payload,
         'assertion': _construct_get_all_assertions_payload,
         'variant_group': _construct_get_all_variant_groups_payload,
+        'molecular_profile': _construct_get_all_molecular_profiles_payload,
     }
     payload_method = payload_methods[element]
     payload = payload_method()
@@ -1341,8 +1353,9 @@ def _construct_get_variant_payload():
             variant(id: $id) {
                 id
                 name
+                deprecated
+                single_variant_molecular_profile_id
                 allele_registry_id: alleleRegistryId
-                civic_actionability_score: evidenceScore
                 description
                 gene {
                     id
@@ -1358,29 +1371,6 @@ def _construct_get_variant_payload():
                     so_id: soid
                     description
                     url
-                }
-                sources {
-                    id
-                    name
-                    title
-                    citation
-                    citation_id: citationId
-                    source_type: sourceType
-                    abstract
-                    asco_abstract_id: ascoAbstractId
-                    author_string: authorString
-                    full_journal_title: fullJournalTitle
-                    journal
-                    pmc_id: pmcId
-                    publication_date: publicationDate
-                    source_url: sourceUrl
-                    clinical_trials: clinicalTrials {
-                        id
-                        name
-                        description
-                        nctId
-                        url
-                    }
                 }
                 variantBases
                 referenceBases
@@ -1415,7 +1405,7 @@ def _construct_get_all_variants_payload():
                     id
                     name
                     allele_registry_id: alleleRegistryId
-                    civic_actionability_score: evidenceScore
+                    deprecated
                     description
                     gene {
                       id
@@ -1431,29 +1421,6 @@ def _construct_get_all_variants_payload():
                         so_id: soid
                         description
                         url
-                    }
-                    sources {
-                        id
-                        name
-                        title
-                        citation
-                        citation_id: citationId
-                        source_type: sourceType
-                        abstract
-                        asco_abstract_id: ascoAbstractId
-                        author_string: authorString
-                        full_journal_title: fullJournalTitle
-                        journal
-                        pmc_id: pmcId
-                        publication_date: publicationDate
-                        source_url: sourceUrl
-                        clinical_trials: clinicalTrials {
-                            id
-                            name
-                            description
-                            nctId
-                            url
-                        }
                     }
                     variantBases
                     referenceBases
@@ -1481,20 +1448,15 @@ def _construct_get_evidence_payload():
             evidence: evidenceItem(id: $id) {
                 id
                 name
-                clinical_significance: clinicalSignificance
+                significance
                 description
-                drug_interaction_type: drugInteractionType
+                therapy_interaction_type: therapyInteractionType
                 evidence_direction: evidenceDirection
                 evidence_level: evidenceLevel
                 evidence_type: evidenceType
                 status
                 variant_origin: variantOrigin
-                gene {
-                  id
-                }
-                variant {
-                  id
-                }
+                molecular_profile_id
                 disease {
                   id
                   name
@@ -1503,12 +1465,12 @@ def _construct_get_evidence_payload():
                   disease_url: diseaseUrl
                   aliases: diseaseAliases
                 }
-                drugs {
+                therapies {
                   id
                   name
                   ncit_id: ncitId
-                  drug_url: drugUrl
-                  aliases: drugAliases
+                  therapy_url: therapyUrl
+                  aliases: therapyAliases
                 }
                 phenotypes {
                   id
@@ -1560,20 +1522,15 @@ def _construct_get_all_evidence_payload():
                 nodes {
                     id
                     name
-                    clinical_significance: clinicalSignificance
+                    significance
                     description
-                    drug_interaction_type: drugInteractionType
+                    therapy_interaction_type: therapyInteractionType
                     evidence_direction: evidenceDirection
                     evidence_level: evidenceLevel
                     evidence_type: evidenceType
                     status
                     variant_origin: variantOrigin
-                    gene {
-                      id
-                    }
-                    variant {
-                      id
-                    }
+                    molecular_profile_id
                     disease {
                       id
                       name
@@ -1582,12 +1539,12 @@ def _construct_get_all_evidence_payload():
                       disease_url: diseaseUrl
                       aliases: diseaseAliases
                     }
-                    drugs {
+                    therapies {
                       id
                       name
                       ncit_id: ncitId
-                      drug_url: drugUrl
-                      aliases: drugAliases
+                      therapy_url: therapyUrl
+                      aliases: therapyAliases
                     }
                     phenotypes {
                       id
@@ -1635,9 +1592,9 @@ def _construct_get_assertion_payload():
                 id
                 name
                 amp_level: ampLevel
-                clinical_significance: clinicalSignificance
+                significance
                 description
-                drug_interaction_type: drugInteractionType
+                therapy_interaction_type: therapyInteractionType
                 evidence_direction: assertionDirection
                 evidence_type: assertionType
                 fda_companion_test: fdaCompanionTest
@@ -1650,12 +1607,7 @@ def _construct_get_assertion_payload():
                 status
                 summary
                 variant_origin: variantOrigin
-                gene {
-                  id
-                }
-                variant {
-                  id
-                }
+                molecular_profile_id
                 acmg_codes: acmgCodes {
                   id
                   code
@@ -1674,12 +1626,12 @@ def _construct_get_assertion_payload():
                   disease_url: diseaseUrl
                   aliases: diseaseAliases
                 }
-                drugs {
+                therapies {
                   id
                   name
                   ncit_id: ncitId
-                  drug_url: drugUrl
-                  aliases: drugAliases
+                  therapy_url: therapyUrl
+                  aliases: therapyAliases
                 }
                 evidenceItems {
                   id
@@ -1707,9 +1659,9 @@ def _construct_get_all_assertions_payload():
                     id
                     name
                     amp_level: ampLevel
-                    clinical_significance: clinicalSignificance
+                    significance
                     description
-                    drug_interaction_type: drugInteractionType
+                    therapy_interaction_type: therapyInteractionType
                     evidence_direction: assertionDirection
                     evidence_type: assertionType
                     fda_companion_test: fdaCompanionTest
@@ -1722,12 +1674,7 @@ def _construct_get_all_assertions_payload():
                     status
                     summary
                     variant_origin: variantOrigin
-                    gene {
-                      id
-                    }
-                    variant {
-                      id
-                    }
+                    molecular_profile_id
                     acmg_codes: acmgCodes {
                       id
                       code
@@ -1746,12 +1693,12 @@ def _construct_get_all_assertions_payload():
                       disease_url: diseaseUrl
                       aliases: diseaseAliases
                     }
-                    drugs {
+                    therapies {
                       id
                       name
                       ncit_id: ncitId
-                      drug_url: drugUrl
-                      aliases: drugAliases
+                      therapy_url: therapyUrl
+                      aliases: therapyAliases
                     }
                     evidenceItems {
                       id
@@ -1849,47 +1796,6 @@ def _construct_get_all_variant_groups_payload():
               }
             }
         }"""
-
-
-def _construct_get_all_payload(page):
-    queries = [
-        {
-            'field': 'id',
-            'condition': {
-                'name': 'is_greater_than',
-                'parameters': [
-                    -1
-                ]
-            }
-        }
-    ]
-    payload = {
-        'operator': 'OR',
-        'queries': queries,
-        'page': page,
-        'count': 500,
-    }
-    return payload
-
-
-def _construct_query_payload(id_list):
-    queries = list()
-    for element_id in id_list:
-        query = {
-            'field': 'id',
-            'condition': {
-                'name': 'is_equal_to',
-                'parameters': [
-                    element_id
-                ]
-            }
-        }
-        queries.append(query)
-    payload = {
-        'operator': 'OR',
-        'queries': queries
-    }
-    return payload
 
 
 def get_evidence_by_ids(evidence_id_list):
