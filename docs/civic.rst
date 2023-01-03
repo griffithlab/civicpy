@@ -75,15 +75,6 @@ The primary CIViC records are found on the CIViC advanced search page, and are f
 
       The `ClinGen Allele Registry ID`_ associated with this variant.
 
-   .. attribute:: civic_actionability_score
-
-      The CIViC `actionability score`_ associated with this variant.
-
-   .. attribute:: description
-      summary
-
-      A curated summary of the clinical significance of this variant.
-
    .. attribute:: entrez_id
 
       The `Entrez ID`_ of the gene this variant belongs to.
@@ -104,10 +95,6 @@ The primary CIViC records are found on the CIViC advanced search page, and are f
 
       The curated name given to this variant.
 
-   .. attribute:: assertions
-
-      A list of :class:`Assertion` records associated with this variant.
-
    .. attribute:: clinvar_entries
 
       A list of `clinvar ids`_ associated with this variant.
@@ -116,22 +103,9 @@ The primary CIViC records are found on the CIViC advanced search page, and are f
 
       A :class:`CivicAttribute` object describing `CIViC coordinates`_.
 
-   .. attribute:: evidence_items
-      evidence
-
-      A list of :class:`Evidence` associated with this variant.
-
-   .. attribute:: evidence_sources
-
-      A list of :class:`CivicAttribute` source objects associated with the evidence from this variant.
-
    .. attribute:: hgvs_expressions
 
       Curated `HGVS expressions`_ describing this variant.
-
-   .. attribute:: sources
-
-      A list of :class:`CivicAttribute` source objects associated with the variant description.
 
    .. attribute:: variant_aliases
       aliases
@@ -155,8 +129,6 @@ The primary CIViC records are found on the CIViC advanced search page, and are f
 
 .. _ClinGen Allele Registry ID: http://reg.clinicalgenome.org
 
-.. _actionability score: https://docs.civicdb.org/en/latest/model/variants/evidence_score.html
-
 .. _clinvar ids: https://www.ncbi.nlm.nih.gov/clinvar
 
 .. _CIViC coordinates: https://docs.civicdb.org/en/latest/model/variants/coordinates.html
@@ -176,34 +148,34 @@ The primary CIViC records are found on the CIViC advanced search page, and are f
 
       CIViC :class:`Assertion` records containing this evidence.
 
-   .. attribute:: clinical_significance
+   .. attribute:: significance
 
-      A string indicating the type of clinical significance statement being made, values are defined based on
-      the corresponding :attr:`evidence_type`. Please see `Understanding Clinical Significance`_ for more
+      A string indicating the type of significance statement being made, values are defined based on
+      the corresponding :attr:`evidence_type`. Please see `Understanding Significance`_ for more
       details on the expected values for this field.
 
    .. attribute:: description
       statement
 
-      The Evidence Statement (returned as `description` by the CIViC API) is a brief summary of the clinical implications of the :attr:`variant` in the context of the specific :attr:`disease`, :attr:`evidence_type`, and :attr:`clinical_significance` as curated from the cited literature source.
+      The Evidence Statement (returned as `description` by the CIViC API) is a brief summary of the clinical implications of the :attr:`variant` in the context of the specific :attr:`disease`, :attr:`evidence_type`, and :attr:`significance` as curated from the cited literature source.
 
    .. attribute:: disease
 
       The cancer or cancer subtype context for the evidence record.
 
-   .. attribute:: drugs
+   .. attribute:: therapies
 
-      Zero or more drug :class:`CivicAttribute`, linked to corresponding `NCIT`_ terms when applicable. Only used with
+      Zero or more therapy :class:`CivicAttribute`, linked to corresponding `NCIT`_ terms when applicable. Only used with
       therapeutic response predictive :attr:`evidence_type`.
 
-   .. attribute:: drug_interaction_type
+   .. attribute:: therapy_interaction_type
 
-      One of 'Combination', 'Sequential', or 'Substitutes', this field describes how multiple indicated drugs within
+      One of 'Combination', 'Sequential', or 'Substitutes', this field describes how multiple indicated therapies within
       a therapeutic response predictive :attr:`evidence_type` are related.
 
    .. attribute:: evidence_direction
 
-      One of 'Supports', 'Does Not Support' or 'N/A', indicating whether the evidence statement supports or refutes the clinical significance of an event. The evidence_direction is 'N/A' for Predisposing evidence items.
+      One of 'Supports', 'Does Not Support' or 'N/A', indicating whether the evidence statement supports or refutes the significance of an event. The evidence_direction is 'N/A' for Predisposing evidence items.
 
    .. attribute:: evidence_level
 
@@ -266,10 +238,10 @@ The primary CIViC records are found on the CIViC advanced search page, and are f
 
       The clinical interpretation classification by `AMP/ASCO/CAP`_ or `ACMG/AMP`_ guidelines.
 
-   .. attribute:: clinical_significance
+   .. attribute:: significance
 
-      A string indicating the type of clinical significance statement being made, values are defined based on
-      the corresponding :attr:`evidence_type`. Please see `Understanding Clinical Significance`_ for more
+      A string indicating the type of significance statement being made, values are defined based on
+      the corresponding :attr:`evidence_type`. Please see `Understanding Significance`_ for more
       details on the expected values for this field.
 
    .. attribute:: description
@@ -281,19 +253,19 @@ The primary CIViC records are found on the CIViC advanced search page, and are f
 
       A disease :class:`CivicAttribute`, linked to a corresponding `Disease Ontology`_ term when applicable.
 
-   .. attribute:: drugs
+   .. attribute:: therapies
 
-      Zero or more drug :class:`CivicAttribute`, linked to corresponding `NCIT`_ terms when applicable. Only used with
+      Zero or more therapy :class:`CivicAttribute`, linked to corresponding `NCIT`_ terms when applicable. Only used with
       therapeutic response predictive :attr:`evidence_type`.
 
-   .. attribute:: drug_interaction_type
+   .. attribute:: therapy_interaction_type
 
-      One of 'Combination', 'Sequential', or 'Substitutes', this field describes how multiple indicated drugs within
+      One of 'Combination', 'Sequential', or 'Substitutes', this field describes how multiple indicated therapies within
       a therapeutic response predictive :attr:`evidence_type` assertion are related.
 
    .. attribute:: evidence_direction
 
-      One of 'Supports' or 'Does Not Support', indicating whether the evidence statement supports or refutes the clinical significance of an event.
+      One of 'Supports' or 'Does Not Support', indicating whether the evidence statement supports or refutes the significance of an event.
 
    .. attribute:: evidence_type
 
@@ -306,7 +278,7 @@ The primary CIViC records are found on the CIViC advanced search page, and are f
 
    .. attribute:: fda_regulatory_approval
 
-      A boolean indicating whether or not the drugs indicated in the assertion have regulatory approval for use in
+      A boolean indicating whether or not the therapies indicated in the assertion have regulatory approval for use in
       the treatment of the assertion disease.
 
    .. attribute:: lifecycle_actions
@@ -341,8 +313,8 @@ The primary CIViC records are found on the CIViC advanced search page, and are f
 
    .. attribute:: summary
 
-      The Assertion Summary restates the Clinical Significance as a brief single sentence statement. It is intended for
-      potential use in clinical reports. The Assertion Summary is designed for rapid communication of the Clinical
+      The Assertion Summary restates the Significance as a brief single sentence statement. It is intended for
+      potential use in clinical reports. The Assertion Summary is designed for rapid communication of the 
       Significance, especially when displayed in a longer list with other variants.
 
    .. attribute:: variant
@@ -369,13 +341,13 @@ The primary CIViC records are found on the CIViC advanced search page, and are f
 
 .. _HPO: https://hpo.jax.org/
 
-.. _Understanding Clinical Significance: https://docs.civicdb.org/en/latest/model/evidence/clinical_significance.html#understanding-clinical-significance
+.. _Understanding Significance: https://civic.readthedocs.io/en/latest/model/evidence/significance.html#understanding-significance
 
 CIViC attributes
 ~~~~~~~~~~~~~~~~
 
 The :class:`CivicAttribute` class is a special type of CivicRecord that is not indexed, and is used as a base
-class for additional complex records beyond those mentioned above (e.g. diseases, drugs). CivicAttributes are not cached
+class for additional complex records beyond those mentioned above (e.g. diseases, therapies). CivicAttributes are not cached
 except as attached objects to non-:class:`CivicAttribute` :class:`CivicRecord` objects, and cannot be retrieved
 independently.
 

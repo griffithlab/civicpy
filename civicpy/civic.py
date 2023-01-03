@@ -436,7 +436,7 @@ class CivicRecord:
 class MolecularProfile(CivicRecord):
     _SIMPLE_FIELDS = CivicRecord._SIMPLE_FIELDS.union({
         'description',
-        'evidence_score',
+        'molecular_profile_score',
         'name',
         'variant_ids',
     })
@@ -736,18 +736,18 @@ class Variant(CivicRecord):
                         '&'.join(map(lambda e: e.translate(special_character_table), self.hgvs_expressions)),
                         str(self.allele_registry_id),
                         '&'.join(self.clinvar_entries),
-                        str(mp.evidence_score),
+                        str(mp.molecular_profile_score),
                         "evidence",
                         str(evidence.id),
                         "https://civicdb.org/links/evidence/{}".format(evidence.id),
                         "{} ({})".format(evidence.source.citation_id, evidence.source.source_type),
                         str(evidence.variant_origin),
                         evidence.status,
-                        str(evidence.clinical_significance or ''),
+                        str(evidence.significance or ''),
                         str(evidence.evidence_direction or ''),
                         str(evidence.disease),
-                        '&'.join([str(drug) for drug in evidence.drugs]),
-                        str(evidence.drug_interaction_type or ""),
+                        '&'.join([str(therapy) for therapy in evidence.therapies]),
+                        str(evidence.therapy_interaction_type or ""),
                         '&'.join(["{} (HPO ID {})".format(phenotype.name, phenotype.hpo_id) for phenotype in evidence.phenotypes]),
                         evidence.evidence_level,
                         str(evidence.rating),
@@ -780,18 +780,18 @@ class Variant(CivicRecord):
                         '&'.join(map(lambda e: e.translate(special_character_table), self.hgvs_expressions)),
                         str(self.allele_registry_id),
                         '&'.join(self.clinvar_entries),
-                        str(mp.evidence_score),
+                        str(mp.molecular_profile_score),
                         "assertion",
                         str(assertion.id),
                         "https://civicdb.org/links/assertion/{}".format(assertion.id),
                         "",
                         str(assertion.variant_origin),
                         assertion.status,
-                        assertion.clinical_significance,
+                        assertion.significance,
                         assertion.evidence_direction,
                         str(assertion.disease),
-                        '&'.join([str(drug) for drug in assertion.drugs]),
-                        str(assertion.drug_interaction_type or ''),
+                        '&'.join([str(therapy) for therapy in assertion.therapies]),
+                        str(assertion.therapy_interaction_type or ''),
                         "",
                         "",
                         "",
@@ -869,9 +869,9 @@ class Gene(CivicRecord):
 
 class Evidence(CivicRecord):
     _SIMPLE_FIELDS = CivicRecord._SIMPLE_FIELDS.union({
-        'clinical_significance',
+        'significance',
         'description',
-        'drug_interaction_type',
+        'therapy_interaction_type',
         'evidence_direction',
         'evidence_level',
         'evidence_type',
@@ -886,7 +886,7 @@ class Evidence(CivicRecord):
     _COMPLEX_FIELDS = CivicRecord._COMPLEX_FIELDS.union({
         'assertions',
         'disease',
-        'drugs',
+        'therapies',
         # 'errors',
         # 'fields_with_pending_changes',
         #'lifecycle_actions',
@@ -921,9 +921,9 @@ class Evidence(CivicRecord):
 class Assertion(CivicRecord):
     _SIMPLE_FIELDS = CivicRecord._SIMPLE_FIELDS.union({
         'amp_level',
-        'clinical_significance',
+        'significance',
         'description',
-        'drug_interaction_type',
+        'therapy_interaction_type',
         'evidence_direction',
         # 'evidence_item_count',
         'evidence_type',
@@ -944,7 +944,7 @@ class Assertion(CivicRecord):
     _COMPLEX_FIELDS = CivicRecord._COMPLEX_FIELDS.union({
         'acmg_codes',
         'disease',
-        'drugs',
+        'therapies',
         'evidence_items',
         #'lifecycle_actions',
         'phenotypes',
@@ -1075,8 +1075,8 @@ class CivicAttribute(CivicRecord, dict):
         return NotImplementedError
 
 
-class Drug(CivicAttribute):
-    _SIMPLE_FIELDS = CivicAttribute._SIMPLE_FIELDS.union({'ncit_id', 'drug_url', 'name'})
+class Therapy(CivicAttribute):
+    _SIMPLE_FIELDS = CivicAttribute._SIMPLE_FIELDS.union({'ncit_id', 'therapy_url', 'name'})
     _COMPLEX_FIELDS = CivicAttribute._COMPLEX_FIELDS.union({'aliases'})
 
     def __str__(self):
@@ -1406,7 +1406,7 @@ def _construct_get_molecular_profile_payload():
             molecular_profile: molecularProfile(id: $id) {
                 id
                 description
-                evidence_score: evidenceScore
+                molecular_profile_score: molecularProfileScore
                 name
                 variants {
                   id
@@ -1452,7 +1452,7 @@ def _construct_get_all_molecular_profiles_payload():
               nodes {
                 id
                 description
-                evidence_score: evidenceScore
+                molecular_profile_score: molecularProfileScore
                 name
                 variants {
                   id
@@ -1626,9 +1626,9 @@ def _construct_get_evidence_payload():
             evidence: evidenceItem(id: $id) {
                 id
                 name
-                clinical_significance: clinicalSignificance
+                significance
                 description
-                drug_interaction_type: drugInteractionType
+                therapy_interaction_type: therapyInteractionType
                 evidence_direction: evidenceDirection
                 evidence_level: evidenceLevel
                 evidence_type: evidenceType
@@ -1645,12 +1645,12 @@ def _construct_get_evidence_payload():
                   disease_url: diseaseUrl
                   aliases: diseaseAliases
                 }
-                drugs {
+                therapies {
                   id
                   name
                   ncit_id: ncitId
-                  drug_url: drugUrl
-                  aliases: drugAliases
+                  therapy_url: therapyUrl
+                  aliases: therapyAliases
                 }
                 phenotypes {
                   id
@@ -1702,9 +1702,9 @@ def _construct_get_all_evidence_payload():
                 nodes {
                     id
                     name
-                    clinical_significance: clinicalSignificance
+                    significance
                     description
-                    drug_interaction_type: drugInteractionType
+                    therapy_interaction_type: therapyInteractionType
                     evidence_direction: evidenceDirection
                     evidence_level: evidenceLevel
                     evidence_type: evidenceType
@@ -1721,12 +1721,12 @@ def _construct_get_all_evidence_payload():
                       disease_url: diseaseUrl
                       aliases: diseaseAliases
                     }
-                    drugs {
+                    therapies {
                       id
                       name
                       ncit_id: ncitId
-                      drug_url: drugUrl
-                      aliases: drugAliases
+                      therapy_url: therapyUrl
+                      aliases: therapyAliases
                     }
                     phenotypes {
                       id
@@ -1774,9 +1774,9 @@ def _construct_get_assertion_payload():
                 id
                 name
                 amp_level: ampLevel
-                clinical_significance: clinicalSignificance
+                significance
                 description
-                drug_interaction_type: drugInteractionType
+                therapy_interaction_type: therapyInteractionType
                 evidence_direction: assertionDirection
                 evidence_type: assertionType
                 fda_companion_test: fdaCompanionTest
@@ -1803,12 +1803,12 @@ def _construct_get_assertion_payload():
                   disease_url: diseaseUrl
                   aliases: diseaseAliases
                 }
-                drugs {
+                therapies {
                   id
                   name
                   ncit_id: ncitId
-                  drug_url: drugUrl
-                  aliases: drugAliases
+                  therapy_url: therapyUrl
+                  aliases: therapyAliases
                 }
                 evidenceItems {
                   id
@@ -1836,9 +1836,9 @@ def _construct_get_all_assertions_payload():
                     id
                     name
                     amp_level: ampLevel
-                    clinical_significance: clinicalSignificance
+                    significance
                     description
-                    drug_interaction_type: drugInteractionType
+                    therapy_interaction_type: therapyInteractionType
                     evidence_direction: assertionDirection
                     evidence_type: assertionType
                     fda_companion_test: fdaCompanionTest
@@ -1865,12 +1865,12 @@ def _construct_get_all_assertions_payload():
                       disease_url: diseaseUrl
                       aliases: diseaseAliases
                     }
-                    drugs {
+                    therapies {
                       id
                       name
                       ncit_id: ncitId
-                      drug_url: drugUrl
-                      aliases: drugAliases
+                      therapy_url: therapyUrl
+                      aliases: therapyAliases
                     }
                     evidenceItems {
                       id
