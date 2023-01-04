@@ -31,7 +31,7 @@ If you find CIViCpy useful for your work, **please cite** our `manuscript <https
    >>> braf_id = my_variants[0].gene_id # or my_variants[0].gene.id
    >>> braf_variants = civic.get_gene_by_id(braf_id).variants
    >>> len(braf_variants)
-   67
+   112
 
    >>> set(my_variants) & set(braf_variants)
    {<CIViC variant 12>}
