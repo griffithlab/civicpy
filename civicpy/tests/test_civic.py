@@ -426,10 +426,10 @@ class TestCoordinateSearch(object):
         assert "Unexpected ref `-` in coordinate query. Did you mean `None`?" in str(context.value)
 
 
-class TestDrugs(object):
+class TestTherapies(object):
 
     def test_has_ncit_id(self, v600e_assertion):
-        trametinib = v600e_assertion.drugs[0]
+        trametinib = v600e_assertion.therapies[0]
         assert trametinib.ncit_id == 'C77908'
         assert 'pubchem_id' not in trametinib.keys()
         assert trametinib.name == 'Trametinib'
