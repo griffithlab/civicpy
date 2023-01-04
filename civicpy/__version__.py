@@ -12,4 +12,4 @@ if __meta_label__:
 __authors__ = ['Alex H. Wagner', 'Susanna Kiwala']
 __author_email__ = 'help@civicpy.org'
 __license__ = 'MIT'
-__copyright__ = 'Copyright 2018-2020 The Griffith Lab'
+__copyright__ = 'Copyright 2018-2023 The Griffith Lab'
