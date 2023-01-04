@@ -155,7 +155,6 @@ class TestVariants(object):
         assert sorted(variant.aliases) == sorted(variant.variant_aliases)
         assert sorted(variant.groups) == sorted(variant.variant_groups)
         assert sorted(variant.types) == sorted(variant.variant_types)
-        assert variant.summary == variant.description
 
 class TestMolecularProfiles(object):
     def test_get_all(self):

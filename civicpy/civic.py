@@ -513,7 +513,6 @@ class MolecularProfile(CivicRecord):
 class Variant(CivicRecord):
     _SIMPLE_FIELDS = CivicRecord._SIMPLE_FIELDS.union({
         'allele_registry_id',
-        'description',
         'gene_id',
         'name',
         'single_variant_molecular_profile_id',
@@ -554,14 +553,6 @@ class Variant(CivicRecord):
     @property
     def types(self):
         return self.variant_types
-
-    @property
-    def summary(self):
-        return self.description
-
-    @summary.setter
-    def summary(self, value):
-        self.description = value
 
     @property
     def variant_groups(self):
@@ -1562,7 +1553,6 @@ def _construct_get_all_variants_payload():
                     id
                     name
                     allele_registry_id: alleleRegistryId
-                    description
                     gene {
                         id
                     }
