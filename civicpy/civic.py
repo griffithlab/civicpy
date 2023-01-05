@@ -516,6 +516,8 @@ class Variant(CivicRecord):
         'gene_id',
         'name',
         'single_variant_molecular_profile_id',
+        'entrez_name',
+        'entrez_id'
     })
     _COMPLEX_FIELDS = CivicRecord._COMPLEX_FIELDS.union({
         'clinvar_entries',
@@ -934,6 +936,7 @@ class Assertion(CivicRecord):
 
     _COMPLEX_FIELDS = CivicRecord._COMPLEX_FIELDS.union({
         'acmg_codes',
+        'clingen_codes',
         'disease',
         'therapies',
         'evidence_items',
@@ -1224,12 +1227,15 @@ def _postprocess_response_element(e, element):
         e['status'] = e['status'].lower()
     elif element == 'variant':
         e['gene_id'] = e['gene']['id']
+        e['entrez_name'] = e['gene']['name']
+        e['entrez_id'] = e['gene']['entrezId']
         build = e['referenceBuild']
         if build == 'GRCH37':
             build = 'GRCh37'
         elif build == 'GRCH38':
             build = 'GRCh38'
         e['coordinates'] = {
+            'ensembl_version': e['ensemblVersion'],
             'reference_build': build,
             'reference_bases': e['referenceBases'],
             'variant_bases': e['variantBases'],
@@ -1485,6 +1491,8 @@ def _construct_get_variant_payload():
                 allele_registry_id: alleleRegistryId
                 gene {
                     id
+                    name
+                    entrezId
                 }
                 single_variant_molecular_profile_id: singleVariantMolecularProfileId
                 clinvar_entries: clinvarIds
@@ -1535,7 +1543,7 @@ def _construct_get_variant_payload():
                     start
                     stop
                 }
-                ensembl_version: ensemblVersion
+                ensemblVersion
             }
         }"""
 
@@ -1554,7 +1562,9 @@ def _construct_get_all_variants_payload():
                     name
                     allele_registry_id: alleleRegistryId
                     gene {
-                        id
+                      id
+                      name
+                      entrezId
                     }
                     single_variant_molecular_profile_id: singleVariantMolecularProfileId
                     clinvar_entries: clinvarIds
@@ -1605,7 +1615,7 @@ def _construct_get_all_variants_payload():
                         start
                         stop
                     }
-                    ensembl_version: ensemblVersion
+                    ensemblVersion
                 }
             }
         }"""
@@ -1783,7 +1793,14 @@ def _construct_get_assertion_payload():
                   id
                 }
                 acmg_codes: acmgCodes {
+                  id
                   code
+                  description
+                }
+                clingen_codes: clingenCodes {
+                    id
+                    code
+                    description
                 }
                 disease {
                   id
@@ -1845,7 +1862,14 @@ def _construct_get_all_assertions_payload():
                       id
                     }
                     acmg_codes: acmgCodes {
+                      id
                       code
+                      description
+                    }
+                    clingen_codes: clingenCodes {
+                        id
+                        code
+                        description
                     }
                     disease {
                       id
