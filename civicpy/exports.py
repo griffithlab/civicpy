@@ -95,7 +95,7 @@ class VCFWriter(DictWriter):
         'CIViC Assertion AMP Category',
         'CIViC Assertion NCCN Guideline',
         'CIVIC Assertion Regulatory Approval',
-        'CIVIC Assertion FDA Companion Test ',
+        'CIVIC Assertion FDA Companion Test',
     ]))
 
 

@@ -526,7 +526,6 @@ class Variant(CivicRecord):
         'hgvs_expressions',
         #'lifecycle_actions',
         # 'provisional_values',
-        'sources',
         'variant_aliases',
         'variant_groups',
         'variant_types'})
@@ -781,7 +780,7 @@ class Variant(CivicRecord):
                         str(assertion.variant_origin),
                         assertion.status,
                         assertion.significance,
-                        assertion.evidence_direction,
+                        assertion.assertion_direction,
                         str(assertion.disease),
                         '&'.join([str(therapy) for therapy in assertion.therapies]),
                         str(assertion.therapy_interaction_type or ''),
@@ -917,9 +916,9 @@ class Assertion(CivicRecord):
         'significance',
         'description',
         'therapy_interaction_type',
-        'evidence_direction',
+        'assertion_direction',
         # 'evidence_item_count',
-        'evidence_type',
+        'assertion_type',
         'fda_companion_test',
         'fda_regulatory_approval',
         'name',
@@ -1505,29 +1504,6 @@ def _construct_get_variant_payload():
                     description
                     url
                 }
-                sources {
-                    id
-                    name
-                    title
-                    citation
-                    citation_id: citationId
-                    source_type: sourceType
-                    abstract
-                    asco_abstract_id: ascoAbstractId
-                    author_string: authorString
-                    full_journal_title: fullJournalTitle
-                    journal
-                    pmc_id: pmcId
-                    publication_date: publicationDate
-                    source_url: sourceUrl
-                    clinical_trials: clinicalTrials {
-                        id
-                        name
-                        description
-                        nctId
-                        url
-                    }
-                }
                 variantBases
                 referenceBases
                 referenceBuild
@@ -1576,29 +1552,6 @@ def _construct_get_all_variants_payload():
                         so_id: soid
                         description
                         url
-                    }
-                    sources {
-                        id
-                        name
-                        title
-                        citation
-                        citation_id: citationId
-                        source_type: sourceType
-                        abstract
-                        asco_abstract_id: ascoAbstractId
-                        author_string: authorString
-                        full_journal_title: fullJournalTitle
-                        journal
-                        pmc_id: pmcId
-                        publication_date: publicationDate
-                        source_url: sourceUrl
-                        clinical_trials: clinicalTrials {
-                            id
-                            name
-                            description
-                            nctId
-                            url
-                        }
                     }
                     variantBases
                     referenceBases
@@ -1777,8 +1730,8 @@ def _construct_get_assertion_payload():
                 significance
                 description
                 therapy_interaction_type: therapyInteractionType
-                evidence_direction: assertionDirection
-                evidence_type: assertionType
+                assertion_direction: assertionDirection
+                assertion_type: assertionType
                 fda_companion_test: fdaCompanionTest
                 fda_regulatory_approval: regulatoryApproval
                 name
@@ -1846,8 +1799,8 @@ def _construct_get_all_assertions_payload():
                     significance
                     description
                     therapy_interaction_type: therapyInteractionType
-                    evidence_direction: assertionDirection
-                    evidence_type: assertionType
+                    assertion_direction: assertionDirection
+                    assertion_type: assertionType
                     fda_companion_test: fdaCompanionTest
                     fda_regulatory_approval: regulatoryApproval
                     name
