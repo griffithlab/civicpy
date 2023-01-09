@@ -40,8 +40,9 @@ The variants added to the VCFWriter object are written to the VCF file, one VCF 
 :class:`civic.Variant` object. If two variants share the same chromosome, start position, and
 reference allele(s), they will not be combined into one VCF record but will instead be written
 as separate VCF records. Additional CIViC data are added to the VCF as annotations to the
-``CSQ`` (consequence) ``INFO`` field. CIViC evidence items and assertions linked to the variant
-are added to the CSQ field with one CSQ entry for each evidence item and/or assertion. Whether
+``CSQ`` (consequence) ``INFO`` field. All CIViC molcular profiles that this variant is a part of
+are retrieved and all evidence items and assertions linked to these molecular profiles are added
+to the CSQ field with one CSQ entry for each evidence item and/or assertion. Whether
 a specific CSQ entry reflects an evidence item or an assertion is determined by the
 ``CIViC Entity Type`` CSQ field. To differentiate special characters in the field values from
 field delimiters, spaces are replaced with underscores and other special characters are
@@ -89,6 +90,21 @@ import into Google BigQuery (git.io/bigquery-variant-annotation).
    * - CIViC Variant Aliases
      - CIViC aliases for this variant
      - Yes
+   * - CIViC Variant URL
+     - CIViC URL for this variant
+     - No
+   * - CIViC Molecular Profile Name
+     - The CIViC molecular profile name for the molecular profile of the evidence item or assertion described in this CSQ record. The molecular profile may either be a simple molecular profile for just this variant or a complex molecular profile involving this variant in combination with other CIViC variants.
+     - No
+   * - CIViC Molecular Profile ID
+     - The CIViC internal identifier for the molecular profile
+     - No
+   * - CIViC Molecular Profile Aliases
+     - CIViC aliases for this molecular profile
+     - Yes
+   * - CIViC Molecular Profile URL
+     - CIViC URL for this molecular profile
+     - No
    * - CIViC HGVS
      - CIViC HGVS strings for this variant
      - Yes
@@ -98,8 +114,8 @@ import into Google BigQuery (git.io/bigquery-variant-annotation).
    * - ClinVar IDs
      - ClinVar IDs associated with this variant
      - Yes
-   * - CIViC Variant Evidence Score
-     - The CIViC evidence score for this variant
+   * - CIViC Molecular Profile Score
+     - The CIViC score reflecting the reelative abundance of total available curated evidence for this molecular profile
      - No
    * - CIViC Entity Type
      - The type of entity being annotated, either "evidence" or "assertion"
@@ -114,10 +130,49 @@ import into Google BigQuery (git.io/bigquery-variant-annotation).
      - For evidence entities, the identifier of the publication used to create the evidence including the source type in the format "sourceId_(sourceType)"
      - No
    * - CIViC Entity Variant Origin
-     - The variant origin of the entity being annotated, either "Somatic", "Rare Germline", "Common Germline", "Unknown", or "N/A"
+     - The variant origin of the entity being annotated, either "Somatic", "Rare Germline", "Common Germline", "Unknown", "N/A", or "Mixed"
      - No
    * - CIViC Entity Status
      - The status of the CIViC entity being annotated, either "submitted", "accepted", or "rejected"
+     - No
+   * - CIViC Entity Significance
+     - The type of signifiance of the entity being annotated
+     - No
+   * - CIViC Entity Direction
+     - The direction of the significance of the entity being annotated, either "Supports", or "Does Not Support"
+     - No
+   * - CIViC Entity Disease
+     - The cancer or cancer subtype context for the entity being annotated
+     - No
+   * - CIViC Entity Therapies
+     - A list of therapies applicable to the entity being annotated
+     - Yes
+   * - CIViC Entity Therapy Interaction Type
+     - A term describing now more than one therapy interact with each other in the context of the entity being annotated, either "Combination", "Sequential", or "Substitutes"
+     - No
+   * - CIViC Evidence Phenotypes
+     - A list of HPO phenotype terms linked to entity being annotated
+     - Yes
+   * - CIViC Evidence Level
+     - For evidence entities, a level describing the robustness of the of the study supporting the evidence
+     - No
+   * - CIViC Evidence Rating
+     - For evidence entities, a 1-5 rating indicating the curator's confidence in the quality of the summarized evidence as a number of stars
+     - No
+   * - CIViC Assertion ACMG Codes
+     - For assertion entities, a list of ACMG codes used in the assessment of the variant under the ACMG/AMP classification guidelines
+     - Yes
+   * - CIViC Assertion AMP Category
+     - For assertion entities, a clinical classification by AMP/ASCO/CAP guidelines
+     - No
+   * - CIViC Assertion NCCN Guideline
+     - For assertoin entities, a string of the NCCN guideline and version
+     - No
+   * - CIVIC Assertion Regulatory Approval
+     - For assertion entities, a boolean indicating whether or not the therapies in this assertion have regulatory approval for the treatment of the assertion disease
+     - No
+   * - CIVIC Assertion FDA Companion Test
+     - For assertion entities, a boolean indication whether or not theassertion has an associated FDA companion test
      - No
 
 .. [*] Compound fields contain multiple values and use the ampersand (&) character to delineate values

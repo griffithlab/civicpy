@@ -40,29 +40,33 @@ The primary CIViC records are found on the CIViC advanced search page, and are f
 .. autoclass:: Gene
    :show-inheritance:
 
+   .. attribute:: aliases
+
+      A list of alternate gene symbols by which this gene is referenced.
+
+   .. attribute: assertions
+
+      A list of :class:`Assertion` records that this gene is involved in.
+
    .. attribute:: description
 
-           A curated summary of the clinical significance of this gene.
+      A curated summary of the clinical significance of this gene.
 
    .. attribute:: entrez_id
 
-           The `Entrez ID`_ associated with this gene.
+      The `Entrez ID`_ associated with this gene.
 
    .. attribute:: name
 
-           The `HGNC Gene Symbol`_ associated with this gene.
+      The `HGNC Gene Symbol`_ associated with this gene.
 
-   .. attribute:: aliases
+   .. attribute:: sources
 
-           A list of alternate gene symbols by which this gene is referenced.
+      A list of :class:`CivicAttribute` source objects associated with the gene description.
 
    .. attribute:: variants
 
-           A list of :class:`Variant` records associated with this gene.
-
-   .. attribute:: lifecycle_actions
-
-      A :class:`LifecycleAction` container.
+      A list of :class:`Variant` records associated with this gene.
 
 .. _Entrez ID: https://www.ncbi.nlm.nih.gov/gene/
 
@@ -75,14 +79,13 @@ The primary CIViC records are found on the CIViC advanced search page, and are f
 
       The `ClinGen Allele Registry ID`_ associated with this variant.
 
-   .. attribute:: civic_actionability_score
+   .. attribute:: clinvar_entries
 
-      The CIViC `actionability score`_ associated with this variant.
+      A list of `clinvar ids`_ associated with this variant.
 
-   .. attribute:: description
-      summary
+   .. attribute:: coordinates
 
-      A curated summary of the clinical significance of this variant.
+      A :class:`CivicAttribute` object describing `CIViC coordinates`_.
 
    .. attribute:: entrez_id
 
@@ -100,38 +103,18 @@ The primary CIViC records are found on the CIViC advanced search page, and are f
 
       The :attr:`CivicRecord.id` of the gene this variant belongs to.
 
-   .. attribute:: name
-
-      The curated name given to this variant.
-
-   .. attribute:: assertions
-
-      A list of :class:`Assertion` records associated with this variant.
-
-   .. attribute:: clinvar_entries
-
-      A list of `clinvar ids`_ associated with this variant.
-
-   .. attribute:: coordinates
-
-      A :class:`CivicAttribute` object describing `CIViC coordinates`_.
-
-   .. attribute:: evidence_items
-      evidence
-
-      A list of :class:`Evidence` associated with this variant.
-
-   .. attribute:: evidence_sources
-
-      A list of :class:`CivicAttribute` source objects associated with the evidence from this variant.
-
    .. attribute:: hgvs_expressions
 
       Curated `HGVS expressions`_ describing this variant.
 
-   .. attribute:: sources
+   .. attribute:: name
 
-      A list of :class:`CivicAttribute` source objects associated with the variant description.
+      The curated name given to this variant.
+
+   .. attribute:: moleulcar_profiles
+
+      A list of :class:`MolecularProfile` objects of all the molecular
+      profiles involving this variant.
 
    .. attribute:: variant_aliases
       aliases
@@ -141,7 +124,7 @@ The primary CIViC records are found on the CIViC advanced search page, and are f
    .. attribute:: variant_groups
       groups
 
-   A list of `variant groups`_ to which this variant belongs.
+      A list of `variant groups`_ to which this variant belongs.
 
    .. attribute:: variant_types
       types
@@ -149,13 +132,7 @@ The primary CIViC records are found on the CIViC advanced search page, and are f
       A list of :class:`CivicAttribute` objects describing `variant types`_ from the
       `Sequence Ontology`_.
 
-   .. attribute:: lifecycle_actions
-
-      A :class:`LifecycleAction` container.
-
 .. _ClinGen Allele Registry ID: http://reg.clinicalgenome.org
-
-.. _actionability score: https://docs.civicdb.org/en/latest/model/variants/evidence_score.html
 
 .. _clinvar ids: https://www.ncbi.nlm.nih.gov/clinvar
 
@@ -169,6 +146,51 @@ The primary CIViC records are found on the CIViC advanced search page, and are f
 
 .. _Sequence Ontology: http://www.sequenceontology.org/
 
+.. autoclass:: MolecularProfile
+   :show-inheritance:
+
+   .. attribute: aliases
+
+      A curated list of aliases by which this molecular profile is referenced.
+
+   .. attribute: assertions
+
+      A list of :class:`Assertion` records associated with this molecular
+      profile.
+
+   .. attribute::  definition
+
+      A curated summary of the clinical significance of this molecular
+      profile.
+
+   .. attribute: evidence_items
+
+      A list of :class:`Evidence` associated with this molecular profile.
+
+   .. attribute:: molecular_profile_score
+
+      The CIViC `molcular profile score`_ associated with this molecular
+      profile.
+
+   .. attribute:: name
+
+      The human readable name of this molecular profile, including gene and variant names.
+
+   .. attribute: variant_ids
+
+      An list of integers designating the :attr:`CivicRecord.id` for the variants involved in this
+      molecular profile.
+
+   .. attribute: sources
+
+      A list of :class:`CivicAttribute` source objects associated with the molecular profile description.
+
+   .. attribute: variants
+
+      A list :class:`Variant` objects involved in this molecular profile.
+
+.. _molecular profile score: https://civic.readthedocs.io/en/latest/model/molecular_profiles/evidence_score.html
+
 .. autoclass:: Evidence
    :show-inheritance:
 
@@ -176,34 +198,18 @@ The primary CIViC records are found on the CIViC advanced search page, and are f
 
       CIViC :class:`Assertion` records containing this evidence.
 
-   .. attribute:: clinical_significance
-
-      A string indicating the type of clinical significance statement being made, values are defined based on
-      the corresponding :attr:`evidence_type`. Please see `Understanding Clinical Significance`_ for more
-      details on the expected values for this field.
-
    .. attribute:: description
       statement
 
-      The Evidence Statement (returned as `description` by the CIViC API) is a brief summary of the clinical implications of the :attr:`variant` in the context of the specific :attr:`disease`, :attr:`evidence_type`, and :attr:`clinical_significance` as curated from the cited literature source.
+      The Evidence Statement (returned as `description` by the CIViC API) is a brief summary of the clinical implications of the :attr:`variant` in the context of the specific :attr:`disease`, :attr:`evidence_type`, and :attr:`significance` as curated from the cited literature source.
 
    .. attribute:: disease
 
       The cancer or cancer subtype context for the evidence record.
 
-   .. attribute:: drugs
-
-      Zero or more drug :class:`CivicAttribute`, linked to corresponding `NCIT`_ terms when applicable. Only used with
-      therapeutic response predictive :attr:`evidence_type`.
-
-   .. attribute:: drug_interaction_type
-
-      One of 'Combination', 'Sequential', or 'Substitutes', this field describes how multiple indicated drugs within
-      a therapeutic response predictive :attr:`evidence_type` are related.
-
    .. attribute:: evidence_direction
 
-      One of 'Supports', 'Does Not Support' or 'N/A', indicating whether the evidence statement supports or refutes the clinical significance of an event. The evidence_direction is 'N/A' for Predisposing evidence items.
+      One of 'Supports', 'Does Not Support', indicating whether the evidence statement supports or refutes the significance of an event.
 
    .. attribute:: evidence_level
 
@@ -212,15 +218,15 @@ The primary CIViC records are found on the CIViC advanced search page, and are f
    .. attribute:: evidence_type
 
       Category of clinical action/relevance implicated by event. Refer to the additional `documentation on evidence types`_
-      for details on how to enter evidence of each of the four types: Predictive, Prognostic, Predisposing and Diagnostic.
+      for details on how to enter evidence of each of the six types: Predictive, Prognostic, Predisposing, Diagnostic, Functional, and Oncogenic.
 
-   .. attribute:: gene_id
+   .. attribute:: molecular_profile
 
-      An integer designating the :attr:`CivicRecord.id` for the gene associated with this evidence record.
+      The :class:`MolecularProfile` object this evidence item belongs to.
 
-   .. attribute:: lifecycle_actions
+   .. attribute:: molecular_profile_id
 
-      A :class:`LifecycleAction` container.
+      The :attr:`CivicRecord.id` of the molecular profile this evidence item belongs to.
 
    .. attribute:: name
 
@@ -235,6 +241,12 @@ The primary CIViC records are found on the CIViC advanced search page, and are f
 
       The Evidence Rating is an integer from 1 to 5, indicating the curator’s confidence in the quality of the summarized evidence as a number of stars. For more information about this metric, please see `Understanding Evidence Ratings`_.
 
+   .. attribute:: significance
+
+      A string indicating the type of significance statement being made, values are defined based on
+      the corresponding :attr:`evidence_type`. Please see `Understanding Significance`_ for more
+      details on the expected values for this field.
+
    .. attribute:: source
 
       A :class:`CivicAttribute` source object from which this evidence was derived.
@@ -247,6 +259,16 @@ The primary CIViC records are found on the CIViC advanced search page, and are f
       - *accepted*: This evidence has been reviewed and approved by a CIViC editor
       - *rejected*: This evidence has been reviewed and rejected by a CIViC editor
 
+   .. attribute:: therapies
+
+      Zero or more therapy :class:`CivicAttribute`, linked to corresponding `NCIT`_ terms when applicable. Only used with
+      therapeutic response predictive :attr:`evidence_type`.
+
+   .. attribute:: therapy_interaction_type
+
+      One of 'Combination', 'Sequential', or 'Substitutes', this field describes how multiple indicated therapies within
+      a therapeutic response predictive :attr:`evidence_type` are related.
+
 .. _Understanding Levels: https://civic.readthedocs.io/en/latest/model/evidence/level.html#understanding-levels
 
 .. _Understanding Evidence Ratings: https://civic.readthedocs.io/en/latest/model/evidence/evidence_rating.html#understanding-evidence-ratings
@@ -258,47 +280,27 @@ The primary CIViC records are found on the CIViC advanced search page, and are f
 
       Evidence codes used in the assessment of variants under the `ACMG/AMP`_ classification guidelines.
 
-   .. attribute:: allele_registry_id
-
-      The `ClinGen Allele Registry ID`_ associated with the assertion's variant.
-
    .. attribute:: amp_level
 
       The clinical interpretation classification by `AMP/ASCO/CAP`_ or `ACMG/AMP`_ guidelines.
 
-   .. attribute:: clinical_significance
+   .. attribute:: assertion_direction
 
-      A string indicating the type of clinical significance statement being made, values are defined based on
-      the corresponding :attr:`evidence_type`. Please see `Understanding Clinical Significance`_ for more
-      details on the expected values for this field.
+      One of 'Supports' or 'Does Not Support', indicating whether the evidence statement supports or refutes the significance of an event.
+
+   .. attribute:: assertion_type
+
+      Category of clinical action/relevance implicated by event. Refer to the additional `documentation on assertion types`_
+      for details on how to enter assertions of each of the five types: Predictive, Prognostic, Predisposing, Diagnostic, and Oncogenic.
 
    .. attribute:: description
 
-      The Assertion Description gives detail including practice guidelines and approved tests for the variant.
+      The Assertion Description gives detail including practice guidelines and approved tests for the molecular profile.
       See `curating assertions`_ for more details.
 
    .. attribute:: disease
 
       A disease :class:`CivicAttribute`, linked to a corresponding `Disease Ontology`_ term when applicable.
-
-   .. attribute:: drugs
-
-      Zero or more drug :class:`CivicAttribute`, linked to corresponding `NCIT`_ terms when applicable. Only used with
-      therapeutic response predictive :attr:`evidence_type`.
-
-   .. attribute:: drug_interaction_type
-
-      One of 'Combination', 'Sequential', or 'Substitutes', this field describes how multiple indicated drugs within
-      a therapeutic response predictive :attr:`evidence_type` assertion are related.
-
-   .. attribute:: evidence_direction
-
-      One of 'Supports' or 'Does Not Support', indicating whether the evidence statement supports or refutes the clinical significance of an event.
-
-   .. attribute:: evidence_type
-
-      Category of clinical action/relevance implicated by event. Refer to the additional `documentation on evidence types`_
-      for details on how to enter evidence of each of the four types: Predictive, Prognostic, Predisposing and Diagnostic.
 
    .. attribute:: fda_companion_test
 
@@ -306,12 +308,16 @@ The primary CIViC records are found on the CIViC advanced search page, and are f
 
    .. attribute:: fda_regulatory_approval
 
-      A boolean indicating whether or not the drugs indicated in the assertion have regulatory approval for use in
+      A boolean indicating whether or not the therapies indicated in the assertion have regulatory approval for use in
       the treatment of the assertion disease.
 
-   .. attribute:: lifecycle_actions
+   .. attribute:: molecular_profile
 
-      A :class:`LifecycleAction` container.
+      The :class:`MolecularProfile` object this assertion belongs to.
+
+   .. attribute:: molecular_profile_id
+
+      The :attr:`CivicRecord.id` of the molecular profile this assertion belongs to.
 
    .. attribute:: name
 
@@ -331,6 +337,12 @@ The primary CIViC records are found on the CIViC advanced search page, and are f
       Zero or more phenotype :class:`CivicAttribute`, linked to corresponding Human Phenotype Ontology (`HPO`_) terms
       when applicable.
 
+   .. attribute:: significance
+
+      A string indicating the type of significance statement being made, values are defined based on
+      the corresponding :attr:`evidence_type`. Please see `Understanding Significance`_ for more
+      details on the expected values for this field.
+
    .. attribute:: status
 
       One of 'accepted', 'rejected', or 'submitted', describing the state of this assertion in the CIViC curation cycle. An Assertion needs to be reviewed by a CIViC editor before being accepted or rejected. Therefore "submitted" Assertions might not be accurate or complete.
@@ -341,17 +353,23 @@ The primary CIViC records are found on the CIViC advanced search page, and are f
 
    .. attribute:: summary
 
-      The Assertion Summary restates the Clinical Significance as a brief single sentence statement. It is intended for
-      potential use in clinical reports. The Assertion Summary is designed for rapid communication of the Clinical
-      Significance, especially when displayed in a longer list with other variants.
+      The Assertion Summary restates the Significance as a brief single sentence statement. It is intended for
+      potential use in clinical reports. The Assertion Summary is designed for rapid communication of the 
+      Significance, especially when displayed in a longer list with other molecular profiles.
 
-   .. attribute:: variant
+   .. attribute:: therapies
 
-      The :class:`Variant` associated with this assertion.
+      Zero or more therapy :class:`CivicAttribute`, linked to corresponding `NCIT`_ terms when applicable. Only used with
+      therapeutic response predictive :attr:`evidence_type`.
+
+   .. attribute:: therapy_interaction_type
+
+      One of 'Combination', 'Sequential', or 'Substitutes', this field describes how multiple indicated therapies within
+      a therapeutic response predictive :attr:`evidence_type` assertion are related.
 
    .. attribute:: variant_origin
 
-      The origin of this variant, one of 'Somatic', 'Rare Germline', 'Common Germline', 'Unknown', 'N/A', 'Germline or Somatic'
+      The origin of the variants in this molecular profile, one of 'Somatic', 'Rare Germline', 'Common Germline', 'Unknown', 'N/A', 'Germline or Somatic', or 'Mixed'
 
 .. _AMP/ASCO/CAP: https://www.ncbi.nlm.nih.gov/pubmed/27993330
 
@@ -363,150 +381,25 @@ The primary CIViC records are found on the CIViC advanced search page, and are f
 
 .. _documentation on evidence types: https://docs.civicdb.org/en/latest/model/evidence/type.html
 
+.. _documentation of assertion types: https://docs.civicdb.org/en/latest/model/assertions/overview.html
+
 .. _NCIT: https://ncit.nci.nih.gov/ncitbrowser/
 
 .. _NCCN Guidelines for treatment of cancer by disease site: https://www.nccn.org/professionals/physician_gls/default.aspx#site
 
 .. _HPO: https://hpo.jax.org/
 
-.. _Understanding Clinical Significance: https://docs.civicdb.org/en/latest/model/evidence/clinical_significance.html#understanding-clinical-significance
+.. _Understanding Significance: https://civic.readthedocs.io/en/latest/model/evidence/significance.html#understanding-significance
 
 CIViC attributes
 ~~~~~~~~~~~~~~~~
 
 The :class:`CivicAttribute` class is a special type of CivicRecord that is not indexed, and is used as a base
-class for additional complex records beyond those mentioned above (e.g. diseases, drugs). CivicAttributes are not cached
+class for additional complex records beyond those mentioned above (e.g. diseases, therapies). CivicAttributes are not cached
 except as attached objects to non-:class:`CivicAttribute` :class:`CivicRecord` objects, and cannot be retrieved
 independently.
 
 .. autoclass:: CivicAttribute
-
-Record provenance
-~~~~~~~~~~~~~~~~~
-
-The :class:`LifecycleAction` class is used to track the provenance of many types of :class:`CivicRecord`, by serving as
-a container class for :class:`BaseLifecycleAction` objects which in turn specify the timestamp and :class:`User` associated with
-a given action on a record.
-
-.. autoclass:: LifecycleAction
-   :show-inheritance:
-
-.. autoclass:: BaseLifecycleAction
-   :show-inheritance:
-
-   .. attribute:: timestamp
-
-      A CIViC timestamp string indicating the time the BaseLifecycleAction took place.
-
-   .. attribute:: user
-
-      A CIViC :class:`User` object.
-
-.. autoclass:: Submitted
-   :show-inheritance:
-
-.. autoclass:: LastModified
-   :show-inheritance:
-
-.. autoclass:: LastReviewed
-   :show-inheritance:
-
-.. autoclass:: Accepted
-   :show-inheritance:
-
-.. autoclass:: User
-   :show-inheritance:
-
-   .. attribute:: name
-
-      The user-defined full name for the :class:`User`.
-
-   .. attribute:: username
-
-      The user-defined system name for the :class:`User`.
-
-   .. attribute:: role
-
-      The CIViC role held by a :class:`User`: Administrator, Editor, or Curator.
-
-   .. attribute:: area_of_expertise
-
-      An optional attribute for a :class:`User` indicating their perspective as a CIViC participant:
-         Research Scientist, Clinical Scientist, or Patient Advocate.
-
-   .. attribute:: orcid
-
-      An optional attribute for a :class:`User` indicating their `ORCiD <https://orcid.org/>`_.
-
-   .. attribute:: display_name
-
-      This attribute is populated with the first non-blank value from :attribute:`username`,
-         :attribute:`name`, :attribute:`email`, or :attribute:`id`.
-
-   .. attribute:: created_at
-
-      A `datetime` describing when the :class:`User` object was created.
-
-   .. attribute:: url
-
-      A string describing a personal website or blog for the :class:`User`.
-
-   .. attribute:: twitter_handle
-
-      A string describing the Twitter handle for a :class:`User`.
-
-   .. attribute:: facebook_profile
-
-      A string describing the Facebook profile ID for a :class:`User`.
-
-   .. attribute:: linkedin_profile
-
-      A string describing the Linked profile ID for a :class:`User`.
-
-   .. attribute:: bio
-
-      A short biography for a :class:`User`.
-
-   .. attribute:: featured_expert
-
-      A flag indicating if a user is a featured expert, and thus displayed on the CIViC
-         `domain experts <https://docs.civicdb.org/en/latest/about/domain-experts.html>`_ section
-
-.. autoclass:: Organization
-   :show-inheritance:
-
-   .. attribute:: name
-
-      The :class:`Organization` name.
-
-   .. attribute:: url
-
-      A URL for more information about the :class:`Organization`.
-
-   .. attribute:: description
-
-      A short text description about the :class:`Organization`.
-
-   .. attribute:: profile_image
-
-      A set of resource paths for the :class:`Organization` image at varying resolution.
-
-   .. attribute:: parent
-
-      A parent :class:`Organization`, if applicable.
-
-.. autoclass:: Country
-   :show-inheritance:
-
-   .. attribute:: iso
-
-      The `ISO 3166 Country Code <https://www.iso.org/iso-3166-country-codes.html>`_ for the
-      :class:`Country`.
-
-   .. attribute:: name
-
-      The full-text name for the :class:`Country`.
-
 
 Getting records
 ---------------
@@ -520,22 +413,24 @@ objects can be queried by the following methods:
 .. autofunction:: get_gene_by_id
 .. autofunction:: get_genes_by_ids
 .. autofunction:: get_all_genes
-.. autofunction:: get_all_gene_ids
 
-Analogous methods exist for :class:`Variant`, :class:`Assertion`, and :class:`Evidence`:
+Analogous methods exist for :class:`Variant`, :class:`MolecularProfile`, :class:`Assertion`, and :class:`Evidence`:
 
-.. autofunction:: get_variants_by_ids
 .. autofunction:: get_variant_by_id
+.. autofunction:: get_variants_by_ids
 .. autofunction:: get_all_variants
-.. autofunction:: get_all_variant_ids
 
-.. autofunction:: get_assertions_by_ids
+.. autofunction:: get_molecular_profile_by_id
+.. autofunction:: get_molecular_profiles_by_ids
+.. autofunction:: get_all_molecular_profiles
+
 .. autofunction:: get_assertion_by_id
+.. autofunction:: get_assertions_by_ids
 .. autofunction:: get_all_assertions
-.. autofunction:: get_all_assertion_ids
 
+.. autofunction:: get_evidence_by_id
+.. autofunction:: get_evidence_by_ids
 .. autofunction:: get_all_evidence
-.. autofunction:: get_all_evidence_ids
 
 By Coordinate
 ~~~~~~~~~~~~~
@@ -550,6 +445,10 @@ function.
 .. autoclass:: CoordinateQuery
 .. autofunction:: search_variants_by_coordinates
 .. autofunction:: bulk_search_variants_by_coordinates
+
+Coordinates can also be used to query :class:`Assertion` records:
+
+.. autofunction:: search_assertions_by_coordinates
 
 By Other Attribute
 ~~~~~~~~~~~~~~~~~~
