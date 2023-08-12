@@ -173,9 +173,30 @@ class TestMolecularProfiles(object):
         assert len(mps) >= 1333
 
     def test_get_by_id(self):
-        mp = civic.get_molecular_profile_by_id(6353)
+        # Complex MP
+        mp = civic.get_molecular_profile_by_id(4432)
         assert mp.type == 'molecular_profile'
-        assert mp.id == 6353
+        mp_parsed_name = mp.parsed_name
+        assert len(mp_parsed_name) == 5
+        egfr_gene = mp_parsed_name[0]
+        assert egfr_gene.type == "gene"
+        assert egfr_gene.id == 19
+        assert egfr_gene.name == "EGFR"
+        variant0 = mp_parsed_name[1]
+        assert variant0.type == "variant"
+        assert variant0.id == 33
+        assert variant0.name == "L858R"
+        assert variant0.deprecated is False
+        text_segment = mp_parsed_name[2]
+        assert text_segment.type == "molecular_profile_text_segment"
+        assert text_segment.text == "OR"
+        assert mp_parsed_name[3] == egfr_gene
+        variant1 = mp_parsed_name[4]
+        assert variant1.type == "variant"
+        assert variant1.id == 133
+        assert variant1.name == "Exon 19 Deletion"
+        assert variant1.deprecated is False
+
 
 class TestVariantGroups(object):
 
