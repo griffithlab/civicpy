@@ -2181,7 +2181,7 @@ def search_variants_by_coordinates(coordinate_query, search_mode='any'):
         start_ct_idx = start_idx[:right_idx].index
         left_idx = stop_idx.searchsorted(start)
         stop_ct_idx = stop_idx[left_idx:].index
-        match_idx = chr_ct_idx & start_ct_idx & stop_ct_idx
+        match_idx = list(set(chr_ct_idx) & set(start_ct_idx) & set(stop_ct_idx))
         m_df = ct.loc[match_idx, ]
         if search_mode == 'any':
             var_digests = m_df.v_hash.to_list()
