@@ -34,7 +34,7 @@ setup(
             'pytest==6.2.5',
             'pytest-cov==5.0.0',
             'attrs==22.1.0',
-            'python-coveralls',
+            'coveralls',
             'coverage<7.4.4',
         ],
         'docs': [
