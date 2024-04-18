@@ -1,0 +1,36 @@
+name: CIViCpy tests
+
+on:
+  push:
+    branches: [ master, staging, hotfix ]
+  pull_request:
+    types: [opened, synchronize, edited, reopened]
+    branches: [ master, staging, hotfix]
+
+jobs:
+  run_tests:
+    name: "Test CIViCpy in various Python versions"
+
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.8', '3.9', '3.10', '3.11', '3.12']
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install Python dependencies
+        run: |
+          pip install -e .[test]
+      - name: List installed packages
+        run: |
+          pip list
+      - name: Run tests
+        run: pytest --cov civicpy --cov-report term-missing
+      - name: Coveralls
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: coveralls --service=github
