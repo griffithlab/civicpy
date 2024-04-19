@@ -1,2 +1,4 @@
+build:
+    os: ubuntu-22.04
 conda:
     file: environment.yml
