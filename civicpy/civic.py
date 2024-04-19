@@ -1223,6 +1223,8 @@ def _get_elements_by_ids(element, id_list=[], allow_cached=True, get_all=False):
 
 
 def _postprocess_response_element(e, element):
+    if e is None:
+        raise Exception("{} not found".format(element.title()))
     e['type'] = element
     if element == 'assertion':
         e['molecular_profile_id'] = e['molecular_profile']['id']
@@ -1235,7 +1237,10 @@ def _postprocess_response_element(e, element):
     elif element == 'variant':
         e['gene_id'] = e['gene']['id']
         e['entrez_name'] = e['gene']['name']
-        e['entrez_id'] = e['gene']['entrezId']
+        #TODO: handle other types of Variants
+        if e['__typename'] != 'GeneVariant':
+            raise Exception("Variant type {} not supported yet".format(e['__typename']))
+        e['entrez_id'] = e['gene']['featureInstance']['entrezId']
         build = e['referenceBuild']
         if build == 'GRCH37':
             build = 'GRCh37'
@@ -1333,7 +1338,7 @@ def _construct_get_gene_payload():
                 name
                 description
                 entrez_id: entrezId
-                aliases: geneAliases
+                aliases: featureAliases
                 sources {
                     id
                     name
@@ -1375,7 +1380,7 @@ def _construct_get_all_genes_payload():
                 name
                 description
                 entrez_id: entrezId
-                aliases: geneAliases
+                aliases: featureAliases
                 sources {
                     id
                     name
@@ -1421,7 +1426,7 @@ def _construct_get_molecular_profile_payload():
                     ... on MolecularProfileTextSegment {
                         text
                     }
-                    ... on Gene {
+                    ... on Feature {
                         id
                         name
                     }
@@ -1482,7 +1487,7 @@ def _construct_get_all_molecular_profiles_payload():
                     ... on MolecularProfileTextSegment {
                         text
                     }
-                    ... on Gene {
+                    ... on Feature {
                         id
                         name
                     }
@@ -1523,74 +1528,13 @@ def _construct_get_variant_payload():
     return """
         query variant($id: Int!) {
             variant(id: $id) {
+                __typename
                 id
                 name
-                allele_registry_id: alleleRegistryId
-                gene {
-                    id
-                    name
-                    entrezId
-                }
-                single_variant_molecular_profile_id: singleVariantMolecularProfileId
-                clinvar_entries: clinvarIds
-                hgvs_expressions: hgvsDescriptions
-                variant_aliases: variantAliases
-                variant_types: variantTypes {
-                    id
-                    name
-                    so_id: soid
-                    description
-                    url
-                }
-                variantBases
-                referenceBases
-                referenceBuild
-                primaryCoordinates {
-                    chromosome
-                    representativeTranscript
-                    start
-                    stop
-                }
-                secondaryCoordinates {
-                    chromosome
-                    representativeTranscript
-                    start
-                    stop
-                }
-                ensemblVersion
-            }
-        }"""
-
-
-def _construct_get_all_variants_payload():
-    return """
-        query variants($after: String) {
-            variants(after: $after) {
-                totalCount
-                pageInfo {
-                  hasNextPage
-                  endCursor
-                }
-                nodes {
-                    id
-                    name
+                ... on GeneVariant {
                     allele_registry_id: alleleRegistryId
-                    gene {
-                      id
-                      name
-                      entrezId
-                    }
-                    single_variant_molecular_profile_id: singleVariantMolecularProfileId
                     clinvar_entries: clinvarIds
                     hgvs_expressions: hgvsDescriptions
-                    variant_aliases: variantAliases
-                    variant_types: variantTypes {
-                        id
-                        name
-                        so_id: soid
-                        description
-                        url
-                    }
                     variantBases
                     referenceBases
                     referenceBuild
@@ -1607,6 +1551,81 @@ def _construct_get_all_variants_payload():
                         stop
                     }
                     ensemblVersion
+                }
+                gene: feature {
+                    id
+                    name
+                    featureInstance {
+                        ... on Gene {
+                            entrezId
+                        }
+                    }
+                }
+                single_variant_molecular_profile_id: singleVariantMolecularProfileId
+                variant_aliases: variantAliases
+                variant_types: variantTypes {
+                    id
+                    name
+                    so_id: soid
+                    description
+                    url
+                }
+            }
+        }"""
+
+
+def _construct_get_all_variants_payload():
+    return """
+        query variants($after: String) {
+            variants(after: $after, category: GENE) {
+                totalCount
+                pageInfo {
+                  hasNextPage
+                  endCursor
+                }
+                nodes {
+                    __typename
+                    id
+                    name
+                    ... on GeneVariant {
+                        allele_registry_id: alleleRegistryId
+                        clinvar_entries: clinvarIds
+                        hgvs_expressions: hgvsDescriptions
+                        variantBases
+                        referenceBases
+                        referenceBuild
+                        primaryCoordinates {
+                            chromosome
+                            representativeTranscript
+                            start
+                            stop
+                        }
+                        secondaryCoordinates {
+                            chromosome
+                            representativeTranscript
+                            start
+                            stop
+                        }
+                        ensemblVersion
+                    }
+                    gene: feature {
+                        id
+                        name
+                        featureInstance {
+                            ... on Gene {
+                                entrezId
+                            }
+                        }
+                    }
+                    single_variant_molecular_profile_id: singleVariantMolecularProfileId
+                    variant_aliases: variantAliases
+                    variant_types: variantTypes {
+                        id
+                        name
+                        so_id: soid
+                        description
+                        url
+                    }
                 }
             }
         }"""
@@ -2200,7 +2219,7 @@ def search_variants_by_coordinates(coordinate_query, search_mode='any'):
         start_ct_idx = start_idx[:right_idx].index
         left_idx = stop_idx.searchsorted(start)
         stop_ct_idx = stop_idx[left_idx:].index
-        match_idx = chr_ct_idx & start_ct_idx & stop_ct_idx
+        match_idx = list(set(chr_ct_idx) & set(start_ct_idx) & set(stop_ct_idx))
         m_df = ct.loc[match_idx, ]
         if search_mode == 'any':
             var_digests = m_df.v_hash.to_list()

@@ -173,13 +173,17 @@ class TestMolecularProfiles(object):
         assert len(mps) >= 1333
 
     def test_get_by_id(self):
-        # Complex MP
+        mp = civic.get_molecular_profile_by_id(12)
+        assert mp.type == 'molecular_profile'
+        assert mp.id == 12
+
+    def test_get_by_id_complex_mp(self):
         mp = civic.get_molecular_profile_by_id(4432)
         assert mp.type == 'molecular_profile'
         mp_parsed_name = mp.parsed_name
         assert len(mp_parsed_name) == 5
         egfr_gene = mp_parsed_name[0]
-        assert egfr_gene.type == "gene"
+        assert egfr_gene.type == "feature"
         assert egfr_gene.id == 19
         assert egfr_gene.name == "EGFR"
         variant0 = mp_parsed_name[1]
@@ -196,7 +200,6 @@ class TestMolecularProfiles(object):
         assert variant1.id == 133
         assert variant1.name == "Exon 19 Deletion"
         assert variant1.deprecated is False
-
 
 class TestVariantGroups(object):
 
@@ -356,7 +359,7 @@ class TestCoordinateSearch(object):
             CoordinateQuery('7', 140453136, 140453137, 'TT')
         ]
         search_results = civic.bulk_search_variants_by_coordinates(sorted_queries, search_mode='any')
-        assert len(search_results[sorted_queries[0]]) == 20
+        assert len(search_results[sorted_queries[0]]) == 19
         assert len(search_results[sorted_queries[1]]) >= 19
 
     def test_bulk_exact_search_variants(self):
@@ -387,8 +390,8 @@ class TestCoordinateSearch(object):
             CoordinateQuery('7', 140453136, 140453137)
         ]
         search_results = civic.bulk_search_variants_by_coordinates(sorted_queries, search_mode='record_encompassing')
-        assert len(search_results[sorted_queries[0]]) == 20
-        assert len(search_results[sorted_queries[1]]) == 17
+        assert len(search_results[sorted_queries[0]]) == 19
+        assert len(search_results[sorted_queries[1]]) == 16
 
     def test_build38_exact_search_variants(self, v600e):
         query = CoordinateQuery('7', 140753336, 140753336, 'T', 'A', 'GRCh38')

@@ -31,11 +31,11 @@ setup(
     ],
     extras_require={
         'test': [
-            'pytest==4.1.0',
-            'pytest-cov==2.9.0',
-            'attrs==18.2.0',
-            'python-coveralls',
-            'coverage<5.0',
+            'pytest==6.2.5',
+            'pytest-cov==5.0.0',
+            'attrs==22.1.0',
+            'coveralls',
+            'coverage<7.4.4',
         ],
         'docs': [
             'sphinx',
