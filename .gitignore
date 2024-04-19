@@ -104,7 +104,6 @@ ENV/
 
 # data folders
 analysis/data/
-civicpy/data/
 
 # vcf files
 *.vcf
