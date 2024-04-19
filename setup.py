@@ -1,5 +1,9 @@
 from setuptools import setup
 from civicpy.__version__ import __version__, __authors__, __author_email__, __description__, __url__
+from pathlib import Path
+
+this_directory = Path(__file__).parent
+long_description = (this_directory / "README.md").read_text()
 
 setup(
     name='civicpy',
@@ -10,6 +14,8 @@ setup(
     author=', '.join(__authors__),
     author_email=__author_email__,
     description=__description__,
+    long_description=long_description,
+    long_description_content_type='text/markdown',
     classifiers=[
         'Development Status :: 3 - Alpha',
         'Intended Audience :: Science/Research',
