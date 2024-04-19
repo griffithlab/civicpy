@@ -5,4 +5,4 @@ build:
     tools:
       python: "mambaforge-22.9"
 conda:
-    file: environment.yml
+    environment: environment.yml
