@@ -49,7 +49,7 @@ jobs:
       - name: Publish distribution to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
   docker: # https://docs.docker.com/ci-cd/github-actions/
-    needs: pypi
+    needs: publish-to-pypi
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
