@@ -446,12 +446,20 @@ class MolecularProfile(CivicRecord):
         'evidence_items',
         'sources',
         'variants',
+        'parsed_name'
     })
 
     def __init__(self, **kwargs):
         self._evidence_items = []
         self._assertions = []
         self._variants = []
+
+        # Convert parsed name types from camel to snake case
+        parsed_name = kwargs.get('parsed_name')
+        if parsed_name:
+            for pn in parsed_name:
+                pn['type'] = ''.join(['_' + c.lower() if c.isupper() else c for c in pn['type']]).lstrip('_')
+
         super().__init__(**kwargs)
 
     @property
@@ -1413,6 +1421,21 @@ def _construct_get_molecular_profile_payload():
                   id
                 }
                 aliases: molecularProfileAliases
+                parsed_name: parsedName {
+                    type: __typename
+                    ... on MolecularProfileTextSegment {
+                        text
+                    }
+                    ... on Feature {
+                        id
+                        name
+                    }
+                    ... on Variant {
+                        id
+                        name
+                        deprecated
+                    }
+                }
                 sources {
                     id
                     name
@@ -1459,6 +1482,21 @@ def _construct_get_all_molecular_profiles_payload():
                   id
                 }
                 aliases: molecularProfileAliases
+                parsed_name: parsedName {
+                    type: __typename
+                    ... on MolecularProfileTextSegment {
+                        text
+                    }
+                    ... on Feature {
+                        id
+                        name
+                    }
+                    ... on Variant {
+                        id
+                        name
+                        deprecated
+                    }
+                }
                 sources {
                     id
                     name
