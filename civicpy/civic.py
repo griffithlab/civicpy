@@ -1241,24 +1241,20 @@ def _postprocess_response_element(e, element):
         if e['__typename'] != 'GeneVariant':
             raise Exception("Variant type {} not supported yet".format(e['__typename']))
         e['entrez_id'] = e['gene']['featureInstance']['entrezId']
-        build = e['referenceBuild']
+        build = e['coordinates']['referenceBuild']
         if build == 'GRCH37':
             build = 'GRCh37'
         elif build == 'GRCH38':
             build = 'GRCh38'
         e['coordinates'] = {
-            'ensembl_version': e['ensemblVersion'],
+            'ensembl_version': e['coordinates']['ensemblVersion'],
             'reference_build': build,
-            'reference_bases': e['referenceBases'],
-            'variant_bases': e['variantBases'],
-            'representative_transcript': None if e['primaryCoordinates'] is None else e['primaryCoordinates']['representativeTranscript'],
-            'chromosome': None if e['primaryCoordinates'] is None else e['primaryCoordinates']['chromosome'],
-            'start': None if e['primaryCoordinates'] is None else e['primaryCoordinates']['start'],
-            'stop': None if e['primaryCoordinates'] is None else e['primaryCoordinates']['stop'],
-            'representative_transcript2': None if e['secondaryCoordinates'] is None else e['secondaryCoordinates']['representativeTranscript'],
-            'chromosome2': None if e['secondaryCoordinates'] is None else e['secondaryCoordinates']['chromosome'],
-            'start2': None if e['secondaryCoordinates'] is None else e['secondaryCoordinates']['start'],
-            'stop2': None if e['secondaryCoordinates'] is None else e['secondaryCoordinates']['stop'],
+            'reference_bases': e['coordinates']['referenceBases'],
+            'variant_bases': e['coordinates']['variantBases'],
+            'representative_transcript': e['coordinates']['representativeTranscript'],
+            'chromosome': e['coordinates']['chromosome'],
+            'start': e['coordinates']['start'],
+            'stop': e['coordinates']['stop'],
         }
     elif element == 'variant_group':
         e['variant_ids'] = [v['id'] for v in e['variants']['nodes']]
@@ -1535,22 +1531,17 @@ def _construct_get_variant_payload():
                     allele_registry_id: alleleRegistryId
                     clinvar_entries: clinvarIds
                     hgvs_expressions: hgvsDescriptions
-                    variantBases
-                    referenceBases
-                    referenceBuild
-                    primaryCoordinates {
+                    coordinates {
+                        referenceBuild
+                        ensemblVersion
                         chromosome
                         representativeTranscript
                         start
                         stop
+                        referenceBases
+                        variantBases
+                        coordinateType
                     }
-                    secondaryCoordinates {
-                        chromosome
-                        representativeTranscript
-                        start
-                        stop
-                    }
-                    ensemblVersion
                 }
                 gene: feature {
                     id
@@ -1591,22 +1582,17 @@ def _construct_get_all_variants_payload():
                         allele_registry_id: alleleRegistryId
                         clinvar_entries: clinvarIds
                         hgvs_expressions: hgvsDescriptions
-                        variantBases
-                        referenceBases
-                        referenceBuild
-                        primaryCoordinates {
+                        coordinates {
+                            referenceBuild
+                            ensemblVersion
                             chromosome
                             representativeTranscript
                             start
                             stop
+                            referenceBases
+                            variantBases
+                            coordinateType
                         }
-                        secondaryCoordinates {
-                            chromosome
-                            representativeTranscript
-                            start
-                            stop
-                        }
-                        ensemblVersion
                     }
                     gene: feature {
                         id
