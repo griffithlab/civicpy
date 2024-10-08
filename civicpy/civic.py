@@ -606,9 +606,7 @@ class Variant(CivicRecord):
         return (ref is not None and alt is None) or (ref is not None and alt is not None and len(ref) > len(alt))
 
     def is_valid_for_vcf(self, emit_warnings=False):
-        if self.coordinates.chromosome2 or self.coordinates.start2 or self.coordinates.stop2:
-            warning = "Variant {} has a second set of coordinates. Skipping".format(self.id)
-        elif self.coordinates.chromosome and self.coordinates.start and (self.coordinates.reference_bases or self.coordinates.variant_bases):
+        if self.coordinates.chromosome and self.coordinates.start and (self.coordinates.reference_bases or self.coordinates.variant_bases):
             if self._valid_ref_bases():
                 if self._valid_alt_bases():
                     return True
@@ -2083,11 +2081,11 @@ def _build_coordinate_table(variants):
             variant_records.append([chr, start, stop, alt, ref, hash(v)])
         else:
             continue
-        start = getattr(c, 'start2', None)
-        stop = getattr(c, 'stop2', None)
-        chr = getattr(c, 'chromosome2', None)
-        if all([start, stop, chr]):
-            variant_records.append([chr, start, stop, None, None, hash(v)])
+        #start = getattr(c, 'start2', None)
+        #stop = getattr(c, 'stop2', None)
+        #chr = getattr(c, 'chromosome2', None)
+        #if all([start, stop, chr]):
+        #    variant_records.append([chr, start, stop, None, None, hash(v)])
     df = pd.DataFrame.from_records(
         variant_records,
         columns=['chr', 'start', 'stop', 'alt', 'ref', 'v_hash']
