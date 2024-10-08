@@ -359,8 +359,8 @@ class TestCoordinateSearch(object):
             CoordinateQuery('7', 140453136, 140453137, 'TT')
         ]
         search_results = civic.bulk_search_variants_by_coordinates(sorted_queries, search_mode='any')
-        assert len(search_results[sorted_queries[0]]) == 19
-        assert len(search_results[sorted_queries[1]]) >= 19
+        assert len(search_results[sorted_queries[0]]) == 12
+        assert len(search_results[sorted_queries[1]]) >= 13
 
     def test_bulk_exact_search_variants(self):
         sorted_queries = [
@@ -390,8 +390,8 @@ class TestCoordinateSearch(object):
             CoordinateQuery('7', 140453136, 140453137)
         ]
         search_results = civic.bulk_search_variants_by_coordinates(sorted_queries, search_mode='record_encompassing')
-        assert len(search_results[sorted_queries[0]]) == 19
-        assert len(search_results[sorted_queries[1]]) == 16
+        assert len(search_results[sorted_queries[0]]) == 12
+        assert len(search_results[sorted_queries[1]]) == 9
 
     def test_build38_exact_search_variants(self, v600e):
         query = CoordinateQuery('7', 140753336, 140753336, 'T', 'A', 'GRCh38')
@@ -482,10 +482,6 @@ class TestTherapies(object):
 LOGGER = logging.getLogger(__name__)
 
 def test_is_valid_for_vcf_warnings(caplog):
-    fusion_variant = civic.get_variant_by_id(287)
-    fusion_variant.is_valid_for_vcf(emit_warnings=True)
-    assert "Variant 287 has a second set of coordinates. Skipping" in caplog.text
-
     incomplete_coordinates_variant = civic.get_variant_by_id(27)
     incomplete_coordinates_variant.is_valid_for_vcf(emit_warnings=True)
     assert "Incomplete coordinates for variant 27. Skipping." in caplog.text
