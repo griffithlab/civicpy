@@ -150,14 +150,42 @@ class TestVariants(object):
             assert v.coordinates.reference_bases not in ['', '-']
             assert v.coordinates.variant_bases not in ['', '-']
 
-    def test_properties(self):
+    def test_shared_properties(self):
         variant = civic.get_variant_by_id(11)
         assert sorted(variant.aliases) == sorted(variant.variant_aliases)
         assert sorted(variant.groups) == sorted(variant.variant_groups)
         assert sorted(variant.types) == sorted(variant.variant_types)
+
+class TestGeneVariants(object):
+    def test_get_all(self):
+        variants = civic.get_all_gene_variants()
+        assert len(variants) >= 3557
+
+    def test_properties(self):
+        variant = civic.get_variant_by_id(11)
         assert variant.coordinates.ensembl_version == 75
         assert variant.entrez_name == "BRAF"
         assert variant.entrez_id == 673
+
+class TestFusionVariants(object):
+    def test_get_all(self):
+        variants = civic.get_all_fusion_variants()
+        assert len(variants) >= 263
+
+    def test_properties(self):
+        variant = civic.get_variant_by_id(1)
+        assert variant.vicc_compliant_name == 'BCR(entrez:613)::ABL1(entrez:25)'
+        assert variant.five_prime_coordinates.reference_build == 'GRCH37'
+        assert variant.three_prime_coordinates.reference_build == 'GRCH37'
+
+class TestFactorVariants(object):
+    def test_get_all(self):
+        variants = civic.get_all_factor_variants()
+        assert len(variants) >= 8
+
+    def test_properties(self):
+        variant = civic.get_variant_by_id(4985)
+        assert variant.ncit_id == 'C131459'
 
 class TestMolecularProfiles(object):
     def test_get_all(self):
