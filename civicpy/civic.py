@@ -548,7 +548,7 @@ class Variant(CivicRecord):
     def molecular_profiles(self):
         for mp in self._molecular_profiles:
             mp._include_status = self._include_status
-        return self._molecular_profiles
+        return [m for m in self._molecular_profiles if m.evidence_items or m.assertions]
 
     @molecular_profiles.setter
     def molecular_profiles(self, value):
@@ -872,7 +872,7 @@ class Gene(CivicRecord):
     def variants(self):
         for variant in self._variants:
             variant._include_status = self._include_status
-        return self._variants
+        return [v for v in self._variants if v.molecular_profiles]
 
     @variants.setter
     def variants(self, value):
@@ -908,7 +908,7 @@ class Factor(CivicRecord):
     def variants(self):
         for variant in self._variants:
             variant._include_status = self._include_status
-        return self._variants
+        return [v for v in self._variants if v.molecular_profiles]
 
     @variants.setter
     def variants(self, value):
@@ -944,7 +944,7 @@ class Fusion(CivicRecord):
     def variants(self):
         for variant in self._variants:
             variant._include_status = self._include_status
-        return self._variants
+        return [v for v in self._variants if v.molecular_profiles]
 
     @variants.setter
     def variants(self, value):
@@ -1642,18 +1642,18 @@ def get_all_variants(include_status=['accepted', 'submitted', 'rejected'], allow
 
 
 def get_all_gene_variants(include_status=['accepted', 'submitted', 'rejected'], allow_cached=True):
-    variants = get_all_variants(include_status=['accepted', 'submitted', 'rejected'], allow_cached=True)
+    variants = get_all_variants(include_status=include_status, allow_cached=True)
     return [v for v in variants if isinstance(v, GeneVariant)]
 
 
 def get_all_fusion_variants(include_status=['accepted', 'submitted', 'rejected'], allow_cached=True):
-    variants = get_all_variants(include_status=['accepted', 'submitted', 'rejected'], allow_cached=True)
-    return [v for v in variants if isinstance(v, GeneVariant)]
+    variants = get_all_variants(include_status=include_status, allow_cached=True)
+    return [v for v in variants if isinstance(v, FusionVariant)]
 
 
 def get_all_factor_variants(include_status=['accepted', 'submitted', 'rejected'], allow_cached=True):
-    variants = get_all_variants(include_status=['accepted', 'submitted', 'rejected'], allow_cached=True)
-    return [v for v in variants if isinstance(v, GeneVariant)]
+    variants = get_all_variants(include_status=include_status, allow_cached=True)
+    return [v for v in variants if isinstance(v, FactorVariant)]
 
 
 def get_all_variant_groups(allow_cached=True):
