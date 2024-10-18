@@ -275,6 +275,52 @@ class TestGenes(object):
         assert gene.id == 58
         assert gene.name == 'VHL'
 
+
+class TestFactors(object):
+
+    def test_get_all(self):
+        factors = civic.get_all_factors()
+        assert len(factors) >= 6
+
+    def test_get_non_rejected(self):
+        factors = civic.get_all_factors(include_status=['accepted', 'submitted'])
+        assert len(factors) >= 6
+
+    def test_get_accepted_only(self):
+        factors = civic.get_all_factors(include_status=['accepted'])
+        assert len(factors) >= 6
+
+    def test_get_by_id(self):
+        factor = civic.get_factor_by_id(61748)
+        assert factor.type == 'factor'
+        assert factor.id == 61748
+        assert factor.name == 'CK'
+        assert factor.full_name == 'Complex Karyotype'
+
+
+class TestFusions(object):
+
+    def test_get_all(self):
+        fusions = civic.get_all_fusions()
+        assert len(fusions) >= 290
+
+    def test_get_non_rejected(self):
+        fusions = civic.get_all_fusions(include_status=['accepted', 'submitted'])
+        assert len(fusions) >= 290
+
+    def test_get_accepted_only(self):
+        fusions = civic.get_all_fusions(include_status=['accepted'])
+        assert len(fusions) >= 290
+
+    def test_get_by_id(self):
+        fusion = civic.get_fusion_by_id(61753)
+        assert fusion.type == 'fusion'
+        assert fusion.id == 61753
+        assert fusion.name == 'MEF2D::CSF1R'
+        assert fusion.five_prime_gene.name == 'MEF2D'
+        assert fusion.three_prime_gene.name == 'CSF1R'
+
+
 class TestCoordinateSearch(object):
 
     def test_search_assertions(self):
@@ -329,21 +375,21 @@ class TestCoordinateSearch(object):
         assert len(variants_single) == 0
         assert len(variants_bulk) == 0
 
-        query = CoordinateQuery('3', 10183706, 10183706, None, 'C')
+        query = CoordinateQuery('3', 10183694, 10183694, None, 'G')
         variants_single = civic.search_variants_by_coordinates(query, search_mode='exact')
         variants_bulk = civic.bulk_search_variants_by_coordinates([query], search_mode='exact')
         assert len(variants_single) == 1
         assert len(variants_bulk[query]) == 1
         assert hash(variants_single[0]) == variants_bulk[query][0].v_hash
 
-        query = CoordinateQuery('3', 10183706, 10183706, 'T', 'C')
+        query = CoordinateQuery('3', 10183694, 10183694, 'T', 'G')
         variants_single = civic.search_variants_by_coordinates(query, search_mode='exact')
         variants_bulk = civic.bulk_search_variants_by_coordinates([query], search_mode='exact')
         assert len(variants_single) == 1
         assert len(variants_bulk[query]) == 1
         assert hash(variants_single[0]) == variants_bulk[query][0].v_hash
 
-        query = CoordinateQuery('3', 10183706, 10183706, '*', 'C')
+        query = CoordinateQuery('3', 10183694, 10183694, '*', 'G')
         variants_single = civic.search_variants_by_coordinates(query, search_mode='exact')
         variants_bulk = civic.bulk_search_variants_by_coordinates([query], search_mode='exact')
         variants_single = list(map(lambda v: hash(v), variants_single))
@@ -359,8 +405,8 @@ class TestCoordinateSearch(object):
             CoordinateQuery('7', 140453136, 140453137, 'TT')
         ]
         search_results = civic.bulk_search_variants_by_coordinates(sorted_queries, search_mode='any')
-        assert len(search_results[sorted_queries[0]]) == 12
-        assert len(search_results[sorted_queries[1]]) >= 13
+        assert len(search_results[sorted_queries[0]]) == 18
+        assert len(search_results[sorted_queries[1]]) >= 11
 
     def test_bulk_exact_search_variants(self):
         sorted_queries = [
@@ -382,7 +428,7 @@ class TestCoordinateSearch(object):
         ]
         search_results = civic.bulk_search_variants_by_coordinates(sorted_queries, search_mode='query_encompassing')
         assert len(search_results[sorted_queries[0]]) == 1
-        assert len(search_results[sorted_queries[1]]) == 6
+        assert len(search_results[sorted_queries[1]]) == 5
 
     def test_bulk_re_search_variants(self):
         sorted_queries = [
@@ -390,8 +436,8 @@ class TestCoordinateSearch(object):
             CoordinateQuery('7', 140453136, 140453137)
         ]
         search_results = civic.bulk_search_variants_by_coordinates(sorted_queries, search_mode='record_encompassing')
-        assert len(search_results[sorted_queries[0]]) == 12
-        assert len(search_results[sorted_queries[1]]) == 9
+        assert len(search_results[sorted_queries[0]]) == 18
+        assert len(search_results[sorted_queries[1]]) == 15
 
     def test_build38_exact_search_variants(self, v600e):
         query = CoordinateQuery('7', 140753336, 140753336, 'T', 'A', 'GRCh38')

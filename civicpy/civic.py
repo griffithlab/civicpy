@@ -7,15 +7,18 @@ import pickle
 import os
 from pathlib import Path
 from collections import defaultdict, namedtuple
-from civicpy import REMOTE_CACHE_URL, LOCAL_CACHE_PATH, CACHE_TIMEOUT_DAYS
 import requests
-from civicpy import exports
 import deprecation
-from civicpy.__version__ import __version__
 from datetime import datetime, timedelta
 from backports.datetime_fromisoformat import MonkeyPatch
 MonkeyPatch.patch_fromisoformat()
 import re
+
+from civicpy import REMOTE_CACHE_URL, LOCAL_CACHE_PATH, CACHE_TIMEOUT_DAYS
+from civicpy.__version__ import __version__
+from civicpy import exports
+from civicpy import graphql_payloads
+from civicpy import utils
 
 
 CACHE = dict()
@@ -35,10 +38,11 @@ API_URL = 'https://civicdb.org/api/graphql'
 
 LINKS_URL = 'https://civicdb.org/links'
 
-UNMARKED_PLURALS = {'evidence'}
 
 CIVIC_TO_PYCLASS = {
-    'evidence_items': 'evidence'
+    'evidence_items': 'evidence',
+    'five_prime_coordinates': 'coordinates',
+    'three_prime_ccodinates': 'coordinates',
 }
 
 
@@ -62,35 +66,6 @@ class CoordinateQuery(_CoordinateQuery):  # Wrapping for documentation
     pass
 
 
-def pluralize(string):
-    if string in UNMARKED_PLURALS:
-        return '{}_items'.format(string)
-    if string.endswith('s'):
-        return string
-    return string + 's'
-
-
-def singularize(string):
-    string = string.rstrip('s')
-    if string == 'evidence_item':
-        string = 'evidence'
-    return string
-
-
-def search_url(element, use_search_meta):
-    element = pluralize(element).lower()
-    components = [API_URL, element]
-    if use_search_meta:
-        components.append('search')
-    return '/'.join(components)
-
-
-def snake_to_camel(snake_string):
-    words = snake_string.split('_')
-    cap_words = [x.capitalize() for x in words]
-    return ''.join(cap_words)
-
-
 def element_lookup_by_id(element_type, element_id):
     e = _request_by_ids(element_type, [int(element_id)])[0]
     e = _postprocess_response_element(e, element_type)
@@ -98,8 +73,8 @@ def element_lookup_by_id(element_type, element_id):
 
 
 def get_class(element_type):
-    e_string = singularize(element_type)
-    class_string = snake_to_camel(e_string)
+    e_string = utils.singularize(element_type)
+    class_string = utils.snake_to_camel(e_string)
     cls = getattr(MODULE, class_string, CivicAttribute)
     return cls
 
@@ -195,14 +170,14 @@ def load_cache(local_cache_path=LOCAL_CACHE_PATH, on_stale='auto'):
     with open(local_cache_path, 'rb') as pf:
         loaded_cache = pickle.load(pf)
     c = dict()
-    variants = set()
+    variants_with_coords = set()
     for k, v in loaded_cache.items():
         if isinstance(k, str):
             c[k] = v
         elif isinstance(k, int):
             c[hash(v)] = v
-            if v.type == 'variant':
-                variants.add(v)
+            if isinstance(v, GeneVariant) or isinstance(v, FusionVariant):
+                variants_with_coords.add(v)
         else:
             raise ValueError
     old_cache = MODULE.CACHE
@@ -212,7 +187,7 @@ def load_cache(local_cache_path=LOCAL_CACHE_PATH, on_stale='auto'):
             continue
         v.update()
     if _has_full_cached_fresh() or on_stale == 'ignore':
-        _build_coordinate_table(variants)
+        _build_coordinate_table(variants_with_coords)
         return True
     elif (on_stale == 'auto' and local_cache_path == LOCAL_CACHE_PATH) or on_stale == 'update':
         MODULE.CACHE = old_cache
@@ -267,6 +242,8 @@ def update_cache(from_remote_cache=True, remote_cache_url=REMOTE_CACHE_URL,
     else:
         molecular_profiles = _get_elements_by_ids('molecular_profile', allow_cached=False, get_all=True)
         genes = _get_elements_by_ids('gene', allow_cached=False, get_all=True)
+        factors = _get_elements_by_ids('factor', allow_cached=False, get_all=True)
+        fusions = _get_elements_by_ids('fusion', allow_cached=False, get_all=True)
         variants = _get_elements_by_ids('variant', allow_cached=False, get_all=True)
         evidence = _get_elements_by_ids('evidence', allow_cached=False, get_all=True)
         assertions = _get_elements_by_ids('assertion', allow_cached=False, get_all=True)
@@ -276,9 +253,17 @@ def update_cache(from_remote_cache=True, remote_cache_url=REMOTE_CACHE_URL,
             e._partial = False
             CACHE[hash(e)] = e
         for g in genes:
-            g.variants = [v for v in variants if v.gene_id == g.id]
+            g.variants = [v for v in variants if v.feature_id == g.id]
             g._partial = False
             CACHE[hash(g)] = g
+        for f in factors:
+            f.variants = [v for v in variants if v.feature_id == f.id]
+            f._partial = False
+            CACHE[hash(f)] = f
+        for f in fusions:
+            f.variants = [v for v in variants if v.feature_id == f.id]
+            f._partial = False
+            CACHE[hash(f)] = f
         for v in variants:
             v.variant_groups = [vg for vg in variant_groups if v.id in vg.variant_ids]
             v.molecular_profiles = [mp for mp in molecular_profiles if v.id in mp.variant_ids]
@@ -363,7 +348,7 @@ class CivicRecord:
                 result = list()
                 for data in v:
                     if isinstance(data, dict):
-                        data['type'] = data.get('type', singularize(field))
+                        data['type'] = data.get('type', utils.singularize(field))
                         result.append(cls(partial=True, **data))
                     else:
                         result.append(data)
@@ -520,35 +505,23 @@ class MolecularProfile(CivicRecord):
 
 class Variant(CivicRecord):
     _SIMPLE_FIELDS = CivicRecord._SIMPLE_FIELDS.union({
-        'allele_registry_id',
-        'gene_id',
+        'feature_id',
         'name',
         'single_variant_molecular_profile_id',
-        'entrez_name',
-        'entrez_id'
     })
     _COMPLEX_FIELDS = CivicRecord._COMPLEX_FIELDS.union({
-        'clinvar_entries',
-        'coordinates',
         # 'errors',
-        'hgvs_expressions',
         #'lifecycle_actions',
         # 'provisional_values',
         'variant_aliases',
         'variant_groups',
-        'variant_types'})
+        'variant_types'
+    })
 
     def __init__(self, **kwargs):
-        # Handle overloaded evidence_items from some advanced search views
         kwargs['type'] = 'variant'
         self._variant_groups = []
         self._molecular_profiles = []
-        coordinates = kwargs.get('coordinates')
-        if coordinates:
-            if coordinates.get('reference_bases') in ['', '-']:
-                coordinates['reference_bases'] = None
-            if coordinates.get('variant_bases') in ['', '-']:
-                coordinates['variant_bases'] = None
         super().__init__(**kwargs)
 
     @property
@@ -575,21 +548,40 @@ class Variant(CivicRecord):
     def molecular_profiles(self):
         for mp in self._molecular_profiles:
             mp._include_status = self._include_status
-        return [mp for mp in self._molecular_profiles if mp.evidence]
+        return self._molecular_profiles
 
     @molecular_profiles.setter
     def molecular_profiles(self, value):
         self._molecular_profiles = value
 
     @property
-    def gene(self):
-        return _get_element_by_id('gene', self.gene_id)
-
-    @property
     def single_variant_molecular_profile(self):
         mp = _get_element_by_id('molecular_profile', self.single_variant_molecular_profile_id)
         mp._include_status = self._include_status
         return mp
+
+
+class GeneVariant(Variant):
+    _SIMPLE_FIELDS = Variant._SIMPLE_FIELDS.union({
+        'allele_registry_id',
+        'entrez_name',
+        'entrez_id'
+    })
+    _COMPLEX_FIELDS = Variant._COMPLEX_FIELDS.union({
+        'clinvar_entries',
+        'coordinates',
+        'hgvs_expressions',
+        #'lifecycle_actions',
+        # 'provisional_values',
+    })
+
+    @property
+    def gene(self):
+        return _get_element_by_id('gene', self.feature_id)
+
+    @property
+    def feature(self):
+        return self.gene
 
     @property
     def is_insertion(self):
@@ -731,7 +723,7 @@ class Variant(CivicRecord):
                         str(mp.id),
                         '&'.join(map(lambda a: a.translate(special_character_table), mp.aliases)),
                         "https://civicdb.org/links/molecular-profiles/{}".format(mp.id),
-                        '&'.join(map(lambda e: e.translate(special_character_table), self.hgvs_expressions)),
+                        '&'.join(map(lambda e: e.strip().translate(special_character_table), self.hgvs_expressions)),
                         str(self.allele_registry_id),
                         '&'.join(self.clinvar_entries),
                         str(mp.molecular_profile_score),
@@ -775,7 +767,7 @@ class Variant(CivicRecord):
                         str(mp.id),
                         '&'.join(map(lambda a: a.translate(special_character_table), mp.aliases)),
                         "https://civicdb.org/links/molecular-profiles/{}".format(mp.id),
-                        '&'.join(map(lambda e: e.translate(special_character_table), self.hgvs_expressions)),
+                        '&'.join(map(lambda e: e.strip().translate(special_character_table), self.hgvs_expressions)),
                         str(self.allele_registry_id),
                         '&'.join(self.clinvar_entries),
                         str(mp.molecular_profile_score),
@@ -800,6 +792,37 @@ class Variant(CivicRecord):
                         str(assertion.fda_companion_test or ''),
                     ]))
             return csq
+
+class FactorVariant(Variant):
+    _SIMPLE_FIELDS = Variant._SIMPLE_FIELDS.union({
+        'ncit_id',
+    })
+
+    @property
+    def factor(self):
+        return _get_element_by_id('factor', self.feature_id)
+
+    @property
+    def feature(self):
+        return self.factor
+
+
+class FusionVariant(Variant):
+    _SIMPLE_FIELDS = Variant._SIMPLE_FIELDS.union({
+        'vicc_compliant_name',
+    })
+    _COMPLEX_FIELDS = Variant._COMPLEX_FIELDS.union({
+        'five_prime_coordinates',
+        'three_prime_coordinates',
+    })
+
+    @property
+    def fusion(self):
+        return _get_element_by_id('fusion', self.feature_id)
+
+    @property
+    def feature(self):
+        return self.fusion
 
 
 class VariantGroup(CivicRecord):
@@ -838,31 +861,116 @@ class Gene(CivicRecord):
         # 'provisional_values',
         'sources',
         'variants',
-        'assertions',
     })
 
     def __init__(self, **kwargs):
         self._variants = []
-        self._assertions = []
+        self._sources = []
         super().__init__(**kwargs)
 
     @property
     def variants(self):
         for variant in self._variants:
             variant._include_status = self._include_status
-        return [v for v in self._variants if v.molecular_profiles]
+        return self._variants
 
     @variants.setter
     def variants(self, value):
         self._variants = value
 
     @property
-    def assertions(self):
-        return [a for a in self._assertions if a.status in self._include_status]
+    def sources(self):
+        return self._sources
 
-    @assertions.setter
-    def assertions(self, value):
-        self._assertions = value
+    @sources.setter
+    def sources(self, value):
+        self._sources = value
+
+
+class Factor(CivicRecord):
+    _SIMPLE_FIELDS = CivicRecord._SIMPLE_FIELDS.union(
+        {'description', 'ncit_id', 'name', 'full_name'})
+    _COMPLEX_FIELDS = CivicRecord._COMPLEX_FIELDS.union({
+        'aliases',
+        # 'errors',                 # TODO: Add support for these fields in advanced search endpoint
+        # /'lifecycle_actions',
+        # 'provisional_values',
+        'sources',
+        'variants',
+    })
+
+    def __init__(self, **kwargs):
+        self._variants = []
+        self._sources = []
+        super().__init__(**kwargs)
+
+    @property
+    def variants(self):
+        for variant in self._variants:
+            variant._include_status = self._include_status
+        return self._variants
+
+    @variants.setter
+    def variants(self, value):
+        self._variants = value
+
+    @property
+    def sources(self):
+        return self._sources
+
+    @sources.setter
+    def sources(self, value):
+        self._sources = value
+
+
+class Fusion(CivicRecord):
+    _SIMPLE_FIELDS = CivicRecord._SIMPLE_FIELDS.union(
+        {'description', 'name', 'five_prime_partner_status', 'three_prime_partner_status', 'five_prime_gene_id', 'three_prime_gene_id'})
+    _COMPLEX_FIELDS = CivicRecord._COMPLEX_FIELDS.union({
+        'aliases',
+        # 'errors',                 # TODO: Add support for these fields in advanced search endpoint
+        # /'lifecycle_actions',
+        # 'provisional_values',
+        'sources',
+        'variants',
+    })
+
+    def __init__(self, **kwargs):
+        self._variants = []
+        self._sources = []
+        super().__init__(**kwargs)
+
+    @property
+    def variants(self):
+        for variant in self._variants:
+            variant._include_status = self._include_status
+        return self._variants
+
+    @variants.setter
+    def variants(self, value):
+        self._variants = value
+
+    @property
+    def sources(self):
+        return self._sources
+
+    @sources.setter
+    def sources(self, value):
+        self._sources = value
+
+    @property
+    def five_prime_gene(self):
+        if self.five_prime_gene_id:
+            return get_gene_by_id(self.five_prime_gene_id)
+        else:
+            return None
+
+    @property
+    def three_prime_gene(self):
+        if self.three_prime_gene_id:
+            return get_gene_by_id(self.three_prime_gene_id)
+        else:
+            return None
 
 
 class Evidence(CivicRecord):
@@ -981,7 +1089,6 @@ class Assertion(CivicRecord):
 
 
 class User(CivicRecord):
-
     _SIMPLE_FIELDS = CivicRecord._SIMPLE_FIELDS.union({
         'name',
         'username',
@@ -1124,6 +1231,26 @@ class Source(CivicAttribute):
         return "{} ({} {})".format(self.citation, self.source_type, self.citation_id)
 
 
+class Coordinates(CivicAttribute):
+    _SIMPLE_FIELDS = CivicAttribute._SIMPLE_FIELDS.union({
+         'chromosome',
+         'start',
+         'stop',
+         'reference_bases',
+         'variant_bases',
+         'ensembl_version',
+         'representative_transcript',
+         'reference_build',
+    })
+
+    def __init__(self, **kwargs):
+        if self.reference_bases in ['', '-']:
+            self.reference_bases = None
+        if self.variant_bases in ['', '-']:
+            self.variant_bases = None
+        super().__init__(**kwargs)
+
+
 class Country(CivicAttribute):
     _SIMPLE_FIELDS = CivicRecord._SIMPLE_FIELDS.union({'iso', 'name'})
 
@@ -1196,27 +1323,30 @@ def _get_elements_by_ids(element, id_list=[], allow_cached=True, get_all=False):
         if not get_all:
             cached = [get_cached(element, element_id) for element_id in id_list]
             if all(cached):
-                logging.info('Loading {} from cache'.format(pluralize(element)))
+                logging.info('Loading {} from cache'.format(utils.pluralize(element)))
                 return cached
         else:
-            cached = [get_cached(element, element_id) for element_id in CACHE['{}_all_ids'.format(pluralize(element))]]
-            logging.info('Loading {} from cache'.format(pluralize(element)))
+            cached = [get_cached(element, element_id) for element_id in CACHE['{}_all_ids'.format(utils.pluralize(element))]]
+            logging.info('Loading {} from cache'.format(utils.pluralize(element)))
             return cached
     if id_list and get_all:
         raise ValueError('Please pass list of ids or use the get_all flag, not both.')
     if get_all:
-        logging.warning('Getting all {}. This may take a couple of minutes...'.format(pluralize(element)))
+        logging.warning('Getting all {}. This may take a couple of minutes...'.format(utils.pluralize(element)))
         response_elements = _request_all(element)
     else:
         response_elements = _request_by_ids(element, id_list)
 
+    elements = []
+    ids = []
     for e in response_elements:
         e = _postprocess_response_element(e, element)
+        cls = get_class(e['type'])
+        partial_element = cls(**e, partial=True)
+        ids.append(e['id'])
+        elements.append(partial_element)
 
-    cls = get_class(element)
-    elements = [cls(**x, partial=True) for x in response_elements]
-    cache = [x['id'] for x in response_elements]
-    CACHE['{}_all_ids'.format(pluralize(element))] = cache
+    CACHE['{}_all_ids'.format(utils.pluralize(element))] = ids
     return elements
 
 
@@ -1232,33 +1362,40 @@ def _postprocess_response_element(e, element):
         e['molecular_profile_id'] = e['molecular_profile']['id']
         e['assertion_ids'] = [a['id'] for a in e['assertions']]
         e['status'] = e['status'].lower()
-    elif element == 'variant':
-        e['gene_id'] = e['gene']['id']
-        e['entrez_name'] = e['gene']['name']
-        #TODO: handle other types of Variants
-        if e['__typename'] != 'GeneVariant':
-            raise Exception("Variant type {} not supported yet".format(e['__typename']))
-        e['entrez_id'] = e['gene']['featureInstance']['entrezId']
-        build = e['coordinates']['referenceBuild']
-        if build == 'GRCH37':
-            build = 'GRCh37'
-        elif build == 'GRCH38':
-            build = 'GRCh38'
-        e['coordinates'] = {
-            'ensembl_version': e['coordinates']['ensemblVersion'],
-            'reference_build': build,
-            'reference_bases': e['coordinates']['referenceBases'],
-            'variant_bases': e['coordinates']['variantBases'],
-            'representative_transcript': e['coordinates']['representativeTranscript'],
-            'chromosome': e['coordinates']['chromosome'],
-            'start': e['coordinates']['start'],
-            'stop': e['coordinates']['stop'],
-        }
-    elif element == 'variant_group':
-        e['variant_ids'] = [v['id'] for v in e['variants']['nodes']]
-        del e['variants']
+    elif element == 'fusion':
+        if e['threePrimeGene']:
+            e['three_prime_gene_id'] = e['threePrimeGene']['id']
+        else:
+            e['three_prime_gene_id'] = None
+        if e['fivePrimeGene']:
+            e['five_prime_gene_id'] = e['fivePrimeGene']['id']
+        else:
+            e['five_prime_gene_id'] = None
     elif element == 'molecular_profile':
         e['variant_ids'] = [v['id'] for v in e['variants']]
+        del e['variants']
+    elif element == 'variant':
+        e['type'] = e['__typename']
+        e['feature_id'] = e['feature']['id']
+        if e['__typename'] == 'GeneVariant':
+            e['entrez_id'] = e['feature']['featureInstance']['entrezId']
+            e['entrez_name'] = e['feature']['name']
+            build = e['coordinates']['reference_build']
+            if build == 'GRCH37':
+                build = 'GRCh37'
+            elif build == 'GRCH38':
+                build = 'GRCh38'
+            e['coordinates']['reference_build'] = build
+        elif e['__typename'] == 'FactorVariant':
+            #nothing special to handle
+            pass
+        elif e['__typename'] == 'FusionVariant':
+            #nothing special to handle
+            pass
+        else:
+            raise Exception("Variant type {} not supported yet".format(e['__typename']))
+    elif element == 'variant_group':
+        e['variant_ids'] = [v['id'] for v in e['variants']['nodes']]
         del e['variants']
     return e
 
@@ -1269,12 +1406,14 @@ def _get_element_by_id(element, id, allow_cached=True):
 
 def _request_by_ids(element, ids):
     payload_methods = {
-        'evidence': _construct_get_evidence_payload,
-        'gene': _construct_get_gene_payload,
-        'variant': _construct_get_variant_payload,
-        'assertion': _construct_get_assertion_payload,
-        'variant_group': _construct_get_variant_group_payload,
-        'molecular_profile': _construct_get_molecular_profile_payload,
+        'evidence': graphql_payloads._construct_get_evidence_payload,
+        'gene': graphql_payloads._construct_get_gene_payload,
+        'factor': graphql_payloads._construct_get_factor_payload,
+        'fusion': graphql_payloads._construct_get_fusion_payload,
+        'variant': graphql_payloads._construct_get_variant_payload,
+        'assertion': graphql_payloads._construct_get_assertion_payload,
+        'variant_group': graphql_payloads._construct_get_variant_group_payload,
+        'molecular_profile': graphql_payloads._construct_get_molecular_profile_payload,
     }
     payload_method = payload_methods[element]
     payload = payload_method()
@@ -1290,12 +1429,14 @@ def _request_by_ids(element, ids):
 
 def _request_all(element):
     payload_methods = {
-        'evidence': _construct_get_all_evidence_payload,
-        'gene': _construct_get_all_genes_payload,
-        'variant': _construct_get_all_variants_payload,
-        'assertion': _construct_get_all_assertions_payload,
-        'variant_group': _construct_get_all_variant_groups_payload,
-        'molecular_profile': _construct_get_all_molecular_profiles_payload,
+        'evidence': graphql_payloads._construct_get_all_evidence_payload,
+        'gene': graphql_payloads._construct_get_all_genes_payload,
+        'factor': graphql_payloads._construct_get_all_factors_payload,
+        'fusion': graphql_payloads._construct_get_all_fusions_payload,
+        'variant': graphql_payloads._construct_get_all_variants_payload,
+        'assertion': graphql_payloads._construct_get_all_assertions_payload,
+        'variant_group': graphql_payloads._construct_get_all_variant_groups_payload,
+        'molecular_profile': graphql_payloads._construct_get_all_molecular_profiles_payload,
     }
     payload_method = payload_methods[element]
     payload = payload_method()
@@ -1315,667 +1456,12 @@ def _request_all(element):
         }
         resp = requests.post(API_URL, json={'query': payload, 'variables': variables}, timeout=(10,200))
         resp.raise_for_status()
-        response = resp.json()['data'][pluralize(element)]
+        response = resp.json()['data'][utils.pluralize(element)]
         response_elements.extend(response['nodes'])
         has_next_page = response['pageInfo']['hasNextPage']
         after_cursor = response['pageInfo']['endCursor']
 
     return response_elements
-
-
-
-def _construct_get_gene_payload():
-    return """
-        query gene($id: Int!) {
-            gene(id: $id) {
-                id
-                name
-                description
-                entrez_id: entrezId
-                aliases: featureAliases
-                sources {
-                    id
-                    name
-                    title
-                    citation
-                    citation_id: citationId
-                    source_type: sourceType
-                    abstract
-                    asco_abstract_id: ascoAbstractId
-                    author_string: authorString
-                    full_journal_title: fullJournalTitle
-                    journal
-                    pmc_id: pmcId
-                    publication_date: publicationDate
-                    source_url: sourceUrl
-                    clinical_trials: clinicalTrials {
-                        id
-                        name
-                        description
-                        nctId
-                        url
-                    }
-                }
-            }
-        }"""
-
-
-def _construct_get_all_genes_payload():
-    return """
-        query genes($after: String) {
-            genes(after: $after) {
-              totalCount
-              pageInfo {
-                hasNextPage
-                endCursor
-              }
-              nodes {
-                id
-                name
-                description
-                entrez_id: entrezId
-                aliases: featureAliases
-                sources {
-                    id
-                    name
-                    title
-                    citation
-                    citation_id: citationId
-                    source_type: sourceType
-                    abstract
-                    asco_abstract_id: ascoAbstractId
-                    author_string: authorString
-                    full_journal_title: fullJournalTitle
-                    journal
-                    pmc_id: pmcId
-                    publication_date: publicationDate
-                    source_url: sourceUrl
-                    clinical_trials: clinicalTrials {
-                        id
-                        name
-                        description
-                        nctId
-                        url
-                    }
-                }
-              }
-            }
-        }"""
-
-
-def _construct_get_molecular_profile_payload():
-    return """
-        query molecularProfile($id: Int!) {
-            molecular_profile: molecularProfile(id: $id) {
-                id
-                description
-                molecular_profile_score: molecularProfileScore
-                name
-                variants {
-                  id
-                }
-                aliases: molecularProfileAliases
-                parsed_name: parsedName {
-                    type: __typename
-                    ... on MolecularProfileTextSegment {
-                        text
-                    }
-                    ... on Feature {
-                        id
-                        name
-                    }
-                    ... on Variant {
-                        id
-                        name
-                        deprecated
-                    }
-                }
-                sources {
-                    id
-                    name
-                    title
-                    citation
-                    citation_id: citationId
-                    source_type: sourceType
-                    abstract
-                    asco_abstract_id: ascoAbstractId
-                    author_string: authorString
-                    full_journal_title: fullJournalTitle
-                    journal
-                    pmc_id: pmcId
-                    publication_date: publicationDate
-                    source_url: sourceUrl
-                    clinical_trials: clinicalTrials {
-                        id
-                        name
-                        description
-                        nctId
-                        url
-                    }
-                }
-            }
-        }"""
-
-
-
-def _construct_get_all_molecular_profiles_payload():
-    return """
-        query molecularProfiles($after: String) {
-            molecular_profiles: molecularProfiles(after: $after, evidenceStatusFilter: ALL) {
-              totalCount
-              pageInfo {
-                hasNextPage
-                endCursor
-              }
-              nodes {
-                id
-                description
-                molecular_profile_score: molecularProfileScore
-                name
-                variants {
-                  id
-                }
-                aliases: molecularProfileAliases
-                parsed_name: parsedName {
-                    type: __typename
-                    ... on MolecularProfileTextSegment {
-                        text
-                    }
-                    ... on Feature {
-                        id
-                        name
-                    }
-                    ... on Variant {
-                        id
-                        name
-                        deprecated
-                    }
-                }
-                sources {
-                    id
-                    name
-                    title
-                    citation
-                    citation_id: citationId
-                    source_type: sourceType
-                    abstract
-                    asco_abstract_id: ascoAbstractId
-                    author_string: authorString
-                    full_journal_title: fullJournalTitle
-                    journal
-                    pmc_id: pmcId
-                    publication_date: publicationDate
-                    source_url: sourceUrl
-                    clinical_trials: clinicalTrials {
-                        id
-                        name
-                        description
-                        nctId
-                        url
-                    }
-                }
-              }
-            }
-        }"""
-
-def _construct_get_variant_payload():
-    return """
-        query variant($id: Int!) {
-            variant(id: $id) {
-                __typename
-                id
-                name
-                ... on GeneVariant {
-                    allele_registry_id: alleleRegistryId
-                    clinvar_entries: clinvarIds
-                    hgvs_expressions: hgvsDescriptions
-                    coordinates {
-                        referenceBuild
-                        ensemblVersion
-                        chromosome
-                        representativeTranscript
-                        start
-                        stop
-                        referenceBases
-                        variantBases
-                        coordinateType
-                    }
-                }
-                gene: feature {
-                    id
-                    name
-                    featureInstance {
-                        ... on Gene {
-                            entrezId
-                        }
-                    }
-                }
-                single_variant_molecular_profile_id: singleVariantMolecularProfileId
-                variant_aliases: variantAliases
-                variant_types: variantTypes {
-                    id
-                    name
-                    so_id: soid
-                    description
-                    url
-                }
-            }
-        }"""
-
-
-def _construct_get_all_variants_payload():
-    return """
-        query variants($after: String) {
-            variants(after: $after, category: GENE) {
-                totalCount
-                pageInfo {
-                  hasNextPage
-                  endCursor
-                }
-                nodes {
-                    __typename
-                    id
-                    name
-                    ... on GeneVariant {
-                        allele_registry_id: alleleRegistryId
-                        clinvar_entries: clinvarIds
-                        hgvs_expressions: hgvsDescriptions
-                        coordinates {
-                            referenceBuild
-                            ensemblVersion
-                            chromosome
-                            representativeTranscript
-                            start
-                            stop
-                            referenceBases
-                            variantBases
-                            coordinateType
-                        }
-                    }
-                    gene: feature {
-                        id
-                        name
-                        featureInstance {
-                            ... on Gene {
-                                entrezId
-                            }
-                        }
-                    }
-                    single_variant_molecular_profile_id: singleVariantMolecularProfileId
-                    variant_aliases: variantAliases
-                    variant_types: variantTypes {
-                        id
-                        name
-                        so_id: soid
-                        description
-                        url
-                    }
-                }
-            }
-        }"""
-
-def _construct_get_evidence_payload():
-    return """
-        query evidenceItem($id: Int!) {
-            evidence: evidenceItem(id: $id) {
-                id
-                name
-                significance
-                description
-                therapy_interaction_type: therapyInteractionType
-                evidence_direction: evidenceDirection
-                evidence_level: evidenceLevel
-                evidence_type: evidenceType
-                status
-                variant_origin: variantOrigin
-                molecular_profile: molecularProfile {
-                  id
-                }
-                disease {
-                  id
-                  name
-                  display_name: displayName
-                  doid
-                  disease_url: diseaseUrl
-                  aliases: diseaseAliases
-                }
-                therapies {
-                  id
-                  name
-                  ncit_id: ncitId
-                  therapy_url: therapyUrl
-                  aliases: therapyAliases
-                }
-                phenotypes {
-                  id
-                  name
-                  hpo_id: hpoId
-                  url
-                }
-                assertions {
-                  id
-                }
-                source {
-                    id
-                    name
-                    title
-                    citation
-                    citation_id: citationId
-                    source_type: sourceType
-                    abstract
-                    asco_abstract_id: ascoAbstractId
-                    author_string: authorString
-                    full_journal_title: fullJournalTitle
-                    journal
-                    pmc_id: pmcId
-                    publication_date: publicationDate
-                    source_url: sourceUrl
-                    clinical_trials: clinicalTrials {
-                        id
-                        name
-                        description
-                        nctId
-                        url
-                    }
-                }
-                rating: evidenceRating
-            }
-        }"""
-
-
-
-def _construct_get_all_evidence_payload():
-    return """
-        query evidenceItems($after: String) {
-            evidence_items: evidenceItems(after: $after, status: ALL) {
-                totalCount
-                pageInfo {
-                  hasNextPage
-                  endCursor
-                }
-                nodes {
-                    id
-                    name
-                    significance
-                    description
-                    therapy_interaction_type: therapyInteractionType
-                    evidence_direction: evidenceDirection
-                    evidence_level: evidenceLevel
-                    evidence_type: evidenceType
-                    status
-                    variant_origin: variantOrigin
-                    molecular_profile: molecularProfile {
-                      id
-                    }
-                    disease {
-                      id
-                      name
-                      display_name: displayName
-                      doid
-                      disease_url: diseaseUrl
-                      aliases: diseaseAliases
-                    }
-                    therapies {
-                      id
-                      name
-                      ncit_id: ncitId
-                      therapy_url: therapyUrl
-                      aliases: therapyAliases
-                    }
-                    phenotypes {
-                      id
-                      name
-                      hpo_id: hpoId
-                      url
-                    }
-                    assertions {
-                      id
-                    }
-                    source {
-                        id
-                        name
-                        title
-                        citation
-                        citation_id: citationId
-                        source_type: sourceType
-                        abstract
-                        asco_abstract_id: ascoAbstractId
-                        author_string: authorString
-                        full_journal_title: fullJournalTitle
-                        journal
-                        pmc_id: pmcId
-                        publication_date: publicationDate
-                        source_url: sourceUrl
-                        clinical_trials: clinicalTrials {
-                            id
-                            name
-                            description
-                            nctId
-                            url
-                        }
-                    }
-                    rating: evidenceRating
-                }
-            }
-        }"""
-
-
-
-def _construct_get_assertion_payload():
-    return """
-        query assertion($id: Int!) {
-            assertion(id: $id) {
-                id
-                name
-                amp_level: ampLevel
-                significance
-                description
-                therapy_interaction_type: therapyInteractionType
-                assertion_direction: assertionDirection
-                assertion_type: assertionType
-                fda_companion_test: fdaCompanionTest
-                fda_regulatory_approval: regulatoryApproval
-                name
-                nccn_guideline: nccnGuideline {
-                  name
-                }
-                nccn_guideline_version: nccnGuidelineVersion
-                status
-                summary
-                variant_origin: variantOrigin
-                molecular_profile: molecularProfile {
-                  id
-                }
-                acmg_codes: acmgCodes {
-                  id
-                  code
-                  description
-                }
-                clingen_codes: clingenCodes {
-                    id
-                    code
-                    description
-                }
-                disease {
-                  id
-                  name
-                  display_name: displayName
-                  doid
-                  disease_url: diseaseUrl
-                  aliases: diseaseAliases
-                }
-                therapies {
-                  id
-                  name
-                  ncit_id: ncitId
-                  therapy_url: therapyUrl
-                  aliases: therapyAliases
-                }
-                evidenceItems {
-                  id
-                }
-                phenotypes {
-                  id
-                  name
-                  hpo_id: hpoId
-                  url
-                }
-            }
-        }"""
-
-
-def _construct_get_all_assertions_payload():
-    return """
-        query assertions($after: String) {
-            assertions(after: $after, status: ALL) {
-                totalCount
-                pageInfo {
-                  hasNextPage
-                  endCursor
-                }
-                nodes {
-                    id
-                    name
-                    amp_level: ampLevel
-                    significance
-                    description
-                    therapy_interaction_type: therapyInteractionType
-                    assertion_direction: assertionDirection
-                    assertion_type: assertionType
-                    fda_companion_test: fdaCompanionTest
-                    fda_regulatory_approval: regulatoryApproval
-                    name
-                    nccn_guideline: nccnGuideline {
-                      name
-                    }
-                    nccn_guideline_version: nccnGuidelineVersion
-                    status
-                    summary
-                    variant_origin: variantOrigin
-                    molecular_profile: molecularProfile {
-                      id
-                    }
-                    acmg_codes: acmgCodes {
-                      id
-                      code
-                      description
-                    }
-                    clingen_codes: clingenCodes {
-                        id
-                        code
-                        description
-                    }
-                    disease {
-                      id
-                      name
-                      display_name: displayName
-                      doid
-                      disease_url: diseaseUrl
-                      aliases: diseaseAliases
-                    }
-                    therapies {
-                      id
-                      name
-                      ncit_id: ncitId
-                      therapy_url: therapyUrl
-                      aliases: therapyAliases
-                    }
-                    evidenceItems {
-                      id
-                    }
-                    phenotypes {
-                      id
-                      name
-                      hpo_id: hpoId
-                      url
-                    }
-                }
-            }
-        }"""
-
-
-def _construct_get_variant_group_payload():
-    return """
-        query variantGroup($id: Int!) {
-            variant_group: variantGroup(id: $id) {
-                id
-                name
-                description
-                variants(first: 100) {
-                  nodes {
-                    id
-                  }
-                }
-                sources {
-                    id
-                    name
-                    title
-                    citation
-                    citation_id: citationId
-                    source_type: sourceType
-                    abstract
-                    asco_abstract_id: ascoAbstractId
-                    author_string: authorString
-                    full_journal_title: fullJournalTitle
-                    journal
-                    pmc_id: pmcId
-                    publication_date: publicationDate
-                    source_url: sourceUrl
-                    clinical_trials: clinicalTrials {
-                        id
-                        name
-                        description
-                        nctId
-                        url
-                    }
-                }
-            }
-        }"""
-
-def _construct_get_all_variant_groups_payload():
-    return """
-        query variantGroups($after: String) {
-            variant_groups: variantGroups(after: $after) {
-              totalCount
-              pageInfo {
-                hasNextPage
-                endCursor
-              }
-              nodes {
-                id
-                name
-                description
-                variants(first: 100) {
-                  nodes {
-                    id
-                  }
-                }
-                sources {
-                    id
-                    name
-                    title
-                    citation
-                    citation_id: citationId
-                    source_type: sourceType
-                    abstract
-                    asco_abstract_id: ascoAbstractId
-                    author_string: authorString
-                    full_journal_title: fullJournalTitle
-                    journal
-                    pmc_id: pmcId
-                    publication_date: publicationDate
-                    source_url: sourceUrl
-                    clinical_trials: clinicalTrials {
-                        id
-                        name
-                        description
-                        nctId
-                        url
-                    }
-                }
-              }
-            }
-        }"""
 
 
 def get_evidence_by_ids(evidence_id_list):
@@ -2043,12 +1529,25 @@ def get_variants_by_ids(variant_id_list):
     logging.info('Getting variants...')
     variants = _get_elements_by_ids('variant', variant_id_list)
     gene_ids = set()
+    factor_ids = set()
+    fusion_ids = set()
     for variant in variants:
-        gene_ids.add(variant.gene_id)
+        if isinstance(variant, GeneVariant):
+            gene_ids.add(variant.feature_id)
+        elif isinstance(variant, FactorVariant):
+            factor_ids.add(variant.feature_id)
+        elif isinstance(variant, FusionVariant):
+            fusion_ids.add(variant.feature_id)
         variant._include_status = ['accepted', 'submitted', 'rejected']
     if gene_ids:
         logging.info('Caching gene details...')
         _get_elements_by_ids('gene', gene_ids)
+    if factor_ids:
+        logging.info('Caching factor details...')
+        _get_elements_by_ids('factor', factor_ids)
+    if fusion_ids:
+        logging.info('Caching fusion details...')
+        _get_elements_by_ids('fusion', fusion_ids)
     return variants
 
 
@@ -2071,21 +1570,38 @@ def get_variant_group_by_id(variant_group_id):
 def _build_coordinate_table(variants):
     variant_records = list()
     for v in variants:
-        c = v.coordinates
-        start = getattr(c, 'start', None)
-        stop = getattr(c, 'stop', None)
-        chr = getattr(c, 'chromosome', None)
-        alt = getattr(c, 'variant_bases', None)
-        ref = getattr(c, 'reference_bases', None)
-        if all([start, stop, chr]):
-            variant_records.append([chr, start, stop, alt, ref, hash(v)])
-        else:
-            continue
-        #start = getattr(c, 'start2', None)
-        #stop = getattr(c, 'stop2', None)
-        #chr = getattr(c, 'chromosome2', None)
-        #if all([start, stop, chr]):
-        #    variant_records.append([chr, start, stop, None, None, hash(v)])
+        if isinstance(v, GeneVariant):
+            c = v.coordinates
+            start = getattr(c, 'start', None)
+            stop = getattr(c, 'stop', None)
+            chr = getattr(c, 'chromosome', None)
+            alt = getattr(c, 'variant_bases', None)
+            ref = getattr(c, 'reference_bases', None)
+            if all([start, stop, chr]):
+                variant_records.append([chr, start, stop, alt, ref, hash(v)])
+            else:
+                continue
+        if isinstance(v, FusionVariant):
+            c = v.five_prime_coordinates
+            start = getattr(c, 'start', None)
+            stop = getattr(c, 'stop', None)
+            chr = getattr(c, 'chromosome', None)
+            alt = getattr(c, 'variant_bases', None)
+            ref = getattr(c, 'reference_bases', None)
+            if all([start, stop, chr]):
+                variant_records.append([chr, start, stop, alt, ref, hash(v)])
+            else:
+                continue
+            c = v.three_prime_coordinates
+            start = getattr(c, 'start', None)
+            stop = getattr(c, 'stop', None)
+            chr = getattr(c, 'chromosome', None)
+            alt = getattr(c, 'variant_bases', None)
+            ref = getattr(c, 'reference_bases', None)
+            if all([start, stop, chr]):
+                variant_records.append([chr, start, stop, alt, ref, hash(v)])
+            else:
+                continue
     df = pd.DataFrame.from_records(
         variant_records,
         columns=['chr', 'start', 'stop', 'alt', 'ref', 'v_hash']
@@ -2125,6 +1641,21 @@ def get_all_variants(include_status=['accepted', 'submitted', 'rejected'], allow
         return variants
 
 
+def get_all_gene_variants(include_status=['accepted', 'submitted', 'rejected'], allow_cached=True):
+    variants = get_all_variants(include_status=['accepted', 'submitted', 'rejected'], allow_cached=True)
+    return [v for v in variants if isinstance(v, GeneVariant)]
+
+
+def get_all_fusion_variants(include_status=['accepted', 'submitted', 'rejected'], allow_cached=True):
+    variants = get_all_variants(include_status=['accepted', 'submitted', 'rejected'], allow_cached=True)
+    return [v for v in variants if isinstance(v, GeneVariant)]
+
+
+def get_all_factor_variants(include_status=['accepted', 'submitted', 'rejected'], allow_cached=True):
+    variants = get_all_variants(include_status=['accepted', 'submitted', 'rejected'], allow_cached=True)
+    return [v for v in variants if isinstance(v, GeneVariant)]
+
+
 def get_all_variant_groups(allow_cached=True):
     variant_groups = _get_elements_by_ids('variant_group', allow_cached=allow_cached, get_all=True)
     return variant_groups
@@ -2161,12 +1692,12 @@ def search_variants_by_hgvs(hgvs):
 
 def search_variants_by_attribute(attribute, value):
     variants = get_all_variants()
-    return [v for v in variants if getattr(v, attribute) == value]
+    return [v for v in variants if hasattr(v, attribute) and getattr(v, attribute) == value]
 
 def search_variants_by_list_field(field, value):
     variants = get_all_variants()
     matched_variants = []
-    return [v for v in variants if value in getattr(v, field)]
+    return [v for v in variants if hasattr(v, field) and value in getattr(v, field)]
 
 def search_variants_by_coordinates(coordinate_query, search_mode='any'):
     """
@@ -2475,7 +2006,7 @@ def get_genes_by_ids(gene_id_list):
     :returns: A list of :class:`Gene` objects.
     """
     logging.info('Getting genes...')
-    genes = _get_elements_by_ids('gene', gene_id_list)  # Advanced search results are incomplete
+    genes = _get_elements_by_ids('gene', gene_id_list)
     variant_ids = set()
     for gene in genes:
         gene._include_status = ['accepted', 'submitted', 'rejected']
@@ -2518,6 +2049,108 @@ def get_all_genes(include_status=['accepted','submitted','rejected'], allow_cach
         return resp
     else:
         return genes
+
+
+def get_fusions_by_ids(fusion_id_list):
+    """
+    :param list fusion_id_list: A list of CIViC fusion IDs to query against to cache and (as needed) CIViC.
+    :returns: A list of :class:`Fusion` objects.
+    """
+    logging.info('Getting fusions...')
+    fusions = _get_elements_by_ids('fusion', fusion_id_list)
+    variant_ids = set()
+    for fusion in fusions:
+        fusion._include_status = ['accepted', 'submitted', 'rejected']
+        for variant in fusion.variants:
+            variant_ids.add(variant.id)
+    if variant_ids:
+        logging.info('Caching variant details...')
+        _get_elements_by_ids('variant', variant_ids)
+    for fusion in fusions:
+        for variant in fusion.variants:
+            variant.update()
+    return fusions
+
+
+def get_fusion_by_id(fusion_id):
+    """
+    :param int fusion_id: A single CIViC fusion ID.
+    :returns: A :class:`Fusion` object.
+    """
+    return get_fusions_by_ids([fusion_id])[0]
+
+
+def get_all_fusions(include_status=['accepted','submitted','rejected'], allow_cached=True):
+    """
+    Queries CIViC for all fusions.
+
+    :param list include_status: A list of statuses. Only fusions and their associated entities matching the given statuses will be returned.
+    :param bool allow_cached: Indicates whether or not object retrieval from CACHE is allowed. If **False** it will query the CIViC database directly.
+    :returns: A list of :class:`Gene` objects.
+    """
+    fusions = _get_elements_by_ids('fusion', get_all=True, allow_cached=allow_cached)
+    if include_status:
+        assert CACHE.get('variants_all_ids', False)
+        assert CACHE.get('evidence_items_all_ids', False)
+        resp = list()
+        for f in fusions:
+            f._include_status = include_status
+            if f.variants:
+                resp.append(f)
+        return resp
+    else:
+        return fusions
+
+
+def get_factors_by_ids(factor_id_list):
+    """
+    :param list factor_id_list: A list of CIViC factor IDs to query against to cache and (as needed) CIViC.
+    :returns: A list of :class:`Factor` objects.
+    """
+    logging.info('Getting factors...')
+    factors = _get_elements_by_ids('factor', factor_id_list)
+    variant_ids = set()
+    for factor in factors:
+        factor._include_status = ['accepted', 'submitted', 'rejected']
+        for variant in factor.variants:
+            variant_ids.add(variant.id)
+    if variant_ids:
+        logging.info('Caching variant details...')
+        _get_elements_by_ids('variant', variant_ids)
+    for factor in factors:
+        for variant in factor.variants:
+            variant.update()
+    return factors
+
+
+def get_factor_by_id(factor_id):
+    """
+    :param int factor_id: A single CIViC factor ID.
+    :returns: A :class:`Factor` object.
+    """
+    return get_factors_by_ids([factor_id])[0]
+
+
+def get_all_factors(include_status=['accepted','submitted','rejected'], allow_cached=True):
+    """
+    Queries CIViC for all factors.
+
+    :param list include_status: A list of statuses. Only factors and their associated entities matching the given statuses will be returned.
+    :param bool allow_cached: Indicates whether or not object retrieval from CACHE is allowed. If **False** it will query the CIViC database directly.
+    :returns: A list of :class:`Gene` objects.
+    """
+    factors = _get_elements_by_ids('factor', get_all=True, allow_cached=allow_cached)
+    if include_status:
+        assert CACHE.get('variants_all_ids', False)
+        assert CACHE.get('evidence_items_all_ids', False)
+        resp = list()
+        for f in factors:
+            f._include_status = include_status
+            if f.variants:
+                resp.append(f)
+        return resp
+    else:
+        return factors
 
 
 def get_all_evidence(include_status=['accepted','submitted','rejected'], allow_cached=True):
