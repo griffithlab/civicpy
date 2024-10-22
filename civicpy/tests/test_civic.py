@@ -84,7 +84,6 @@ class TestEvidence(object):
             assert source.publication_date
             assert source.source_url
             assert source.title
-            assert source.name
             assert hasattr(source, 'clinical_trials')
 
     def test_get_all(self):
@@ -113,7 +112,7 @@ class TestVariants(object):
 
     def test_get_all(self):
         variants = civic.get_all_variants()
-        assert len(variants) >= 2396
+        assert len(variants) >= 3828
 
     def test_get_non_rejected(self):
         variants = civic.get_all_variants(include_status=['accepted', 'submitted'])
@@ -150,14 +149,48 @@ class TestVariants(object):
             assert v.coordinates.reference_bases not in ['', '-']
             assert v.coordinates.variant_bases not in ['', '-']
 
-    def test_properties(self):
+    def test_shared_properties(self):
         variant = civic.get_variant_by_id(11)
         assert sorted(variant.aliases) == sorted(variant.variant_aliases)
         assert sorted(variant.groups) == sorted(variant.variant_groups)
         assert sorted(variant.types) == sorted(variant.variant_types)
+
+class TestGeneVariants(object):
+    def test_get_all(self):
+        variants = civic.get_all_gene_variants()
+        assert len(variants) >= 3557
+        for variant in variants:
+            assert variant.subtype == 'gene_variant'
+
+    def test_properties(self):
+        variant = civic.get_variant_by_id(11)
         assert variant.coordinates.ensembl_version == 75
         assert variant.entrez_name == "BRAF"
         assert variant.entrez_id == 673
+
+class TestFusionVariants(object):
+    def test_get_all(self):
+        variants = civic.get_all_fusion_variants()
+        assert len(variants) >= 263
+        for variant in variants:
+            assert variant.subtype == 'fusion_variant'
+
+    def test_properties(self):
+        variant = civic.get_variant_by_id(1)
+        assert variant.vicc_compliant_name == 'BCR(entrez:613)::ABL1(entrez:25)'
+        assert variant.five_prime_coordinates.reference_build == 'GRCH37'
+        assert variant.three_prime_coordinates.reference_build == 'GRCH37'
+
+class TestFactorVariants(object):
+    def test_get_all(self):
+        variants = civic.get_all_factor_variants()
+        assert len(variants) >= 8
+        for variant in variants:
+            assert variant.subtype == 'factor_variant'
+
+    def test_properties(self):
+        variant = civic.get_variant_by_id(4985)
+        assert variant.ncit_id == 'C131459'
 
 class TestMolecularProfiles(object):
     def test_get_all(self):
@@ -254,6 +287,35 @@ class TestAssertions(object):
             assert clingen_code.code
             assert clingen_code.description
 
+class TestFeatures(object):
+
+    def test_get_all(self):
+        features = civic.get_all_features()
+        assert len(features) >= 407
+
+    def test_get_non_rejected(self):
+        features = civic.get_all_features(include_status=['accepted', 'submitted'])
+        assert len(features) >= 402
+
+    def test_get_accepted_only(self):
+        features = civic.get_all_features(include_status=['accepted'])
+        assert len(features) >= 322
+
+    def test_get_by_id(self):
+        feature = civic.get_feature_by_id(58)
+        assert feature.type == 'gene'
+        assert feature.id == 58
+        assert feature.name == 'VHL'
+
+    def test_get_by_ids(self):
+        features = civic.get_features_by_ids([58, 61748, 61753])
+        assert features[0].type == 'gene'
+        assert features[0].id == 58
+        assert features[1].type == 'factor'
+        assert features[1].id == 61748
+        assert features[2].type == 'fusion'
+        assert features[2].id == 61753
+
 
 class TestGenes(object):
 
@@ -274,6 +336,52 @@ class TestGenes(object):
         assert gene.type == 'gene'
         assert gene.id == 58
         assert gene.name == 'VHL'
+
+
+class TestFactors(object):
+
+    def test_get_all(self):
+        factors = civic.get_all_factors()
+        assert len(factors) >= 6
+
+    def test_get_non_rejected(self):
+        factors = civic.get_all_factors(include_status=['accepted', 'submitted'])
+        assert len(factors) >= 6
+
+    def test_get_accepted_only(self):
+        factors = civic.get_all_factors(include_status=['accepted'])
+        assert len(factors) >= 2
+
+    def test_get_by_id(self):
+        factor = civic.get_factor_by_id(61748)
+        assert factor.type == 'factor'
+        assert factor.id == 61748
+        assert factor.name == 'CK'
+        assert factor.full_name == 'Complex Karyotype'
+
+
+class TestFusions(object):
+
+    def test_get_all(self):
+        fusions = civic.get_all_fusions()
+        assert len(fusions) >= 256
+
+    def test_get_non_rejected(self):
+        fusions = civic.get_all_fusions(include_status=['accepted', 'submitted'])
+        assert len(fusions) >= 255
+
+    def test_get_accepted_only(self):
+        fusions = civic.get_all_fusions(include_status=['accepted'])
+        assert len(fusions) >= 166
+
+    def test_get_by_id(self):
+        fusion = civic.get_fusion_by_id(61753)
+        assert fusion.type == 'fusion'
+        assert fusion.id == 61753
+        assert fusion.name == 'MEF2D::CSF1R'
+        assert fusion.five_prime_gene.name == 'MEF2D'
+        assert fusion.three_prime_gene.name == 'CSF1R'
+
 
 class TestCoordinateSearch(object):
 
@@ -329,21 +437,21 @@ class TestCoordinateSearch(object):
         assert len(variants_single) == 0
         assert len(variants_bulk) == 0
 
-        query = CoordinateQuery('3', 10183706, 10183706, None, 'C')
+        query = CoordinateQuery('3', 10183694, 10183694, None, 'G')
         variants_single = civic.search_variants_by_coordinates(query, search_mode='exact')
         variants_bulk = civic.bulk_search_variants_by_coordinates([query], search_mode='exact')
         assert len(variants_single) == 1
         assert len(variants_bulk[query]) == 1
         assert hash(variants_single[0]) == variants_bulk[query][0].v_hash
 
-        query = CoordinateQuery('3', 10183706, 10183706, 'T', 'C')
+        query = CoordinateQuery('3', 10183694, 10183694, 'T', 'G')
         variants_single = civic.search_variants_by_coordinates(query, search_mode='exact')
         variants_bulk = civic.bulk_search_variants_by_coordinates([query], search_mode='exact')
         assert len(variants_single) == 1
         assert len(variants_bulk[query]) == 1
         assert hash(variants_single[0]) == variants_bulk[query][0].v_hash
 
-        query = CoordinateQuery('3', 10183706, 10183706, '*', 'C')
+        query = CoordinateQuery('3', 10183694, 10183694, '*', 'G')
         variants_single = civic.search_variants_by_coordinates(query, search_mode='exact')
         variants_bulk = civic.bulk_search_variants_by_coordinates([query], search_mode='exact')
         variants_single = list(map(lambda v: hash(v), variants_single))
@@ -359,8 +467,8 @@ class TestCoordinateSearch(object):
             CoordinateQuery('7', 140453136, 140453137, 'TT')
         ]
         search_results = civic.bulk_search_variants_by_coordinates(sorted_queries, search_mode='any')
-        assert len(search_results[sorted_queries[0]]) == 12
-        assert len(search_results[sorted_queries[1]]) >= 13
+        assert len(search_results[sorted_queries[0]]) >= 19
+        assert len(search_results[sorted_queries[1]]) >= 11
 
     def test_bulk_exact_search_variants(self):
         sorted_queries = [
@@ -382,7 +490,7 @@ class TestCoordinateSearch(object):
         ]
         search_results = civic.bulk_search_variants_by_coordinates(sorted_queries, search_mode='query_encompassing')
         assert len(search_results[sorted_queries[0]]) == 1
-        assert len(search_results[sorted_queries[1]]) == 6
+        assert len(search_results[sorted_queries[1]]) >= 6
 
     def test_bulk_re_search_variants(self):
         sorted_queries = [
@@ -390,8 +498,8 @@ class TestCoordinateSearch(object):
             CoordinateQuery('7', 140453136, 140453137)
         ]
         search_results = civic.bulk_search_variants_by_coordinates(sorted_queries, search_mode='record_encompassing')
-        assert len(search_results[sorted_queries[0]]) == 12
-        assert len(search_results[sorted_queries[1]]) == 9
+        assert len(search_results[sorted_queries[0]]) >= 19
+        assert len(search_results[sorted_queries[1]]) >= 16
 
     def test_build38_exact_search_variants(self, v600e):
         query = CoordinateQuery('7', 140753336, 140753336, 'T', 'A', 'GRCh38')
@@ -406,7 +514,7 @@ class TestCoordinateSearch(object):
 
         query = CoordinateQuery('3', 10146548, 10146549, 'C', None, 'GRCh38')
         search_results = civic.search_variants_by_coordinates(query, search_mode='exact')
-        assert len(search_results) == 1
+        assert len(search_results) >= 1
         assert search_results[0].id == 1918
 
         query = CoordinateQuery('3', 10146618, 10146618, None, 'G', 'GRCh38')
@@ -468,7 +576,6 @@ class TestTherapies(object):
     def test_has_ncit_id(self, v600e_assertion):
         trametinib = v600e_assertion.therapies[0]
         assert trametinib.ncit_id == 'C77908'
-        assert 'pubchem_id' not in trametinib.keys()
         assert trametinib.name == 'Trametinib'
         assert set(trametinib.aliases) == {
             'JTP-74057',

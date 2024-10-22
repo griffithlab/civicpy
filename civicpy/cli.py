@@ -36,7 +36,7 @@ def create_vcf(vcf_file_path, include_status):
     """Create a VCF file of CIViC variants"""
     with open(vcf_file_path, "w") as fh:
         writer = VCFWriter(fh)
-        for variant in civic.get_all_variants(include_status=include_status):
+        for variant in civic.get_all_gene_variants(include_status=include_status):
             if variant.is_valid_for_vcf():
                 writer.addrecord(variant)
         writer.writerecords()
