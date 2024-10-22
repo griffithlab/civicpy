@@ -9,26 +9,6 @@ def _construct_get_gene_payload():
                 aliases: featureAliases
                 sources {
                     id
-                    name
-                    title
-                    citation
-                    citation_id: citationId
-                    source_type: sourceType
-                    abstract
-                    asco_abstract_id: ascoAbstractId
-                    author_string: authorString
-                    full_journal_title: fullJournalTitle
-                    journal
-                    pmc_id: pmcId
-                    publication_date: publicationDate
-                    source_url: sourceUrl
-                    clinical_trials: clinicalTrials {
-                        id
-                        name
-                        description
-                        nctId
-                        url
-                    }
                 }
             }
         }"""
@@ -37,7 +17,7 @@ def _construct_get_gene_payload():
 def _construct_get_all_genes_payload():
     return """
         query genes($after: String) {
-            genes(after: $after) {
+            genes(after: $after, evidenceStatusFilter: ALL) {
               totalCount
               pageInfo {
                 hasNextPage
@@ -51,26 +31,6 @@ def _construct_get_all_genes_payload():
                 aliases: featureAliases
                 sources {
                     id
-                    name
-                    title
-                    citation
-                    citation_id: citationId
-                    source_type: sourceType
-                    abstract
-                    asco_abstract_id: ascoAbstractId
-                    author_string: authorString
-                    full_journal_title: fullJournalTitle
-                    journal
-                    pmc_id: pmcId
-                    publication_date: publicationDate
-                    source_url: sourceUrl
-                    clinical_trials: clinicalTrials {
-                        id
-                        name
-                        description
-                        nctId
-                        url
-                    }
                 }
               }
             }
@@ -87,29 +47,7 @@ def _construct_get_factor_payload():
                 ncit_id: ncitId
                 aliases: featureAliases
                 sources {
-                    feature {
-                        id
-                    }
-                    name
-                    title
-                    citation
-                    citation_id: citationId
-                    source_type: sourceType
-                    abstract
-                    asco_abstract_id: ascoAbstractId
-                    author_string: authorString
-                    full_journal_title: fullJournalTitle
-                    journal
-                    pmc_id: pmcId
-                    publication_date: publicationDate
-                    source_url: sourceUrl
-                    clinical_trials: clinicalTrials {
-                        id
-                        name
-                        description
-                        nctId
-                        url
-                    }
+                    id
                 }
             }
         }"""
@@ -118,7 +56,7 @@ def _construct_get_factor_payload():
 def _construct_get_all_factors_payload():
     return """
         query factors($after: String) {
-            factors(after: $after) {
+            factors(after: $after, evidenceStatusFilter: ALL) {
               totalCount
               pageInfo {
                 hasNextPage
@@ -133,26 +71,6 @@ def _construct_get_all_factors_payload():
                 aliases: featureAliases
                 sources {
                     id
-                    name
-                    title
-                    citation
-                    citation_id: citationId
-                    source_type: sourceType
-                    abstract
-                    asco_abstract_id: ascoAbstractId
-                    author_string: authorString
-                    full_journal_title: fullJournalTitle
-                    journal
-                    pmc_id: pmcId
-                    publication_date: publicationDate
-                    source_url: sourceUrl
-                    clinical_trials: clinicalTrials {
-                        id
-                        name
-                        description
-                        nctId
-                        url
-                    }
                 }
               }
             }
@@ -177,26 +95,6 @@ def _construct_get_fusion_payload():
                 aliases: featureAliases
                 sources {
                     id
-                    name
-                    title
-                    citation
-                    citation_id: citationId
-                    source_type: sourceType
-                    abstract
-                    asco_abstract_id: ascoAbstractId
-                    author_string: authorString
-                    full_journal_title: fullJournalTitle
-                    journal
-                    pmc_id: pmcId
-                    publication_date: publicationDate
-                    source_url: sourceUrl
-                    clinical_trials: clinicalTrials {
-                        id
-                        name
-                        description
-                        nctId
-                        url
-                    }
                 }
             }
         }"""
@@ -205,7 +103,7 @@ def _construct_get_fusion_payload():
 def _construct_get_all_fusions_payload():
     return """
         query fusions($after: String) {
-            fusions(after: $after) {
+            fusions(after: $after, evidenceStatusFilter: ALL) {
               totalCount
               pageInfo {
                 hasNextPage
@@ -226,26 +124,6 @@ def _construct_get_all_fusions_payload():
                 aliases: featureAliases
                 sources {
                     id
-                    name
-                    title
-                    citation
-                    citation_id: citationId
-                    source_type: sourceType
-                    abstract
-                    asco_abstract_id: ascoAbstractId
-                    author_string: authorString
-                    full_journal_title: fullJournalTitle
-                    journal
-                    pmc_id: pmcId
-                    publication_date: publicationDate
-                    source_url: sourceUrl
-                    clinical_trials: clinicalTrials {
-                        id
-                        name
-                        description
-                        nctId
-                        url
-                    }
                 }
               }
             }
@@ -272,6 +150,7 @@ def _construct_get_molecular_profile_payload():
                     ... on Feature {
                         id
                         name
+                        featureType
                     }
                     ... on Variant {
                         id
@@ -281,26 +160,6 @@ def _construct_get_molecular_profile_payload():
                 }
                 sources {
                     id
-                    name
-                    title
-                    citation
-                    citation_id: citationId
-                    source_type: sourceType
-                    abstract
-                    asco_abstract_id: ascoAbstractId
-                    author_string: authorString
-                    full_journal_title: fullJournalTitle
-                    journal
-                    pmc_id: pmcId
-                    publication_date: publicationDate
-                    source_url: sourceUrl
-                    clinical_trials: clinicalTrials {
-                        id
-                        name
-                        description
-                        nctId
-                        url
-                    }
                 }
             }
         }"""
@@ -333,6 +192,7 @@ def _construct_get_all_molecular_profiles_payload():
                     ... on Feature {
                         id
                         name
+                        featureType
                     }
                     ... on Variant {
                         id
@@ -342,26 +202,6 @@ def _construct_get_all_molecular_profiles_payload():
                 }
                 sources {
                     id
-                    name
-                    title
-                    citation
-                    citation_id: citationId
-                    source_type: sourceType
-                    abstract
-                    asco_abstract_id: ascoAbstractId
-                    author_string: authorString
-                    full_journal_title: fullJournalTitle
-                    journal
-                    pmc_id: pmcId
-                    publication_date: publicationDate
-                    source_url: sourceUrl
-                    clinical_trials: clinicalTrials {
-                        id
-                        name
-                        description
-                        nctId
-                        url
-                    }
                 }
               }
             }
@@ -510,50 +350,18 @@ def _construct_get_evidence_payload():
                 }
                 disease {
                   id
-                  name
-                  display_name: displayName
-                  doid
-                  disease_url: diseaseUrl
-                  aliases: diseaseAliases
                 }
                 therapies {
                   id
-                  name
-                  ncit_id: ncitId
-                  therapy_url: therapyUrl
-                  aliases: therapyAliases
                 }
                 phenotypes {
                   id
-                  name
-                  hpo_id: hpoId
-                  url
                 }
                 assertions {
                   id
                 }
                 source {
                     id
-                    name
-                    title
-                    citation
-                    citation_id: citationId
-                    source_type: sourceType
-                    abstract
-                    asco_abstract_id: ascoAbstractId
-                    author_string: authorString
-                    full_journal_title: fullJournalTitle
-                    journal
-                    pmc_id: pmcId
-                    publication_date: publicationDate
-                    source_url: sourceUrl
-                    clinical_trials: clinicalTrials {
-                        id
-                        name
-                        description
-                        nctId
-                        url
-                    }
                 }
                 rating: evidenceRating
             }
@@ -586,50 +394,18 @@ def _construct_get_all_evidence_payload():
                     }
                     disease {
                       id
-                      name
-                      display_name: displayName
-                      doid
-                      disease_url: diseaseUrl
-                      aliases: diseaseAliases
                     }
                     therapies {
                       id
-                      name
-                      ncit_id: ncitId
-                      therapy_url: therapyUrl
-                      aliases: therapyAliases
                     }
                     phenotypes {
                       id
-                      name
-                      hpo_id: hpoId
-                      url
                     }
                     assertions {
                       id
                     }
                     source {
                         id
-                        name
-                        title
-                        citation
-                        citation_id: citationId
-                        source_type: sourceType
-                        abstract
-                        asco_abstract_id: ascoAbstractId
-                        author_string: authorString
-                        full_journal_title: fullJournalTitle
-                        journal
-                        pmc_id: pmcId
-                        publication_date: publicationDate
-                        source_url: sourceUrl
-                        clinical_trials: clinicalTrials {
-                            id
-                            name
-                            description
-                            nctId
-                            url
-                        }
                     }
                     rating: evidenceRating
                 }
@@ -675,27 +451,15 @@ def _construct_get_assertion_payload():
                 }
                 disease {
                   id
-                  name
-                  display_name: displayName
-                  doid
-                  disease_url: diseaseUrl
-                  aliases: diseaseAliases
                 }
                 therapies {
                   id
-                  name
-                  ncit_id: ncitId
-                  therapy_url: therapyUrl
-                  aliases: therapyAliases
                 }
                 evidenceItems {
                   id
                 }
                 phenotypes {
                   id
-                  name
-                  hpo_id: hpoId
-                  url
                 }
             }
         }"""
@@ -744,27 +508,15 @@ def _construct_get_all_assertions_payload():
                     }
                     disease {
                       id
-                      name
-                      display_name: displayName
-                      doid
-                      disease_url: diseaseUrl
-                      aliases: diseaseAliases
                     }
                     therapies {
                       id
-                      name
-                      ncit_id: ncitId
-                      therapy_url: therapyUrl
-                      aliases: therapyAliases
                     }
                     evidenceItems {
                       id
                     }
                     phenotypes {
                       id
-                      name
-                      hpo_id: hpoId
-                      url
                     }
                 }
             }
@@ -785,29 +537,10 @@ def _construct_get_variant_group_payload():
                 }
                 sources {
                     id
-                    name
-                    title
-                    citation
-                    citation_id: citationId
-                    source_type: sourceType
-                    abstract
-                    asco_abstract_id: ascoAbstractId
-                    author_string: authorString
-                    full_journal_title: fullJournalTitle
-                    journal
-                    pmc_id: pmcId
-                    publication_date: publicationDate
-                    source_url: sourceUrl
-                    clinical_trials: clinicalTrials {
-                        id
-                        name
-                        description
-                        nctId
-                        url
-                    }
                 }
             }
         }"""
+
 
 def _construct_get_all_variant_groups_payload():
     return """
@@ -829,27 +562,172 @@ def _construct_get_all_variant_groups_payload():
                 }
                 sources {
                     id
-                    name
-                    title
-                    citation
-                    citation_id: citationId
-                    source_type: sourceType
-                    abstract
-                    asco_abstract_id: ascoAbstractId
-                    author_string: authorString
-                    full_journal_title: fullJournalTitle
-                    journal
-                    pmc_id: pmcId
-                    publication_date: publicationDate
-                    source_url: sourceUrl
-                    clinical_trials: clinicalTrials {
-                        id
-                        name
-                        description
-                        nctId
-                        url
-                    }
                 }
               }
             }
         }"""
+
+
+def _construct_get_source_payload():
+    return """
+        query source($id: Int!) {
+            source(id: $id) {
+                id
+                name
+                title
+                citation
+                citation_id: citationId
+                source_type: sourceType
+                abstract
+                asco_abstract_id: ascoAbstractId
+                author_string: authorString
+                full_journal_title: fullJournalTitle
+                journal
+                pmc_id: pmcId
+                publication_date: publicationDate
+                source_url: sourceUrl
+                clinical_trials: clinicalTrials {
+                    id
+                    name
+                    description
+                    nctId
+                    url
+                }
+            }
+        }"""
+
+
+def _construct_get_all_sources_payload():
+    return """
+        query sources($after: String) {
+            sources(after: $after) {
+              totalCount
+              pageInfo {
+                hasNextPage
+                endCursor
+              }
+              nodes {
+                id
+                name
+                title
+                citation
+                citation_id: citationId
+                source_type: sourceType
+                abstract
+                asco_abstract_id: ascoAbstractId
+                author_string: authorString
+                full_journal_title: fullJournalTitle
+                journal
+                pmc_id: pmcId
+                publication_date: publicationDate
+                source_url: sourceUrl
+                clinical_trials: clinicalTrials {
+                    id
+                    name
+                    description
+                    nctId
+                    url
+                }
+              }
+            }
+        }"""
+
+
+def _construct_get_disease_payload():
+    return """
+        query disease($id: Int!) {
+            disease(id: $id) {
+              id
+              name
+              doid
+              disease_url: diseaseUrl
+              aliases: diseaseAliases
+            }
+        }"""
+
+
+def _construct_get_all_diseases_payload():
+    return """
+        query diseases($after: String) {
+            diseases(after: $after) {
+              totalCount
+              pageInfo {
+                hasNextPage
+                endCursor
+              }
+              nodes {
+                  id
+                  name
+                  doid
+                  disease_url: diseaseUrl
+                  aliases: diseaseAliases
+              }
+            }
+        }
+    """
+
+
+def _construct_get_therapy_payload():
+    return """
+        query therapy($id: Int!) {
+            therapy(id: $id) {
+              id
+              name
+              ncit_id: ncitId
+              aliases: therapyAliases
+              therapy_url: therapyUrl
+            }
+        }"""
+
+
+def _construct_get_all_therapies_payload():
+    return """
+        query therapies($after: String) {
+            therapies(after: $after) {
+              totalCount
+              pageInfo {
+                hasNextPage
+                endCursor
+              }
+              nodes {
+                  id
+                  name
+                  ncit_id: ncitId
+                  aliases: therapyAliases
+                  therapy_url: therapyUrl
+              }
+            }
+        }
+    """
+
+
+def _construct_get_phenotype_payload():
+    return """
+        query phenotype($id: Int!) {
+            phenotype(id: $id) {
+              id
+              name
+              hpo_id: hpoId
+              phenotype_url: url
+            }
+        }"""
+
+
+def _construct_get_all_phenotypes_payload():
+    return """
+        query phenotypes($after: String) {
+            phenotypes(after: $after) {
+              totalCount
+              pageInfo {
+                hasNextPage
+                endCursor
+              }
+              nodes {
+                  id
+                  name
+                  hpo_id: hpoId
+                  phenotype_url: url
+              }
+            }
+        }
+    """

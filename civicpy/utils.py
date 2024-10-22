@@ -1,6 +1,8 @@
 UNMARKED_PLURALS = {'evidence'}
 
 def pluralize(string):
+    if string == 'therapy':
+        return 'therapies'
     if string in UNMARKED_PLURALS:
         return '{}_items'.format(string)
     if string.endswith('s'):
@@ -12,6 +14,8 @@ def singularize(string):
     string = string.rstrip('s')
     if string == 'evidence_item':
         string = 'evidence'
+    elif string == 'therapie':
+        string = 'therapy'
     return string
 
 

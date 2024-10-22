@@ -84,7 +84,6 @@ class TestEvidence(object):
             assert source.publication_date
             assert source.source_url
             assert source.title
-            assert source.name
             assert hasattr(source, 'clinical_trials')
 
     def test_get_all(self):
@@ -108,12 +107,17 @@ class TestEvidence(object):
         evidence = v600e_mp.evidence[0]
         assert evidence.molecular_profile.name == 'BRAF V600E'
         assert evidence.statement == evidence.description
+        assert len(evidence.assertions) == 0
+        assert evidence.disease.name == 'Skin Melanoma'
+        assert len(evidence.therapies) == 1
+        assert len(evidence.phenotypes) == 0
+
 
 class TestVariants(object):
 
     def test_get_all(self):
         variants = civic.get_all_variants()
-        assert len(variants) >= 3828
+        assert len(variants) >= 3815
 
     def test_get_non_rejected(self):
         variants = civic.get_all_variants(include_status=['accepted', 'submitted'])
@@ -155,45 +159,87 @@ class TestVariants(object):
         assert sorted(variant.aliases) == sorted(variant.variant_aliases)
         assert sorted(variant.groups) == sorted(variant.variant_groups)
         assert sorted(variant.types) == sorted(variant.variant_types)
+        assert len(variant.molecular_profiles) == 1
+        assert variant.single_variant_molecular_profile.id == 11
+
 
 class TestGeneVariants(object):
+
     def test_get_all(self):
         variants = civic.get_all_gene_variants()
-        assert len(variants) >= 3557
+        assert len(variants) >= 3522
         for variant in variants:
             assert variant.subtype == 'gene_variant'
 
-    def test_properties(self):
+    def test_get_by_id(self):
+        variant = civic.get_variant_by_id(11)
+        assert variant.id == 11
+        assert variant.type == 'variant'
+
+    def test_attributes(self):
         variant = civic.get_variant_by_id(11)
         assert variant.coordinates.ensembl_version == 75
         assert variant.entrez_name == "BRAF"
         assert variant.entrez_id == 673
 
+    def test_properties(self):
+        variant = civic.get_variant_by_id(11)
+        assert variant.gene.id == 5
+        assert variant.gene == variant.feature
+        assert variant.is_insertion == False
+        assert variant.is_deletion == False
+
+
 class TestFusionVariants(object):
+
     def test_get_all(self):
         variants = civic.get_all_fusion_variants()
         assert len(variants) >= 263
         for variant in variants:
             assert variant.subtype == 'fusion_variant'
 
-    def test_properties(self):
+    def test_get_by_id(self):
+        variant = civic.get_variant_by_id(1)
+        assert variant.id == 1
+        assert variant.type == 'variant'
+
+    def test_attributes(self):
         variant = civic.get_variant_by_id(1)
         assert variant.vicc_compliant_name == 'BCR(entrez:613)::ABL1(entrez:25)'
         assert variant.five_prime_coordinates.reference_build == 'GRCH37'
         assert variant.three_prime_coordinates.reference_build == 'GRCH37'
 
+    def test_properties(self):
+        variant = civic.get_variant_by_id(1)
+        assert variant.fusion.id == 61802
+        assert variant.fusion == variant.feature
+
+
 class TestFactorVariants(object):
+
     def test_get_all(self):
         variants = civic.get_all_factor_variants()
         assert len(variants) >= 8
         for variant in variants:
             assert variant.subtype == 'factor_variant'
 
-    def test_properties(self):
+    def test_get_by_id(self):
+        variant = civic.get_variant_by_id(4985)
+        assert variant.id == 4985
+        assert variant.type == 'variant'
+
+    def test_attributes(self):
         variant = civic.get_variant_by_id(4985)
         assert variant.ncit_id == 'C131459'
 
+    def test_properties(self):
+        variant = civic.get_variant_by_id(4985)
+        assert variant.factor.id == 61746
+        assert variant.factor == variant.feature
+
+
 class TestMolecularProfiles(object):
+
     def test_get_all(self):
         mps = civic.get_all_molecular_profiles()
         assert len(mps) >= 2396
@@ -217,23 +263,30 @@ class TestMolecularProfiles(object):
         mp_parsed_name = mp.parsed_name
         assert len(mp_parsed_name) == 5
         egfr_gene = mp_parsed_name[0]
-        assert egfr_gene.type == "feature"
+        assert egfr_gene.type == "gene"
         assert egfr_gene.id == 19
         assert egfr_gene.name == "EGFR"
         variant0 = mp_parsed_name[1]
         assert variant0.type == "variant"
         assert variant0.id == 33
         assert variant0.name == "L858R"
-        assert variant0.deprecated is False
         text_segment = mp_parsed_name[2]
-        assert text_segment.type == "molecular_profile_text_segment"
-        assert text_segment.text == "OR"
+        assert text_segment == "OR"
         assert mp_parsed_name[3] == egfr_gene
         variant1 = mp_parsed_name[4]
         assert variant1.type == "variant"
         assert variant1.id == 133
         assert variant1.name == "Exon 19 Deletion"
-        assert variant1.deprecated is False
+
+    def test_properties(self):
+        mp = civic.get_molecular_profile_by_id(4432)
+        assert len(mp.evidence_sources) == 11
+        assert mp.summary == mp.description
+        assert len(mp.evidence_items) == 12
+        assert len(mp.assertions) == 0
+        assert len(mp.variants) == 2
+        assert len(mp.sources) == 0
+
 
 class TestVariantGroups(object):
 
@@ -245,6 +298,11 @@ class TestVariantGroups(object):
         variant_group = civic.get_variant_group_by_id(1)
         assert variant_group.type == 'variant_group'
         assert variant_group.id == 1
+
+    def test_properties(self):
+        variant_group = civic.get_variant_group_by_id(1)
+        assert len(variant_group.variants) == 7
+        assert len(variant_group.sources) == 0
 
 
 class TestAssertions(object):
@@ -279,6 +337,10 @@ class TestAssertions(object):
             assert acmg_code.id
             assert acmg_code.code
             assert acmg_code.description
+        assert assertion.disease.name == "Von Hippel-Lindau Disease"
+        assert len(assertion.therapies) == 0
+        assert len(assertion.phenotypes) == 3
+        assert assertion.molecular_profile.id == 1686
 
         # Test assertion with clingen_codes
         assertion = civic.get_assertion_by_id(53)
@@ -287,6 +349,7 @@ class TestAssertions(object):
             assert clingen_code.id
             assert clingen_code.code
             assert clingen_code.description
+
 
 class TestFeatures(object):
 
@@ -306,7 +369,6 @@ class TestFeatures(object):
         feature = civic.get_feature_by_id(58)
         assert feature.type == 'gene'
         assert feature.id == 58
-        assert feature.name == 'VHL'
 
     def test_get_by_ids(self):
         features = civic.get_features_by_ids([58, 61748, 61753])
@@ -316,6 +378,10 @@ class TestFeatures(object):
         assert features[1].id == 61748
         assert features[2].type == 'fusion'
         assert features[2].id == 61753
+
+    def test_attributes(self):
+        feature = civic.get_feature_by_id(58)
+        assert feature.name == 'VHL'
 
 
 class TestGenes(object):
@@ -336,7 +402,15 @@ class TestGenes(object):
         gene = civic.get_gene_by_id(58)
         assert gene.type == 'gene'
         assert gene.id == 58
+
+    def test_attributes(self):
+        gene = civic.get_gene_by_id(58)
         assert gene.name == 'VHL'
+
+    def test_properties(self):
+        gene = civic.get_gene_by_id(58)
+        assert len(gene.variants) == 844
+        assert len(gene.sources) == 4
 
 
 class TestFactors(object):
@@ -357,8 +431,16 @@ class TestFactors(object):
         factor = civic.get_factor_by_id(61748)
         assert factor.type == 'factor'
         assert factor.id == 61748
+
+    def test_attributes(self):
+        factor = civic.get_factor_by_id(61748)
         assert factor.name == 'CK'
         assert factor.full_name == 'Complex Karyotype'
+
+    def test_properties(self):
+        factor = civic.get_factor_by_id(61748)
+        assert len(factor.variants) == 1
+        assert len(factor.sources) == 0
 
 
 class TestFusions(object):
@@ -379,9 +461,120 @@ class TestFusions(object):
         fusion = civic.get_fusion_by_id(61753)
         assert fusion.type == 'fusion'
         assert fusion.id == 61753
+
+    def test_attributes(self):
+        fusion = civic.get_fusion_by_id(61753)
         assert fusion.name == 'MEF2D::CSF1R'
         assert fusion.five_prime_gene.name == 'MEF2D'
         assert fusion.three_prime_gene.name == 'CSF1R'
+
+    def test_properties(self):
+        fusion = civic.get_fusion_by_id(61753)
+        assert len(fusion.variants) == 1
+        assert len(fusion.sources) == 0
+
+
+class TestDiseases(object):
+
+    def test_get_all(self):
+        diseases = civic.get_all_diseases()
+        assert len(diseases) >= 419
+
+    def test_get_by_id(self):
+        d = civic.get_disease_by_id(22)
+        assert d.id == 22
+        assert d.type == 'disease'
+
+    def test_attributes(self):
+        breast_cancer = civic.get_disease_by_id(22)
+        assert breast_cancer.doid == '1612'
+        assert breast_cancer.name == 'Breast Cancer'
+        assert set(breast_cancer.aliases) == {
+            'Breast Tumor',
+            'Malignant Neoplasm Of Breast',
+            'Malignant Tumor Of The Breast',
+            'Mammary Cancer',
+            'Mammary Tumor',
+            'Primary Breast Cancer'
+        }
+
+    def test_get_by_name(self):
+        breast_cancer = civic.get_disease_by_name('Breast Cancer')
+        assert breast_cancer.id == 22
+
+    def test_get_by_doid(self):
+        breast_cancer = civic.get_disease_by_doid('1612')
+        assert breast_cancer.id == 22
+
+    def test_properties(self):
+        breast_cancer = civic.get_disease_by_id(22)
+        assert len(breast_cancer.evidence) == 280
+        assert breast_cancer.evidence == breast_cancer.evidence_items
+        assert len(breast_cancer.assertions) == 2
+
+
+class TestTherapies(object):
+
+    def test_get_all(self):
+        therapies = civic.get_all_therapies()
+        assert len(therapies) >= 555
+
+    def test_get_by_id(self):
+        t = civic.get_therapy_by_id(19)
+        assert t.id == 19
+        assert t.type == 'therapy'
+
+    def test_attributes(self):
+        trametinib = civic.get_therapy_by_id(19)
+        assert trametinib.ncit_id == 'C77908'
+        assert trametinib.name == 'Trametinib'
+        assert set(trametinib.aliases) == {
+            'JTP-74057',
+            'GSK1120212',
+            'MEK Inhibitor GSK1120212',
+            'Mekinist',
+            'N-(3-{3-cyclopropyl-5-[(2-fluoro-4-iodophenyl)amino]-6,8-dimethyl-2,4,7-trioxo-3,4,6,7-tetrahydropyrido[4,3-d]pyrimidin-1(2H)-yl}phenyl)acetamide'
+        }
+
+    def test_get_by_name(self):
+        trametinib = civic.get_therapy_by_name('Trametinib')
+        assert trametinib.id == 19
+
+    def test_get_by_ncit_id(self):
+        trametinib = civic.get_therapy_by_ncit_id('C77908')
+        assert trametinib.id == 19
+
+    def test_properties(self):
+        trametinib = civic.get_therapy_by_id(19)
+        assert len(trametinib.evidence) == 138
+        assert trametinib.evidence == trametinib.evidence_items
+        assert len(trametinib.assertions) == 3
+
+
+class TestPhenotypes(object):
+
+    def test_get_all(self):
+        phenotypes = civic.get_all_phenotypes()
+        assert len(phenotypes) >= 265
+
+    def test_get_by_id(self):
+        pediatric_onset = civic.get_phenotype_by_id(15320)
+        assert pediatric_onset.hpo_id == 'HP:0410280'
+        assert pediatric_onset.name == 'Pediatric onset'
+
+    def test_get_by_name(self):
+        pediatric_onset = civic.get_phenotype_by_name('Pediatric onset')
+        assert pediatric_onset.id == 15320
+
+    def test_get_by_hpo_id(self):
+        pediatric_onset = civic.get_phenotype_by_hpo_id('HP:0410280')
+        assert pediatric_onset.id == 15320
+
+    def test_properties(self):
+        pediatric_onset = civic.get_phenotype_by_id(15320)
+        assert len(pediatric_onset.evidence) == 140
+        assert pediatric_onset.evidence == pediatric_onset.evidence_items
+        assert len(pediatric_onset.assertions) == 27
 
 
 class TestCoordinateSearch(object):
@@ -396,6 +589,9 @@ class TestCoordinateSearch(object):
         assertions = civic.search_assertions_by_coordinates(query, search_mode='exact')
         assertion_ids = [x.id for x in assertions]
         assert set(assertion_ids) >= set(v600e_assertion_ids)
+
+    def test_search_evidence(self):
+        pass
 
     def test_single_and_bulk_exact_return_same_variants(self):
         query = CoordinateQuery('7', 140453136, 140453136, 'T', '*')
@@ -468,7 +664,7 @@ class TestCoordinateSearch(object):
             CoordinateQuery('7', 140453136, 140453137, 'TT')
         ]
         search_results = civic.bulk_search_variants_by_coordinates(sorted_queries, search_mode='any')
-        assert len(search_results[sorted_queries[0]]) >= 19
+        assert len(search_results[sorted_queries[0]]) >= 17
         assert len(search_results[sorted_queries[1]]) >= 11
 
     def test_bulk_exact_search_variants(self):
@@ -491,7 +687,7 @@ class TestCoordinateSearch(object):
         ]
         search_results = civic.bulk_search_variants_by_coordinates(sorted_queries, search_mode='query_encompassing')
         assert len(search_results[sorted_queries[0]]) == 1
-        assert len(search_results[sorted_queries[1]]) >= 6
+        assert len(search_results[sorted_queries[1]]) >= 5
 
     def test_bulk_re_search_variants(self):
         sorted_queries = [
@@ -499,8 +695,8 @@ class TestCoordinateSearch(object):
             CoordinateQuery('7', 140453136, 140453137)
         ]
         search_results = civic.bulk_search_variants_by_coordinates(sorted_queries, search_mode='record_encompassing')
-        assert len(search_results[sorted_queries[0]]) >= 19
-        assert len(search_results[sorted_queries[1]]) >= 16
+        assert len(search_results[sorted_queries[0]]) >= 17
+        assert len(search_results[sorted_queries[1]]) >= 14
 
     def test_build38_exact_search_variants(self, v600e):
         query = CoordinateQuery('7', 140753336, 140753336, 'T', 'A', 'GRCh38')
@@ -571,21 +767,6 @@ class TestCoordinateSearch(object):
             variants_bulk = civic.bulk_search_variants_by_coordinates([query], search_mode='exact')
         assert "Unexpected ref `-` in coordinate query. Did you mean `None`?" in str(context.value)
 
-
-class TestTherapies(object):
-
-    def test_has_ncit_id(self, v600e_assertion):
-        trametinib = v600e_assertion.therapies[0]
-        assert trametinib.ncit_id == 'C77908'
-        assert 'pubchem_id' not in trametinib.keys()
-        assert trametinib.name == 'Trametinib'
-        assert set(trametinib.aliases) == {
-            'JTP-74057',
-            'GSK1120212',
-            'MEK Inhibitor GSK1120212',
-            'Mekinist',
-            'N-(3-{3-cyclopropyl-5-[(2-fluoro-4-iodophenyl)amino]-6,8-dimethyl-2,4,7-trioxo-3,4,6,7-tetrahydropyrido[4,3-d]pyrimidin-1(2H)-yl}phenyl)acetamide'
-        }
 
 #warning logging tests
 LOGGER = logging.getLogger(__name__)

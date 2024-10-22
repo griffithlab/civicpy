@@ -23,18 +23,18 @@ If you find CIViCpy useful for your work, **please cite** our `manuscript <https
    >>> my_variant_ids = [12, 306, 79]
    >>> my_variants = civic.get_variants_by_ids(my_variant_ids)
    >>> my_variants
-   [<CIViC variant 12>, <CIViC variant 79>, <CIViC variant 306>]
+   [<CIViC variant (gene_variant) 12>, <CIViC variant (gene_variant) 306>, <CIViC variant (gene_variant) 79>]
 
    >>> [(v.gene.name, v.name) for v in my_variants]
    [('BRAF', 'V600E'), ('KRAS', 'G12D'), ('ERBB2', 'AMPLIFICATION')]
 
-   >>> braf_id = my_variants[0].gene_id # or my_variants[0].gene.id
+   >>> braf_id = my_variants[0].feature_id # or my_variants[0].gene.id or my_variants[0].feature.id
    >>> braf_variants = civic.get_gene_by_id(braf_id).variants
    >>> len(braf_variants)
-   67
+   95
 
    >>> set(my_variants) & set(braf_variants)
-   {<CIViC variant 12>}
+   {<CIViC variant (gene_variant) 12>}
 
 **CIViCpy** lets you pull data from CIViC using the :mod:`civic` module and interact with records as dynamic objects.
 With the aid of caching, it is easy to explore relationships between CIViC records (e.g. assertions, genes, variants)
@@ -61,6 +61,7 @@ knowledgebase.
    intro
    install
    civic
+   getting_records
    exports
    cli
 
