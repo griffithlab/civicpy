@@ -1648,17 +1648,17 @@ def get_all_variants(include_status=['accepted', 'submitted', 'rejected'], allow
 
 def get_all_gene_variants(include_status=['accepted', 'submitted', 'rejected'], allow_cached=True):
     variants = get_all_variants(include_status=include_status, allow_cached=True)
-    return [v for v in variants if isinstance(v, GeneVariant)]
+    return [v for v in variants if v.subtype == 'gene_variant']
 
 
 def get_all_fusion_variants(include_status=['accepted', 'submitted', 'rejected'], allow_cached=True):
     variants = get_all_variants(include_status=include_status, allow_cached=True)
-    return [v for v in variants if isinstance(v, FusionVariant)]
+    return [v for v in variants if v.subtype == 'fusion_variant']
 
 
 def get_all_factor_variants(include_status=['accepted', 'submitted', 'rejected'], allow_cached=True):
     variants = get_all_variants(include_status=include_status, allow_cached=True)
-    return [v for v in variants if isinstance(v, FactorVariant)]
+    return [v for v in variants if v.subtype == 'factor_variant']
 
 
 def get_all_variant_groups(allow_cached=True):
@@ -2012,21 +2012,23 @@ def get_features_by_ids(feature_id_list):
     logging.info('Getting features...')
     features = []
     for feature_id in feature_id_list:
+        feature = None
         try:
-            gene = _get_element_by_id('gene', feature_id)
-            features.append(gene)
+            feature = _get_element_by_id('gene', feature_id)
         except:
             pass
         try:
-            fusion = _get_element_by_id('fusion', feature_id)
-            features.append(fusion)
+            feature = _get_element_by_id('fusion', feature_id)
         except:
             pass
         try:
-            factor = _get_element_by_id('factor', feature_id)
-            features.append(factor)
+            feature = _get_element_by_id('factor', feature_id)
         except:
             pass
+        if feature is None:
+            raise Exception("Feature {} not found".format(feature_id))
+        else:
+            features.append(feature)
     variant_ids = set()
     for feature in features:
         feature._include_status = ['accepted', 'submitted', 'rejected']
