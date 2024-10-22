@@ -505,6 +505,7 @@ class MolecularProfile(CivicRecord):
 
 class Variant(CivicRecord):
     _SIMPLE_FIELDS = CivicRecord._SIMPLE_FIELDS.union({
+        'subtype',
         'feature_id',
         'name',
         'single_variant_molecular_profile_id',
@@ -523,6 +524,9 @@ class Variant(CivicRecord):
         self._variant_groups = []
         self._molecular_profiles = []
         super().__init__(**kwargs)
+
+    def __repr__(self):
+        return '<CIViC {} ({}) {}>'.format(self.type, self.subtype, self.id)
 
     @property
     def aliases(self):
@@ -1341,7 +1345,10 @@ def _get_elements_by_ids(element, id_list=[], allow_cached=True, get_all=False):
     ids = []
     for e in response_elements:
         e = _postprocess_response_element(e, element)
-        cls = get_class(e['type'])
+        if element == 'variant':
+            cls = get_class(e['subtype'])
+        else:
+            cls = get_class(e['type'])
         partial_element = cls(**e, partial=True)
         ids.append(e['id'])
         elements.append(partial_element)
@@ -1375,9 +1382,9 @@ def _postprocess_response_element(e, element):
         e['variant_ids'] = [v['id'] for v in e['variants']]
         del e['variants']
     elif element == 'variant':
-        e['type'] = e['__typename']
         e['feature_id'] = e['feature']['id']
         if e['__typename'] == 'GeneVariant':
+            e['subtype'] = 'gene_variant'
             e['entrez_id'] = e['feature']['featureInstance']['entrezId']
             e['entrez_name'] = e['feature']['name']
             build = e['coordinates']['reference_build']
@@ -1387,11 +1394,9 @@ def _postprocess_response_element(e, element):
                 build = 'GRCh38'
             e['coordinates']['reference_build'] = build
         elif e['__typename'] == 'FactorVariant':
-            #nothing special to handle
-            pass
+            e['subtype'] = 'factor_variant'
         elif e['__typename'] == 'FusionVariant':
-            #nothing special to handle
-            pass
+            e['subtype'] = 'fusion_variant'
         else:
             raise Exception("Variant type {} not supported yet".format(e['__typename']))
     elif element == 'variant_group':

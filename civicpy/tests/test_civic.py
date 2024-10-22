@@ -160,6 +160,8 @@ class TestGeneVariants(object):
     def test_get_all(self):
         variants = civic.get_all_gene_variants()
         assert len(variants) >= 3557
+        for variant in variants:
+            assert variant.subtype == 'gene_variant'
 
     def test_properties(self):
         variant = civic.get_variant_by_id(11)
@@ -171,6 +173,8 @@ class TestFusionVariants(object):
     def test_get_all(self):
         variants = civic.get_all_fusion_variants()
         assert len(variants) >= 263
+        for variant in variants:
+            assert variant.subtype == 'fusion_variant'
 
     def test_properties(self):
         variant = civic.get_variant_by_id(1)
@@ -182,6 +186,8 @@ class TestFactorVariants(object):
     def test_get_all(self):
         variants = civic.get_all_factor_variants()
         assert len(variants) >= 8
+        for variant in variants:
+            assert variant.subtype == 'factor_variant'
 
     def test_properties(self):
         variant = civic.get_variant_by_id(4985)
