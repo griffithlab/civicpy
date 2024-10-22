@@ -1148,6 +1148,75 @@ class Organization(CivicRecord):
     })
 
 
+class Therapy(CivicRecord):
+    _SIMPLE_FIELDS = CivicRecord._SIMPLE_FIELDS.union({
+        'ncit_id',
+        'therapy_url',
+        'name'
+    })
+    _COMPLEX_FIELDS = CivicRecord._COMPLEX_FIELDS.union({
+        'aliases'
+    })
+
+    def __str__(self):
+        if self.ncit_id is None:
+            return self.name
+        else:
+            return "{} (NCIt ID {})".format(self.name, self.ncit_id)
+
+
+class Disease(CivicRecord):
+    _SIMPLE_FIELDS = CivicRecord._SIMPLE_FIELDS.union({
+        'name',
+        'display_name',
+        'doid',
+        'disease_url'
+    })
+    _COMPLEX_FIELDS = CivicRecord._COMPLEX_FIELDS.union({
+        'aliases'
+    })
+
+    def __str__(self):
+        if self.doid is None:
+            return self.name
+        else:
+            return "{} (DOID {})".format(self.name, self.doid)
+
+
+class Phenotype(CivicRecord):
+    _SIMPLE_FIELDS = CivicRecord._SIMPLE_FIELDS.union({
+        'hpo_id',
+        'url',
+        'name'
+    })
+
+    def __str__(self):
+        return "{} (HPO ID {})".format(self.name, self.hpo_id)
+
+
+class Source(CivicRecord):
+    _SIMPLE_FIELDS = CivicRecord._SIMPLE_FIELDS.union({
+        'citation',
+        'citation_id',
+        'source_type',
+        'abstract',
+        'asco_abstract_id',
+        'author_string',
+        'full_journal_title',
+        'journal',
+        'pmc_id',
+        'publication_date',
+        'source_url',
+        'title'
+    })
+    _COMPLEX_FIELDS = CivicRecord._COMPLEX_FIELDS.union({
+        'clinical_trials'
+    })
+
+    def __str__(self):
+        return "{} ({} {})".format(self.citation, self.source_type, self.citation_id)
+
+
 class CivicAttribute(CivicRecord, dict):
 
     _SIMPLE_FIELDS = {'type'}
@@ -1183,56 +1252,6 @@ class CivicAttribute(CivicRecord, dict):
 
     def update(self):
         return NotImplementedError
-
-
-class Therapy(CivicAttribute):
-    _SIMPLE_FIELDS = CivicAttribute._SIMPLE_FIELDS.union({'ncit_id', 'therapy_url', 'name'})
-    _COMPLEX_FIELDS = CivicAttribute._COMPLEX_FIELDS.union({'aliases'})
-
-    def __str__(self):
-        if self.ncit_id is None:
-            return self.name
-        else:
-            return "{} (NCIt ID {})".format(self.name, self.ncit_id)
-
-
-class Disease(CivicAttribute):
-    _SIMPLE_FIELDS = CivicAttribute._SIMPLE_FIELDS.union({'display_name', 'doid', 'disease_url'})
-    _COMPLEX_FIELDS = CivicAttribute._COMPLEX_FIELDS.union({'aliases'})
-
-    def __str__(self):
-        if self.doid is None:
-            return self.name
-        else:
-            return "{} (DOID {})".format(self.name, self.doid)
-
-
-class Phenotype(CivicAttribute):
-    _SIMPLE_FIELDS = CivicAttribute._SIMPLE_FIELDS.union({'hpo_id', 'url', 'name'})
-
-    def __str__(self):
-        return "{} (HPO ID {})".format(self.name, self.hpo_id)
-
-
-class Source(CivicAttribute):
-    _SIMPLE_FIELDS = CivicAttribute._SIMPLE_FIELDS.union({
-        'citation',
-        'citation_id',
-        'source_type',
-        'abstract',
-        'asco_abstract_id',
-        'author_string',
-        'full_journal_title',
-        'journal',
-        'pmc_id',
-        'publication_date',
-        'source_url',
-        'title'
-    })
-    _COMPLEX_FIELDS = CivicAttribute._COMPLEX_FIELDS.union({'clinical_trials'})
-
-    def __str__(self):
-        return "{} ({} {})".format(self.citation, self.source_type, self.citation_id)
 
 
 class Coordinates(CivicAttribute):

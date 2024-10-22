@@ -84,7 +84,6 @@ class TestEvidence(object):
             assert source.publication_date
             assert source.source_url
             assert source.title
-            assert source.name
             assert hasattr(source, 'clinical_trials')
 
     def test_get_all(self):
@@ -577,7 +576,6 @@ class TestTherapies(object):
     def test_has_ncit_id(self, v600e_assertion):
         trametinib = v600e_assertion.therapies[0]
         assert trametinib.ncit_id == 'C77908'
-        assert 'pubchem_id' not in trametinib.keys()
         assert trametinib.name == 'Trametinib'
         assert set(trametinib.aliases) == {
             'JTP-74057',
