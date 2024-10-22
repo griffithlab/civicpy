@@ -288,6 +288,35 @@ class TestAssertions(object):
             assert clingen_code.code
             assert clingen_code.description
 
+class TestFeatures(object):
+
+    def test_get_all(self):
+        features = civic.get_all_features()
+        assert len(features) >= 407
+
+    def test_get_non_rejected(self):
+        features = civic.get_all_features(include_status=['accepted', 'submitted'])
+        assert len(features) >= 402
+
+    def test_get_accepted_only(self):
+        features = civic.get_all_features(include_status=['accepted'])
+        assert len(features) >= 322
+
+    def test_get_by_id(self):
+        feature = civic.get_feature_by_id(58)
+        assert feature.type == 'gene'
+        assert feature.id == 58
+        assert feature.name == 'VHL'
+
+    def test_get_by_ids(self):
+        features = civic.get_features_by_ids([58, 61748, 61753])
+        assert features[0].type == 'gene'
+        assert features[0].id == 58
+        assert features[1].type == 'factor'
+        assert features[1].id == 61748
+        assert features[2].type == 'fusion'
+        assert features[2].id == 61753
+
 
 class TestGenes(object):
 

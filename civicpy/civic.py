@@ -2004,10 +2004,82 @@ def bulk_search_variants_by_coordinates(sorted_queries, search_mode='any'):
         ct_pointer += 1
     return dict(matches)
 
+def get_features_by_ids(feature_id_list):
+    """
+    :param list feature_id_list: A list of CIViC feature IDs to query against to cache and (as needed) CIViC.
+    :returns: A list of :class:`Gene`, `Fusion`, and/or `Factor` objects.
+    """
+    logging.info('Getting features...')
+    features = []
+    for feature_id in feature_id_list:
+        try:
+            gene = _get_element_by_id('gene', feature_id)
+            features.append(gene)
+        except:
+            pass
+        try:
+            fusion = _get_element_by_id('fusion', feature_id)
+            features.append(fusion)
+        except:
+            pass
+        try:
+            factor = _get_element_by_id('factor', feature_id)
+            features.append(factor)
+        except:
+            pass
+    variant_ids = set()
+    for feature in features:
+        feature._include_status = ['accepted', 'submitted', 'rejected']
+        for variant in feature.variants:
+            variant_ids.add(variant.id)
+    if variant_ids:
+        logging.info('Caching variant details...')
+        _get_elements_by_ids('variant', variant_ids)
+    for feature in features:
+        for variant in feature.variants:
+            variant.update()
+    return features
+
+
+def get_feature_by_id(feature_id):
+    """
+    :param int gene_id: A single CIViC feature ID.
+    :returns: A :class:`Gene`, `Fusion`, or `Factor` object.
+    """
+    return get_features_by_ids([feature_id])[0]
+
+
+def get_all_features(include_status=['accepted','submitted','rejected'], allow_cached=True):
+    """
+    Queries CIViC for all features.
+
+    :param list include_status: A list of statuses. Only genes and their associated entities matching the given statuses will be returned.
+    :param bool allow_cached: Indicates whether or not object retrieval from CACHE is allowed. If **False** it will query the CIViC database directly.
+    :returns: A list of :class:`Gene`, `Fusion`, and/or `Factor` objects.
+    """
+    genes = _get_elements_by_ids('gene', get_all=True, allow_cached=allow_cached)
+    fusions = _get_elements_by_ids('fusion', get_all=True, allow_cached=allow_cached)
+    factors = _get_elements_by_ids('factor', get_all=True, allow_cached=allow_cached)
+    features = []
+    features.extend(genes)
+    features.extend(fusions)
+    features.extend(factors)
+    if include_status:
+        assert CACHE.get('variants_all_ids', False)
+        assert CACHE.get('evidence_items_all_ids', False)
+        resp = list()
+        for f in features:
+            f._include_status = include_status
+            if f.variants:
+                resp.append(f)
+        return resp
+    else:
+        return features
+
 
 def get_genes_by_ids(gene_id_list):
     """
-    :param list gene_id_list: A list of CIViC gene IDs to query against to cache and (as needed) CIViC.
+    :param list gene_id_list: A list of CIViC gene feature IDs to query against to cache and (as needed) CIViC.
     :returns: A list of :class:`Gene` objects.
     """
     logging.info('Getting genes...')
@@ -2028,7 +2100,7 @@ def get_genes_by_ids(gene_id_list):
 
 def get_gene_by_id(gene_id):
     """
-    :param int gene_id: A single CIViC gene ID.
+    :param int gene_id: A single CIViC gene feature ID.
     :returns: A :class:`Gene` object.
     """
     return get_genes_by_ids([gene_id])[0]
@@ -2036,7 +2108,7 @@ def get_gene_by_id(gene_id):
 
 def get_all_genes(include_status=['accepted','submitted','rejected'], allow_cached=True):
     """
-    Queries CIViC for all genes.
+    Queries CIViC for all gene features.
 
     :param list include_status: A list of statuses. Only genes and their associated entities matching the given statuses will be returned.
     :param bool allow_cached: Indicates whether or not object retrieval from CACHE is allowed. If **False** it will query the CIViC database directly.
@@ -2058,7 +2130,7 @@ def get_all_genes(include_status=['accepted','submitted','rejected'], allow_cach
 
 def get_fusions_by_ids(fusion_id_list):
     """
-    :param list fusion_id_list: A list of CIViC fusion IDs to query against to cache and (as needed) CIViC.
+    :param list fusion_id_list: A list of CIViC fusion feature IDs to query against to cache and (as needed) CIViC.
     :returns: A list of :class:`Fusion` objects.
     """
     logging.info('Getting fusions...')
@@ -2079,7 +2151,7 @@ def get_fusions_by_ids(fusion_id_list):
 
 def get_fusion_by_id(fusion_id):
     """
-    :param int fusion_id: A single CIViC fusion ID.
+    :param int fusion_id: A single CIViC fusion feature ID.
     :returns: A :class:`Fusion` object.
     """
     return get_fusions_by_ids([fusion_id])[0]
@@ -2087,7 +2159,7 @@ def get_fusion_by_id(fusion_id):
 
 def get_all_fusions(include_status=['accepted','submitted','rejected'], allow_cached=True):
     """
-    Queries CIViC for all fusions.
+    Queries CIViC for all fusion features.
 
     :param list include_status: A list of statuses. Only fusions and their associated entities matching the given statuses will be returned.
     :param bool allow_cached: Indicates whether or not object retrieval from CACHE is allowed. If **False** it will query the CIViC database directly.
@@ -2109,7 +2181,7 @@ def get_all_fusions(include_status=['accepted','submitted','rejected'], allow_ca
 
 def get_factors_by_ids(factor_id_list):
     """
-    :param list factor_id_list: A list of CIViC factor IDs to query against to cache and (as needed) CIViC.
+    :param list factor_id_list: A list of CIViC factor feature IDs to query against to cache and (as needed) CIViC.
     :returns: A list of :class:`Factor` objects.
     """
     logging.info('Getting factors...')
@@ -2130,7 +2202,7 @@ def get_factors_by_ids(factor_id_list):
 
 def get_factor_by_id(factor_id):
     """
-    :param int factor_id: A single CIViC factor ID.
+    :param int factor_id: A single CIViC factor feature ID.
     :returns: A :class:`Factor` object.
     """
     return get_factors_by_ids([factor_id])[0]
@@ -2138,7 +2210,7 @@ def get_factor_by_id(factor_id):
 
 def get_all_factors(include_status=['accepted','submitted','rejected'], allow_cached=True):
     """
-    Queries CIViC for all factors.
+    Queries CIViC for all factor features.
 
     :param list include_status: A list of statuses. Only factors and their associated entities matching the given statuses will be returned.
     :param bool allow_cached: Indicates whether or not object retrieval from CACHE is allowed. If **False** it will query the CIViC database directly.
