@@ -5,12 +5,14 @@ from civicpy.civic import CoordinateQuery
 import vcfpy
 import binascii
 from collections import OrderedDict
+from civicpy.__version__ import __version__
 
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
 
 @click.group(context_settings=CONTEXT_SETTINGS)
+@click.version_option(__version__)
 def cli():
     pass
 
