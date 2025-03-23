@@ -298,6 +298,9 @@ def _construct_get_all_variants_payload():
                             reference_bases: referenceBases
                             variant_bases: variantBases
                         }
+                        five_prime_strand: fivePrimeEndExonCoordinates {
+                            strand
+                        }
                         three_prime_coordinates: threePrimeCoordinates {
                             reference_build: referenceBuild
                             ensembl_version: ensemblVersion
@@ -307,6 +310,9 @@ def _construct_get_all_variants_payload():
                             stop
                             reference_bases: referenceBases
                             variant_bases: variantBases
+                        }
+                        three_prime_strand: threePrimeEndExonCoordinates {
+                            strand
                         }
                     }
                     feature {

@@ -46,8 +46,8 @@ CIVIC_TO_PYCLASS = {
 }
 
 
-_CoordinateQuery = namedtuple('CoordinateQuery', ['chr', 'start', 'stop', 'alt', 'ref', 'build', 'key'])
-_CoordinateQuery.__new__.__defaults__ = (None, None, "GRCh37", None)
+_CoordinateQuery = namedtuple('CoordinateQuery', ['chr', 'start', 'stop', 'strand','alt', 'ref', 'build', 'key'])
+_CoordinateQuery.__new__.__defaults__ = (None, None, None, "GRCh37", None)
 
 
 class CoordinateQuery(_CoordinateQuery):  # Wrapping for documentation
@@ -978,7 +978,9 @@ class FusionVariant(Variant):
     })
     _COMPLEX_FIELDS = Variant._COMPLEX_FIELDS.union({
         'five_prime_coordinates',
+        'five_prime_strand',
         'three_prime_coordinates',
+        'three_prime_strand'
     })
 
     @property
@@ -2432,7 +2434,7 @@ def get_all_fusion_variants(include_status=['accepted', 'submitted', 'rejected']
     :param bool allow_cached: Indicates whether or not object retrieval from CACHE is allowed. If **False** it will query the CIViC database directly.
     :returns: A list of :class:`Variant` objects of **subtype** **fusion_variant**.
     """
-    variants = get_all_variants(include_status=include_status, allow_cached=True)
+    variants = get_all_variants(include_status=include_status, allow_cached=allow_cached)
     return [v for v in variants if v.subtype == 'fusion_variant']
 
 
