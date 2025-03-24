@@ -46,8 +46,8 @@ CIVIC_TO_PYCLASS = {
 }
 
 
-_CoordinateQuery = namedtuple('CoordinateQuery', ['chr', 'start', 'stop', 'strand','alt', 'ref', 'build', 'key'])
-_CoordinateQuery.__new__.__defaults__ = (None, None, None, "GRCh37", None)
+_CoordinateQuery = namedtuple('CoordinateQuery', ['chr', 'start', 'stop', 'alt', 'ref', 'build', 'key'])
+_CoordinateQuery.__new__.__defaults__ = (None, None, "GRCh37", None)
 
 
 class CoordinateQuery(_CoordinateQuery):  # Wrapping for documentation
