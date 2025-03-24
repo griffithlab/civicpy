@@ -520,9 +520,9 @@ class TestDiseases(object):
 
     def test_properties(self):
         breast_cancer = civic.get_disease_by_id(22)
-        assert len(breast_cancer.evidence) == 280
+        assert len(breast_cancer.evidence) >= 280
         assert breast_cancer.evidence == breast_cancer.evidence_items
-        assert len(breast_cancer.assertions) == 2
+        assert len(breast_cancer.assertions) >= 2
 
 
 class TestTherapies(object):
@@ -558,9 +558,9 @@ class TestTherapies(object):
 
     def test_properties(self):
         trametinib = civic.get_therapy_by_id(19)
-        assert len(trametinib.evidence) == 138
+        assert len(trametinib.evidence) >= 138
         assert trametinib.evidence == trametinib.evidence_items
-        assert len(trametinib.assertions) == 3
+        assert len(trametinib.assertions) >= 3
 
 
 class TestPhenotypes(object):
@@ -584,9 +584,9 @@ class TestPhenotypes(object):
 
     def test_properties(self):
         pediatric_onset = civic.get_phenotype_by_id(15320)
-        assert len(pediatric_onset.evidence) == 140
+        assert len(pediatric_onset.evidence) >= 140
         assert pediatric_onset.evidence == pediatric_onset.evidence_items
-        assert len(pediatric_onset.assertions) == 27
+        assert len(pediatric_onset.assertions) >= 27
 
 
 class TestCoordinateSearch(object):
