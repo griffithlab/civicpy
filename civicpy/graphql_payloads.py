@@ -288,30 +288,40 @@ def _construct_get_all_variants_payload():
                     }
                     ... on FusionVariant {
                         vicc_compliant_name: viccCompliantName
-                        five_prime_coordinates: fivePrimeCoordinates {
+                        five_prime_exon_start_coordinates: fivePrimeStartExonCoordinates {
                             reference_build: referenceBuild
                             ensembl_version: ensemblVersion
                             chromosome
                             representative_transcript: representativeTranscript
                             start
                             stop
-                            reference_bases: referenceBases
-                            variant_bases: variantBases
-                        }
-                        five_prime_strand: fivePrimeEndExonCoordinates {
                             strand
                         }
-                        three_prime_coordinates: threePrimeCoordinates {
+                        five_prime_exon_end_coordinates: fivePrimeEndExonCoordinates {
                             reference_build: referenceBuild
                             ensembl_version: ensemblVersion
                             chromosome
                             representative_transcript: representativeTranscript
                             start
                             stop
-                            reference_bases: referenceBases
-                            variant_bases: variantBases
+                            strand
                         }
-                        three_prime_strand: threePrimeEndExonCoordinates {
+                        three_prime_exon_start_coordinates: threePrimeStartExonCoordinates {
+                            reference_build: referenceBuild
+                            ensembl_version: ensemblVersion
+                            chromosome
+                            representative_transcript: representativeTranscript
+                            start
+                            stop
+                            strand
+                        }
+                        three_prime_exon_end_coordinates: threePrimeEndExonCoordinates {
+                            reference_build: referenceBuild
+                            ensembl_version: ensemblVersion
+                            chromosome
+                            representative_transcript: representativeTranscript
+                            start
+                            stop
                             strand
                         }
                     }

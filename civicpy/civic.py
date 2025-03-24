@@ -977,10 +977,10 @@ class FusionVariant(Variant):
         'vicc_compliant_name',
     })
     _COMPLEX_FIELDS = Variant._COMPLEX_FIELDS.union({
-        'five_prime_coordinates',
-        'five_prime_strand',
-        'three_prime_coordinates',
-        'three_prime_strand'
+        'five_prime_exon_start_coordinates',
+        'five_prime_exon_end_coordinates',
+        'three_prime_exon_start_coordinates',
+        'three_prime_exon_end_coordinates',
     })
 
     @property
