@@ -41,8 +41,12 @@ LINKS_URL = 'https://civicdb.org/links'
 
 CIVIC_TO_PYCLASS = {
     'evidence_items': 'evidence',
-    'five_prime_coordinates': 'coordinates',
-    'three_prime_ccodinates': 'coordinates',
+    'five_prime_coordinates': 'coordinate',
+    'three_prime_coordinates': 'coordinate',
+    'five_prime_start_exon_coordinates': 'exon_coordinate',
+    'five_prime_end_exon_coordinates': 'exon_coordinate',
+    'three_prime_start_exon_coordinates': 'exon_coordinate',
+    'three_prime_end_exon_coordinates': 'exon_coordinate',
 }
 
 
@@ -438,7 +442,7 @@ class CivicRecord:
                 else:
                     raise AttributeError('Expected {} attribute for {}, none found.'.format(field, self.type))
             is_compound = isinstance(v, list)
-            cls = get_class(field)
+            cls = get_class(CIVIC_TO_PYCLASS.get(field, field))
             if is_compound:
                 result = list()
                 for data in v:
@@ -977,10 +981,12 @@ class FusionVariant(Variant):
         'vicc_compliant_name',
     })
     _COMPLEX_FIELDS = Variant._COMPLEX_FIELDS.union({
-        'five_prime_exon_start_coordinates',
-        'five_prime_exon_end_coordinates',
-        'three_prime_exon_start_coordinates',
-        'three_prime_exon_end_coordinates',
+        'five_prime_coordinates',
+        'three_prime_coordinates',
+        'five_prime_start_exon_coordinates',
+        'five_prime_end_exon_coordinates',
+        'three_prime_start_exon_coordinates',
+        'three_prime_end_exon_coordinates',
     })
 
     @property
@@ -1728,7 +1734,7 @@ class CivicAttribute(CivicRecord, dict):
         return NotImplementedError
 
 
-class Coordinates(CivicAttribute):
+class Coordinate(CivicAttribute):
     _SIMPLE_FIELDS = CivicAttribute._SIMPLE_FIELDS.union({
          'chromosome',
          'start',
@@ -1740,11 +1746,32 @@ class Coordinates(CivicAttribute):
          'reference_build',
     })
 
+    def __repr__(self):
+        return '<CIViC Coordinate>'.format(self.type)
+
     def __init__(self, **kwargs):
-        if self.reference_bases in ['', '-']:
-            self.reference_bases = None
-        if self.variant_bases in ['', '-']:
-            self.variant_bases = None
+        super().__init__(**kwargs)
+
+
+class ExonCoordinate(CivicAttribute):
+    _SIMPLE_FIELDS = CivicAttribute._SIMPLE_FIELDS.union({
+         'chromosome',
+         'ensembl_id',
+         'ensembl_version',
+         'exon',
+         'exon_offset',
+         'exon_offset_direction',
+         'reference_build',
+         'representative_transcript',
+         'start',
+         'stop',
+         'strand',
+    })
+
+    def __repr__(self):
+        return '<CIViC ExonCoordinate>'.format(self.type)
+
+    def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
 
@@ -1905,6 +1932,10 @@ def _postprocess_response_element(e, element):
             elif build == 'GRCH38':
                 build = 'GRCh38'
             e['coordinates']['reference_build'] = build
+            if e['coordinates']['reference_bases'] in ['', '-']:
+                e['coordinates']['reference_bases'] = None
+            if e['coordinates']['variant_bases'] in ['', '-']:
+                e['coordinates']['variant_bases'] = None
         elif e['__typename'] == 'FactorVariant':
             e['subtype'] = 'factor_variant'
         elif e['__typename'] == 'FusionVariant':
@@ -2400,7 +2431,7 @@ def get_all_variants(include_status=['accepted', 'submitted', 'rejected'], allow
     :param bool allow_cached: Indicates whether or not object retrieval from CACHE is allowed. If **False** it will query the CIViC database directly.
     :returns: A list of :class:`Variant` objects.
     """
-    variants = _get_elements_by_ids('variant', allow_cached=allow_cached, get_all=True)
+    variants = _get_elements_by_ids('variant', allow_cached=allow_cached, get_all=allow_cached)
     if include_status:
         assert CACHE.get('evidence_items_all_ids', False)
         assert CACHE.get('assertions_all_ids', False)
@@ -2422,7 +2453,7 @@ def get_all_gene_variants(include_status=['accepted', 'submitted', 'rejected'], 
     :param bool allow_cached: Indicates whether or not object retrieval from CACHE is allowed. If **False** it will query the CIViC database directly.
     :returns: A list of :class:`Variant` objects of **subtype** **gene_variant**.
     """
-    variants = get_all_variants(include_status=include_status, allow_cached=True)
+    variants = get_all_variants(include_status=include_status, allow_cached=allow_cached)
     return [v for v in variants if v.subtype == 'gene_variant']
 
 
