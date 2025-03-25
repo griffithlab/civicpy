@@ -213,7 +213,7 @@ class TestFusionVariants(object):
         assert variant.five_prime_start_exon_coordinates.representative_transcript == "ENST00000305877.8"
         assert variant.five_prime_start_exon_coordinates.strand == "POSITIVE"
         assert variant.five_prime_start_exon_coordinates.exon == 1
-        assert variant.five_prime_start_exon_coordinates.exon_offset is None
+        assert variant.five_prime_start_exon_coordinates.exon_offset==0
         assert variant.five_prime_start_exon_coordinates.exon_offset_direction is None
         assert variant.five_prime_start_exon_coordinates.start == 23522397
         assert variant.five_prime_start_exon_coordinates.stop == 23524426
@@ -225,7 +225,7 @@ class TestFusionVariants(object):
         assert variant.five_prime_end_exon_coordinates.representative_transcript == "ENST00000305877.8"
         assert variant.five_prime_end_exon_coordinates.strand == "POSITIVE"
         assert variant.five_prime_end_exon_coordinates.exon == 14
-        assert variant.five_prime_end_exon_coordinates.exon_offset is None
+        assert variant.five_prime_end_exon_coordinates.exon_offset==0
         assert variant.five_prime_end_exon_coordinates.exon_offset_direction is None
         assert variant.five_prime_end_exon_coordinates.start == 23632526
         assert variant.five_prime_end_exon_coordinates.stop == 23632600
@@ -237,7 +237,7 @@ class TestFusionVariants(object):
         assert variant.three_prime_start_exon_coordinates.representative_transcript == "ENST00000318560.5"
         assert variant.three_prime_start_exon_coordinates.strand == "POSITIVE"
         assert variant.three_prime_start_exon_coordinates.exon == 2
-        assert variant.three_prime_start_exon_coordinates.exon_offset is None
+        assert variant.three_prime_start_exon_coordinates.exon_offset==0
         assert variant.three_prime_start_exon_coordinates.exon_offset_direction is None
         assert variant.three_prime_start_exon_coordinates.start == 133729451
         assert variant.three_prime_start_exon_coordinates.stop == 133729624
@@ -249,11 +249,16 @@ class TestFusionVariants(object):
         assert variant.three_prime_end_exon_coordinates.representative_transcript == "ENST00000318560.5"
         assert variant.three_prime_end_exon_coordinates.strand == "POSITIVE"
         assert variant.three_prime_end_exon_coordinates.exon == 11
-        assert variant.three_prime_end_exon_coordinates.exon_offset is None
+        assert variant.three_prime_end_exon_coordinates.exon_offset==0
         assert variant.three_prime_end_exon_coordinates.exon_offset_direction is None
         assert variant.three_prime_end_exon_coordinates.start == 133759356
         assert variant.three_prime_end_exon_coordinates.stop == 133763062
- 
+
+    def test_nullable_fields(self):
+        variant = civic.get_variant_by_id(739)
+        assert variant.three_prime_coordinates is None
+        assert variant.three_prime_start_exon_coordinates is None
+        assert variant.three_prime_end_exon_coordinates is None
 
     def test_properties(self):
         variant = civic.get_variant_by_id(1)
