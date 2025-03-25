@@ -207,15 +207,23 @@ class TestFusionVariants(object):
         variant = civic.get_variant_by_id(1)
         assert variant.vicc_compliant_name == 'BCR(entrez:613)::ABL1(entrez:25)'
         assert variant.five_prime_start_exon_coordinates.chromosome == "22"
+        assert variant.five_prime_start_exon_coordinates.exon == 1
+        assert variant.five_prime_start_exon_coordinates.exon_offset == 0
         assert variant.five_prime_start_exon_coordinates.start == 23522397
         assert variant.five_prime_start_exon_coordinates.stop == 23524426
         assert variant.five_prime_end_exon_coordinates.chromosome == "22"
+        assert variant.five_prime_end_exon_coordinates.exon == 14
+        assert variant.five_prime_end_exon_coordinates.exon_offset == 0
         assert variant.five_prime_end_exon_coordinates.start == 23632526
         assert variant.five_prime_end_exon_coordinates.stop == 23632600
         assert variant.three_prime_start_exon_coordinates.chromosome == "9"
+        assert variant.three_prime_start_exon_coordinates.exon == 2
+        assert variant.three_prime_start_exon_coordinates.exon_offset == 0
         assert variant.three_prime_start_exon_coordinates.start == 133729451
         assert variant.three_prime_start_exon_coordinates.stop == 133729624
         assert variant.three_prime_end_exon_coordinates.chromosome == "9"
+        assert variant.three_prime_end_exon_coordinates.exon == 11
+        assert variant.three_prime_start_exon_coordinates.exon_offset == 0
         assert variant.three_prime_end_exon_coordinates.start == 133759356
         assert variant.three_prime_end_exon_coordinates.stop == 133763062
         assert variant.five_prime_end_exon_coordinates.strand == "POSITIVE"
