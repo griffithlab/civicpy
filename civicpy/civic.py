@@ -401,6 +401,7 @@ class CivicRecord:
 
     _SIMPLE_FIELDS = {'id', 'type'}
     _COMPLEX_FIELDS = set()
+    _NULLABLE_COMPLEX_FIELDS = set()
     _OPTIONAL_FIELDS = set()
 
     def __init__(self, partial=False, **kwargs):
@@ -456,7 +457,10 @@ class CivicRecord:
                 t = v.get('type', field)
                 v['type'] = CIVIC_TO_PYCLASS.get(t, t)
                 if v.keys() == {'type'}:
-                    self.__setattr__(field, {})
+                    if field in self._NULLABLE_COMPLEX_FIELDS:
+                        self.__setattr__(field, None)
+                    else:
+                        self.__setattr__(field, {})
                 else:
                     self.__setattr__(field, cls(partial=True, **v))
 
@@ -981,6 +985,14 @@ class FusionVariant(Variant):
         'vicc_compliant_name',
     })
     _COMPLEX_FIELDS = Variant._COMPLEX_FIELDS.union({
+        'five_prime_coordinates',
+        'three_prime_coordinates',
+        'five_prime_start_exon_coordinates',
+        'five_prime_end_exon_coordinates',
+        'three_prime_start_exon_coordinates',
+        'three_prime_end_exon_coordinates',
+    })
+    _NULLABLE_COMPLEX_FIELDS = Variant._NULLABLE_COMPLEX_FIELDS.union({
         'five_prime_coordinates',
         'three_prime_coordinates',
         'five_prime_start_exon_coordinates',
