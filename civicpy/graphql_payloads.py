@@ -252,7 +252,7 @@ def _construct_get_variant_payload():
                         reference_bases: referenceBases
                         variant_bases: variantBases
                     }
-                    five_prime_exon_start_coordinates: fivePrimeStartExonCoordinates {
+                    five_prime_start_exon_coordinates: fivePrimeStartExonCoordinates {
                         chromosome
                         ensembl_id: ensemblId
                         ensembl_version: ensemblVersion
@@ -265,7 +265,7 @@ def _construct_get_variant_payload():
                         stop
                         strand
                     }
-                    five_prime_exon_end_coordinates: fivePrimeEndExonCoordinates {
+                    five_prime_end_exon_coordinates: fivePrimeEndExonCoordinates {
                         chromosome
                         ensembl_id: ensemblId
                         ensembl_version: ensemblVersion
@@ -278,7 +278,7 @@ def _construct_get_variant_payload():
                         stop
                         strand
                     }
-                    three_prime_exon_start_coordinates: threePrimeStartExonCoordinates {
+                    three_prime_start_exon_coordinates: threePrimeStartExonCoordinates {
                         chromosome
                         ensembl_id: ensemblId
                         ensembl_version: ensemblVersion
@@ -291,7 +291,7 @@ def _construct_get_variant_payload():
                         stop
                         strand
                     }
-                    three_prime_exon_end_coordinates: threePrimeEndExonCoordinates {
+                    three_prime_end_exon_coordinates: threePrimeEndExonCoordinates {
                         chromosome
                         ensembl_id: ensemblId
                         ensembl_version: ensemblVersion
