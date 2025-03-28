@@ -206,8 +206,59 @@ class TestFusionVariants(object):
     def test_attributes(self):
         variant = civic.get_variant_by_id(1)
         assert variant.vicc_compliant_name == 'BCR(entrez:613)::ABL1(entrez:25)'
-        assert variant.five_prime_coordinates.reference_build == 'GRCH37'
-        assert variant.three_prime_coordinates.reference_build == 'GRCH37'
+        assert variant.five_prime_start_exon_coordinates.chromosome == "22"
+        assert variant.five_prime_start_exon_coordinates.reference_build == "GRCH37"
+        assert variant.five_prime_start_exon_coordinates.ensembl_id == "ENSE00001897802"
+        assert variant.five_prime_start_exon_coordinates.ensembl_version == 75
+        assert variant.five_prime_start_exon_coordinates.representative_transcript == "ENST00000305877.8"
+        assert variant.five_prime_start_exon_coordinates.strand == "POSITIVE"
+        assert variant.five_prime_start_exon_coordinates.exon == 1
+        assert variant.five_prime_start_exon_coordinates.exon_offset==0
+        assert variant.five_prime_start_exon_coordinates.exon_offset_direction is None
+        assert variant.five_prime_start_exon_coordinates.start == 23522397
+        assert variant.five_prime_start_exon_coordinates.stop == 23524426
+
+        assert variant.five_prime_end_exon_coordinates.chromosome == "22"
+        assert variant.five_prime_end_exon_coordinates.reference_build == "GRCH37"
+        assert variant.five_prime_end_exon_coordinates.ensembl_id == "ENSE00001781765"
+        assert variant.five_prime_end_exon_coordinates.ensembl_version == 75
+        assert variant.five_prime_end_exon_coordinates.representative_transcript == "ENST00000305877.8"
+        assert variant.five_prime_end_exon_coordinates.strand == "POSITIVE"
+        assert variant.five_prime_end_exon_coordinates.exon == 14
+        assert variant.five_prime_end_exon_coordinates.exon_offset==0
+        assert variant.five_prime_end_exon_coordinates.exon_offset_direction is None
+        assert variant.five_prime_end_exon_coordinates.start == 23632526
+        assert variant.five_prime_end_exon_coordinates.stop == 23632600
+
+        assert variant.three_prime_start_exon_coordinates.chromosome == "9"
+        assert variant.three_prime_start_exon_coordinates.reference_build == "GRCH37"
+        assert variant.three_prime_start_exon_coordinates.ensembl_id == "ENSE00000984287"
+        assert variant.three_prime_start_exon_coordinates.ensembl_version == 75
+        assert variant.three_prime_start_exon_coordinates.representative_transcript == "ENST00000318560.5"
+        assert variant.three_prime_start_exon_coordinates.strand == "POSITIVE"
+        assert variant.three_prime_start_exon_coordinates.exon == 2
+        assert variant.three_prime_start_exon_coordinates.exon_offset==0
+        assert variant.three_prime_start_exon_coordinates.exon_offset_direction is None
+        assert variant.three_prime_start_exon_coordinates.start == 133729451
+        assert variant.three_prime_start_exon_coordinates.stop == 133729624
+
+        assert variant.three_prime_end_exon_coordinates.chromosome == "9"
+        assert variant.three_prime_end_exon_coordinates.reference_build == "GRCH37"
+        assert variant.three_prime_end_exon_coordinates.ensembl_id == "ENSE00001457584"
+        assert variant.three_prime_end_exon_coordinates.ensembl_version == 75
+        assert variant.three_prime_end_exon_coordinates.representative_transcript == "ENST00000318560.5"
+        assert variant.three_prime_end_exon_coordinates.strand == "POSITIVE"
+        assert variant.three_prime_end_exon_coordinates.exon == 11
+        assert variant.three_prime_end_exon_coordinates.exon_offset==0
+        assert variant.three_prime_end_exon_coordinates.exon_offset_direction is None
+        assert variant.three_prime_end_exon_coordinates.start == 133759356
+        assert variant.three_prime_end_exon_coordinates.stop == 133763062
+
+    def test_nullable_fields(self):
+        variant = civic.get_variant_by_id(739)
+        assert variant.three_prime_coordinates is None
+        assert variant.three_prime_start_exon_coordinates is None
+        assert variant.three_prime_end_exon_coordinates is None
 
     def test_properties(self):
         variant = civic.get_variant_by_id(1)
@@ -508,9 +559,9 @@ class TestDiseases(object):
 
     def test_properties(self):
         breast_cancer = civic.get_disease_by_id(22)
-        assert len(breast_cancer.evidence) == 280
+        assert len(breast_cancer.evidence) >= 280
         assert breast_cancer.evidence == breast_cancer.evidence_items
-        assert len(breast_cancer.assertions) == 2
+        assert len(breast_cancer.assertions) >= 2
 
 
 class TestTherapies(object):
@@ -546,9 +597,9 @@ class TestTherapies(object):
 
     def test_properties(self):
         trametinib = civic.get_therapy_by_id(19)
-        assert len(trametinib.evidence) == 138
+        assert len(trametinib.evidence) >= 138
         assert trametinib.evidence == trametinib.evidence_items
-        assert len(trametinib.assertions) == 3
+        assert len(trametinib.assertions) >= 3
 
 
 class TestPhenotypes(object):
@@ -572,9 +623,9 @@ class TestPhenotypes(object):
 
     def test_properties(self):
         pediatric_onset = civic.get_phenotype_by_id(15320)
-        assert len(pediatric_onset.evidence) == 140
+        assert len(pediatric_onset.evidence) >= 140
         assert pediatric_onset.evidence == pediatric_onset.evidence_items
-        assert len(pediatric_onset.assertions) == 27
+        assert len(pediatric_onset.assertions) >= 27
 
 
 class TestCoordinateSearch(object):

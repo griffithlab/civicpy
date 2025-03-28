@@ -230,6 +230,81 @@ def _construct_get_variant_payload():
                         variant_bases: variantBases
                     }
                 }
+                ... on FusionVariant {
+                    vicc_compliant_name: viccCompliantName
+                    five_prime_coordinates: fivePrimeCoordinates {
+                        reference_build: referenceBuild
+                        ensembl_version: ensemblVersion
+                        chromosome
+                        representative_transcript: representativeTranscript
+                        start
+                        stop
+                        reference_bases: referenceBases
+                        variant_bases: variantBases
+                    }
+                    three_prime_coordinates: threePrimeCoordinates {
+                        reference_build: referenceBuild
+                        ensembl_version: ensemblVersion
+                        chromosome
+                        representative_transcript: representativeTranscript
+                        start
+                        stop
+                        reference_bases: referenceBases
+                        variant_bases: variantBases
+                    }
+                    five_prime_start_exon_coordinates: fivePrimeStartExonCoordinates {
+                        chromosome
+                        ensembl_id: ensemblId
+                        ensembl_version: ensemblVersion
+                        exon
+                        exon_offset: exonOffset
+                        exon_offset_direction: exonOffsetDirection
+                        reference_build: referenceBuild
+                        representative_transcript: representativeTranscript
+                        start
+                        stop
+                        strand
+                    }
+                    five_prime_end_exon_coordinates: fivePrimeEndExonCoordinates {
+                        chromosome
+                        ensembl_id: ensemblId
+                        ensembl_version: ensemblVersion
+                        exon
+                        exon_offset: exonOffset
+                        exon_offset_direction: exonOffsetDirection
+                        reference_build: referenceBuild
+                        representative_transcript: representativeTranscript
+                        start
+                        stop
+                        strand
+                    }
+                    three_prime_start_exon_coordinates: threePrimeStartExonCoordinates {
+                        chromosome
+                        ensembl_id: ensemblId
+                        ensembl_version: ensemblVersion
+                        exon
+                        exon_offset: exonOffset
+                        exon_offset_direction: exonOffsetDirection
+                        reference_build: referenceBuild
+                        representative_transcript: representativeTranscript
+                        start
+                        stop
+                        strand
+                    }
+                    three_prime_end_exon_coordinates: threePrimeEndExonCoordinates {
+                        chromosome
+                        ensembl_id: ensemblId
+                        ensembl_version: ensemblVersion
+                        exon
+                        exon_offset: exonOffset
+                        exon_offset_direction: exonOffsetDirection
+                        reference_build: referenceBuild
+                        representative_transcript: representativeTranscript
+                        start
+                        stop
+                        strand
+                    }
+                }
                 ... on FactorVariant {
                     ncit_id: ncitId
                 }
@@ -307,6 +382,58 @@ def _construct_get_all_variants_payload():
                             stop
                             reference_bases: referenceBases
                             variant_bases: variantBases
+                        }
+                        five_prime_start_exon_coordinates: fivePrimeStartExonCoordinates {
+                            chromosome
+                            ensembl_id: ensemblId
+                            ensembl_version: ensemblVersion
+                            exon
+                            exon_offset: exonOffset
+                            exon_offset_direction: exonOffsetDirection
+                            reference_build: referenceBuild
+                            representative_transcript: representativeTranscript
+                            start
+                            stop
+                            strand
+                        }
+                        five_prime_end_exon_coordinates: fivePrimeEndExonCoordinates {
+                            chromosome
+                            ensembl_id: ensemblId
+                            ensembl_version: ensemblVersion
+                            exon
+                            exon_offset: exonOffset
+                            exon_offset_direction: exonOffsetDirection
+                            reference_build: referenceBuild
+                            representative_transcript: representativeTranscript
+                            start
+                            stop
+                            strand
+                        }
+                        three_prime_start_exon_coordinates: threePrimeStartExonCoordinates {
+                            chromosome
+                            ensembl_id: ensemblId
+                            ensembl_version: ensemblVersion
+                            exon
+                            exon_offset: exonOffset
+                            exon_offset_direction: exonOffsetDirection
+                            reference_build: referenceBuild
+                            representative_transcript: representativeTranscript
+                            start
+                            stop
+                            strand
+                        }
+                        three_prime_end_exon_coordinates: threePrimeEndExonCoordinates {
+                            chromosome
+                            ensembl_id: ensemblId
+                            ensembl_version: ensemblVersion
+                            exon
+                            exon_offset: exonOffset
+                            exon_offset_direction: exonOffsetDirection
+                            reference_build: referenceBuild
+                            representative_transcript: representativeTranscript
+                            start
+                            stop
+                            strand
                         }
                     }
                     feature {
