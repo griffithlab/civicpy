@@ -1,4 +1,4 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 from civicpy.__version__ import __version__, __authors__, __author_email__, __description__, __url__
 from pathlib import Path
 
@@ -8,7 +8,7 @@ long_description = (this_directory / "README.md").read_text()
 setup(
     name='civicpy',
     version=__version__,
-    packages=['civicpy'],
+    packages=find_packages(),
     url=__url__,
     license='MIT',
     author=', '.join(__authors__),

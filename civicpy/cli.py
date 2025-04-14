@@ -1,6 +1,7 @@
 import click
 from civicpy import LOCAL_CACHE_PATH, civic
-from civicpy.exports import VCFWriter
+from civicpy.exports.civic_vcf_writer import CivicVcfWriter
+from civicpy.exports.civic_vcf_record import CivicVcfRecord
 from civicpy.civic import CoordinateQuery
 import vcfpy
 import binascii
@@ -36,12 +37,11 @@ def update(soft, cache_save_path):
               May be specified more than once.")
 def create_vcf(vcf_file_path, include_status):
     """Create a VCF file of CIViC variants"""
-    with open(vcf_file_path, "w") as fh:
-        writer = VCFWriter(fh)
-        for variant in civic.get_all_gene_variants(include_status=include_status):
-            if variant.is_valid_for_vcf():
-                writer.addrecord(variant)
-        writer.writerecords()
+    records = []
+    for variant in civic.get_all_gene_variants(include_status=include_status):
+        if variant.is_valid_for_vcf() and variant.coordinates is not None:
+            records.append(CivicVcfRecord(variant, include_status))
+    CivicVcfWriter(vcf_file_path, records)
 
 @cli.command(context_settings=CONTEXT_SETTINGS)
 @click.option('--input-vcf', required=True,
@@ -57,7 +57,7 @@ def annotate_vcf(input_vcf, output_vcf, reference, include_status):
     """Annotate a VCF with information from CIViC"""
     reader = vcfpy.Reader.from_path(input_vcf)
     new_header = reader.header.copy()
-    new_header.add_info_line(OrderedDict([('ID', 'CIVIC'), ('Number', '.'), ('Type', 'String'), ('Description', VCFWriter.CSQ_DESCRIPTION)]))
+    new_header.add_info_line(OrderedDict([('ID', 'CIVIC'), ('Number', '.'), ('Type', 'String'), ('Description', CivicVcfWriter.CSQ_DESCRIPTION)]))
     writer = vcfpy.Writer.from_path(output_vcf, new_header)
     for entry in reader:
         for alt in entry.ALT:
@@ -90,9 +90,10 @@ def annotate_vcf(input_vcf, output_vcf, reference, include_status):
             variants = civic.search_variants_by_coordinates(query, search_mode='exact')
             if variants is not None:
                 if len(variants) == 1:
-                    csq = variants[0].csq(include_status)
+                    record = CivicVcfRecord(variants[0], include_status)
+                    csq = record.INFO['CSQ']
                     if len(csq) > 0:
-                        entry.INFO['CIVIC'] = variants[0].csq(include_status)
+                        entry.INFO['CIVIC'] = csq
                 elif len(variants) > 1:
                     print("More than one variant found for start {} stop {} ref {} alt {}. CIViC Variants IDs: {}".format(start, end, ref, alt, ",".join(list(map(lambda v: str(v.id), variants)))))
             writer.write_record(entry)
