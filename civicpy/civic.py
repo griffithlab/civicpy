@@ -1145,9 +1145,31 @@ class Evidence(CivicRecord):
         return self.molecular_profile.variants
 
 
-    #@statement.setter
-    #def statement(self, value):
-    #    self.description = value
+    def is_valid_for_gks_json(self, emit_warnings=False) -> bool:
+        warnings = []
+
+        if self.status != "accepted":
+            warnings.append(f"Evidence {self.id} does not have 'accepted' status. Skipping")
+
+        if self.evidence_type not in ("DIAGNOSTIC", "PREDICTIVE", "PREDICTIVE", "PROGNOSTIC"):
+            warnings.append(f"Evidence type is not one of: 'DIAGNOSTIC', 'PREDICTIVE', or 'PROGNOSTIC'. Skipping")
+
+        len_mp_variants = len(self.molecular_profile.variants)
+        if len_mp_variants > 1:
+            warnings.append(f"Evidence {self.id} has a complex molecular profile. Skipping")
+        elif len_mp_variants == 1:
+            if not isinstance(self.molecular_profile.variants[0], GeneVariant):
+                warnings.append(f"Evidence {self.id} variant is not a ``GeneVariant``. Skipping")
+        else:
+            warnings.append(f"Evidence {self.id} has no variants. Skipping")
+
+        if not warnings:
+            return True
+        else:
+            if emit_warnings:
+                for warning in warnings:
+                    logging.warning(warning)
+            return False
 
 
 class Assertion(CivicRecord):
@@ -1269,6 +1291,31 @@ class Assertion(CivicRecord):
         """
         return self.molecular_profile.variants
 
+    def is_valid_for_gks_json(self, emit_warnings=False) -> bool:
+        warnings = []
+
+        if self.status != "accepted":
+            warnings.append(f"Assertion {self.id} does not have 'accepted' status. Skipping")
+
+        if self.assertion_type not in ("DIAGNOSTIC", "PREDICTIVE", "PREDICTIVE", "PROGNOSTIC"):
+            warnings.append(f"Assertion type is not one of: 'DIAGNOSTIC', 'PREDICTIVE', or 'PROGNOSTIC'. Skipping")
+
+        len_mp_variants = len(self.molecular_profile.variants)
+        if len_mp_variants > 1:
+            warnings.append(f"Assertion {self.id} has a complex molecular profile. Skipping")
+        elif len_mp_variants == 1:
+            if not isinstance(self.molecular_profile.variants[0], GeneVariant):
+                warnings.append(f"Assertion {self.id} variant is not a ``GeneVariant``. Skipping")
+        else:
+            warnings.append(f"Assertion {self.id} has no variants. Skipping")
+
+        if not warnings:
+            return True
+        else:
+            if emit_warnings:
+                for warning in warnings:
+                    logging.warning(warning)
+            return False
 
 class User(CivicRecord):
     _SIMPLE_FIELDS = CivicRecord._SIMPLE_FIELDS.union({

@@ -1,5 +1,8 @@
+from pathlib import Path
 import click
 from civicpy import LOCAL_CACHE_PATH, civic
+from civicpy.exports.civic_gks_record import CivicGksPredictiveAssertion, CivicGksDiagnosticAssertion, CivicGksPrognosticAssertion
+from civicpy.exports.civic_gks_writer import CivicGksWriter
 from civicpy.exports.civic_vcf_writer import CivicVcfWriter
 from civicpy.exports.civic_vcf_record import CivicVcfRecord
 from civicpy.civic import CoordinateQuery
@@ -39,9 +42,42 @@ def create_vcf(vcf_file_path, include_status):
     """Create a VCF file of CIViC variants"""
     records = []
     for variant in civic.get_all_gene_variants(include_status=include_status):
-        if variant.is_valid_for_vcf() and variant.coordinates is not None:
+        if variant.is_valid_for_vcf():
             records.append(CivicVcfRecord(variant, include_status))
     CivicVcfWriter(vcf_file_path, records)
+
+@cli.command(context_settings=CONTEXT_SETTINGS)
+@click.option(
+    "-o",
+    "--output-json",
+    required=True,
+    help="The output file path to write the JSON file to.",
+    type=click.Path(
+        exists=False,
+        readable=True,
+        dir_okay=False,
+        path_type=Path,
+    )
+)
+def create_gks_json(output_json):
+    """Create a JSON file for accepted CIViC assertion records represented as GKS objects.
+
+    For now, we will only support simple molecular profiles.
+    """
+    records = []
+
+    for assertion in civic.get_all_assertions(include_status=["accepted"]):
+        if assertion.is_valid_for_gks_json():
+            if assertion.assertion_type == "DIAGNOSTIC":
+                gks_record = CivicGksDiagnosticAssertion(assertion)
+            elif assertion.assertion_type == "PREDICTIVE":
+                gks_record = CivicGksPredictiveAssertion(assertion)
+            else:
+                gks_record = CivicGksPrognosticAssertion(assertion)
+            records.append(gks_record)
+
+    CivicGksWriter(output_json, records)
+
 
 @cli.command(context_settings=CONTEXT_SETTINGS)
 @click.option('--input-vcf', required=True,
