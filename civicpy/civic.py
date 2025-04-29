@@ -392,6 +392,58 @@ def _build_coordinate_table(variants):
     MODULE.COORDINATE_TABLE_CHR = df.chr.sort_values()
 
 
+def _is_valid(warnings: list[str], emit_warnings: bool = False) -> bool:
+    """Determine whether object is valid
+
+    :param warnings: List of warnings. If warnings exist, then object is invalid
+    :param emit_warnings: Whether to log warnings, defaults to False
+    :return: ``True`` if object is valid. ``False`` otherwise
+    """
+    if not warnings:
+        return True
+    else:
+        if emit_warnings:
+            for warning in warnings:
+                logging.warning(warning)
+        return False
+
+
+def _is_valid_for_gks_json(cls, emit_warnings: bool = False) -> bool:
+    """Determine whether Evidence is able to be represented as GKS model
+
+    :param cls: The instance to validate
+    :param emit_warnings: Whether to log warnings, defaults to False
+    :raises ValueError: If cls is not of type Assertion or Evidence
+    :return: ``True`` if Evidence is able to be represented as GKS model. ``False``
+        otherwise
+    """
+    if not isinstance(cls, (Assertion, Evidence)):
+        raise TypeError(f"Instance must be of type Assertion or Evidence: {type(cls)}.")
+
+    class_name = cls.__class__.__name__
+    prefix = f"{class_name} {cls.id}"
+
+    warnings = []
+
+    if cls.status != "accepted":
+        warnings.append(f"{prefix} does not have 'accepted' status. Skipping")
+
+    record_type = cls.evidence_type if isinstance(cls, Evidence) else cls.assertion_type
+    if record_type not in ("DIAGNOSTIC", "PREDICTIVE", "PREDICTIVE", "PROGNOSTIC"):
+        warnings.append(f"{prefix} type is not one of: 'DIAGNOSTIC', 'PREDICTIVE', or 'PROGNOSTIC'. Skipping")
+
+    len_mp_variants = len(cls.molecular_profile.variants)
+    if len_mp_variants > 1:
+        warnings.append(f"{prefix} has a complex molecular profile. Skipping")
+    elif len_mp_variants == 1:
+        if not isinstance(cls.molecular_profile.variants[0], GeneVariant):
+            warnings.append(f"{prefix} variant is not a ``GeneVariant``. Skipping")
+    else:
+        warnings.append(f"{prefix} has no variants. Skipping")
+
+    return _is_valid(warnings, emit_warnings)
+
+
 class CivicRecord:
     """
     As a base class, :class:`CivicRecord` is used to define the characteristic of all records in CIViC. This class is not
@@ -780,13 +832,7 @@ class GeneVariant(Variant):
         if not(self.coordinates.chromosome and self.coordinates.start and (self.coordinates.reference_bases or self.coordinates.variant_bases)):
             warnings.append("Incomplete coordinates for variant {}. Skipping.".format(self.id))
 
-        if len(warnings) == 0:
-            return True
-        else:
-            if emit_warnings:
-                for warning in warnings:
-                    logging.warning(warning)
-            return False
+        return _is_valid(warnings, emit_warnings)
 
     def _valid_ref_bases(self):
         if self.coordinates.reference_bases is not None:
@@ -1152,30 +1198,7 @@ class Evidence(CivicRecord):
         :return: ``True`` if Evidence is able to be represented as GKS model. ``False``
             otherwise
         """
-        warnings = []
-
-        if self.status != "accepted":
-            warnings.append(f"Evidence {self.id} does not have 'accepted' status. Skipping")
-
-        if self.evidence_type not in ("DIAGNOSTIC", "PREDICTIVE", "PREDICTIVE", "PROGNOSTIC"):
-            warnings.append(f"Evidence {self.id} type is not one of: 'DIAGNOSTIC', 'PREDICTIVE', or 'PROGNOSTIC'. Skipping")
-
-        len_mp_variants = len(self.molecular_profile.variants)
-        if len_mp_variants > 1:
-            warnings.append(f"Evidence {self.id} has a complex molecular profile. Skipping")
-        elif len_mp_variants == 1:
-            if not isinstance(self.molecular_profile.variants[0], GeneVariant):
-                warnings.append(f"Evidence {self.id} variant is not a ``GeneVariant``. Skipping")
-        else:
-            warnings.append(f"Evidence {self.id} has no variants. Skipping")
-
-        if not warnings:
-            return True
-        else:
-            if emit_warnings:
-                for warning in warnings:
-                    logging.warning(warning)
-            return False
+        return _is_valid_for_gks_json(self, emit_warnings)
 
 
 class Assertion(CivicRecord):
@@ -1304,30 +1327,7 @@ class Assertion(CivicRecord):
         :return: ``True`` if Assertion is able to be represented as GKS model. ``False``
             otherwise
         """
-        warnings = []
-
-        if self.status != "accepted":
-            warnings.append(f"Assertion {self.id} does not have 'accepted' status. Skipping")
-
-        if self.assertion_type not in ("DIAGNOSTIC", "PREDICTIVE", "PREDICTIVE", "PROGNOSTIC"):
-            warnings.append(f"Assertion {self.id} type is not one of: 'DIAGNOSTIC', 'PREDICTIVE', or 'PROGNOSTIC'. Skipping")
-
-        len_mp_variants = len(self.molecular_profile.variants)
-        if len_mp_variants > 1:
-            warnings.append(f"Assertion {self.id} has a complex molecular profile. Skipping")
-        elif len_mp_variants == 1:
-            if not isinstance(self.molecular_profile.variants[0], GeneVariant):
-                warnings.append(f"Assertion {self.id} variant is not a ``GeneVariant``. Skipping")
-        else:
-            warnings.append(f"Assertion {self.id} has no variants. Skipping")
-
-        if not warnings:
-            return True
-        else:
-            if emit_warnings:
-                for warning in warnings:
-                    logging.warning(warning)
-            return False
+        return _is_valid_for_gks_json(self, emit_warnings)
 
 class User(CivicRecord):
     _SIMPLE_FIELDS = CivicRecord._SIMPLE_FIELDS.union({
