@@ -121,6 +121,9 @@ CLIN_SIG_TO_PREDICATE = MappingProxyType(
     }
 )
 
+# SNP pattern
+_SNP_RE = re.compile(r"RS\d+")
+
 
 class _CivicGksAssertionRecord(ABC):
     """Abstract class for CIViC assertion record represented as GKS"""
@@ -388,12 +391,30 @@ class _CivicGksAssertionRecord(ABC):
                 )
             )
 
+        aliases = []
+        mappings = []
+        for a in molecular_profile.aliases:
+            if _SNP_RE.match(a):
+                a = a.lower()
+                mappings.append(
+                    ConceptMapping(
+                        coding=Coding(
+                            code=a,
+                            system="https://www.ncbi.nlm.nih.gov/snp/",
+                        ),
+                        relation=Relation.RELATED_MATCH,
+                    )
+                )
+            else:
+                aliases.append(a)
+
         return CategoricalVariant(
             id=f"civic.mpid:{molecular_profile.id}",
             name=molecular_profile.name,
             description=molecular_profile.description,
-            aliases=molecular_profile.aliases,
+            aliases=aliases or None,
             extensions=extensions,
+            mappings=mappings or None,
         )
 
     @staticmethod
