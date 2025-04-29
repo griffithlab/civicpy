@@ -33,7 +33,10 @@ class GksOutput(BaseModel):
         | CivicGksPrognosticAssertion
         | CivicGksDiagnosticAssertion
     ]
-    va_spec_python_version: str = Field(default_factory=lambda: get_pkg_version("ga4gh.va_spec"))
+    va_spec_python_version: str = Field(
+        description="VA-Spec Python version. This can be used to derive the corresponding VA-Spec version.",
+        default_factory=lambda: get_pkg_version("ga4gh.va_spec"),
+    )
 
 
 class CivicGksWriter:
@@ -51,8 +54,13 @@ class CivicGksWriter:
         """Initialize CivicGksWriter class
 
         :param filepath: The output file path to write the JSON file to
+        :raises ValueError: If ``filepath`` does has '.json' suffix
         :param gks_records: List CIViC assertions represented as GKS objects
         """
+        if filepath.suffix.lower() != ".json":
+            err_msg = "Output file path must end in '.json'."
+            raise ValueError(err_msg)
+
         output = GksOutput(gks_records=gks_records)
         with filepath.open("w+") as wf:
             json.dump(output.model_dump(exclude_none=True), wf, indent=2)

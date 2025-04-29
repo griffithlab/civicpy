@@ -2,16 +2,20 @@ from unittest.mock import patch
 import pytest
 from deepdiff import DeepDiff
 from ga4gh.va_spec.base import Statement, EvidenceLine, TherapyGroup
-from ga4gh.va_spec.aac_2017 import VariantTherapeuticResponseStudyStatement, VariantDiagnosticStudyStatement, VariantPrognosticStudyStatement
+from ga4gh.va_spec.aac_2017 import (
+    VariantTherapeuticResponseStudyStatement,
+    VariantDiagnosticStudyStatement,
+    VariantPrognosticStudyStatement,
+)
 
 
 from civicpy import civic
 from civicpy.exports.civic_vcf_record import CivicVcfRecord
 from civicpy.exports.civic_gks_record import (
-    CivicGksExportError,
+    CivicGksRecordError,
     CivicGksPredictiveAssertion,
     CivicGksDiagnosticAssertion,
-    CivicGksPrognosticAssertion
+    CivicGksPrognosticAssertion,
 )
 
 
@@ -62,15 +66,18 @@ def aid9():
     """Create test fixture for diagnostic assertion"""
     return civic.get_assertion_by_id(9)
 
+
 @pytest.fixture(scope="module")
 def aid19():
     """Create test fixture for predictive assertion (substitution therapy)"""
     return civic.get_assertion_by_id(19)
 
+
 @pytest.fixture(scope="module")
 def aid20():
     """Create test fixture for prognostic assertion"""
     return civic.get_assertion_by_id(20)
+
 
 @pytest.fixture(scope="module")
 def aid117():
@@ -278,6 +285,7 @@ def gks_eid2997(
 
 @pytest.fixture(scope="module")
 def gks_aid6(gks_method, gks_mpid33, gks_gid19, gks_tid146, gks_did8, gks_eid2997):
+    """Create CIVIC AID6 GKS representation."""
     params = {
         "id": "civic.aid:6",
         "description": "L858R is among the most common sensitizing EGFR mutations in NSCLC, and is assessed via DNA mutational analysis, including Sanger sequencing and next generation sequencing methods. Tyrosine kinase inhibitor afatinib is FDA approved as a first line systemic therapy in NSCLC with sensitizing EGFR mutation (civic.EID:2997).",
@@ -437,13 +445,24 @@ class TestCivicGksPredictiveAssertion(object):
         assert therapy_ids == {"civic.tid:19", "civic.tid:22"}
 
     @patch.object(civic.Assertion, "is_valid_for_gks_json")
+    @patch.object(civic.Assertion, "evidence_items")
     @patch.object(civic.FusionVariant, "hgvs_expressions", create=True)
     @patch.object(civic.FusionVariant, "coordinates", create=True)
-    @patch.object(civic.FusionVariant, "gene", new=civic.get_gene_by_id(1590), create=True)
-    def test_valid_substitution_therapy(self, test_coordinates, test_hgvs_expressions, test_is_valid_for_gks_json, aid19):
+    @patch.object(
+        civic.FusionVariant, "gene", new=civic.get_gene_by_id(1590), create=True
+    )
+    def test_valid_substitution_therapy(
+        self,
+        test_coordinates,
+        test_hgvs_expressions,
+        test_evidence_items,
+        test_is_valid_for_gks_json,
+        aid19,
+    ):
         """Test that substitution therapy works as expected"""
         test_coordinates.return_value = None
         test_is_valid_for_gks_json.return_value = True
+        test_evidence_items.return_value = []
         test_hgvs_expressions.return_value = None
         record = CivicGksPredictiveAssertion(aid19)
         assert isinstance(record, VariantTherapeuticResponseStudyStatement)
@@ -457,7 +476,7 @@ class TestCivicGksPredictiveAssertion(object):
     def test_invalid(self, aid117):
         """Test that invalid assertions raises custom exception"""
         with pytest.raises(
-            CivicGksExportError, match=r"Assertion is not valid for GKS export."
+            CivicGksRecordError, match=r"Assertion is not valid for GKS."
         ):
             CivicGksPredictiveAssertion(aid117)
 
@@ -473,6 +492,7 @@ class TestCivicGksPrognosticAssertion(object):
         assert record.proposition.predicate == "associatedWithWorseOutcomeFor"
         assert record.strength.primaryCoding.code.root == "Level A"
         assert record.classification.primaryCoding.code.root == "Tier I"
+
 
 class TestCivicGksDiagnosticAssertion(object):
     """Test that CivicGksDiagnosticAssertion works as expected"""

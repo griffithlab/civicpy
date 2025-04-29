@@ -1,7 +1,7 @@
 from pathlib import Path
 import click
 from civicpy import LOCAL_CACHE_PATH, civic
-from civicpy.exports.civic_gks_record import CivicGksPredictiveAssertion, CivicGksDiagnosticAssertion, CivicGksPrognosticAssertion
+from civicpy.exports.civic_gks_record import CivicGksRecordError, CivicGksPredictiveAssertion, CivicGksDiagnosticAssertion, CivicGksPrognosticAssertion
 from civicpy.exports.civic_gks_writer import CivicGksWriter
 from civicpy.exports.civic_vcf_writer import CivicVcfWriter
 from civicpy.exports.civic_vcf_record import CivicVcfRecord
@@ -59,23 +59,28 @@ def create_vcf(vcf_file_path, include_status):
         path_type=Path,
     )
 )
-def create_gks_json(output_json):
+def create_gks_json(output_json: Path) -> None:
     """Create a JSON file for accepted CIViC assertion records represented as GKS objects.
 
-    For now, we will only support simple molecular profiles.
+    For now, we will only support simple molecular profiles and diagnostic, prognostic,
+    or predictive assertions.
+
+    :param output_json: The output file path to write the JSON file to
     """
     records = []
 
     for assertion in civic.get_all_assertions(include_status=["accepted"]):
         if assertion.is_valid_for_gks_json():
-            if assertion.assertion_type == "DIAGNOSTIC":
-                gks_record = CivicGksDiagnosticAssertion(assertion)
-            elif assertion.assertion_type == "PREDICTIVE":
-                gks_record = CivicGksPredictiveAssertion(assertion)
-            else:
-                gks_record = CivicGksPrognosticAssertion(assertion)
+            try:
+                if assertion.assertion_type == "DIAGNOSTIC":
+                    gks_record = CivicGksDiagnosticAssertion(assertion)
+                elif assertion.assertion_type == "PREDICTIVE":
+                    gks_record = CivicGksPredictiveAssertion(assertion)
+                else:
+                    gks_record = CivicGksPrognosticAssertion(assertion)
+            except CivicGksRecordError:
+                continue
             records.append(gks_record)
-
     CivicGksWriter(output_json, records)
 
 

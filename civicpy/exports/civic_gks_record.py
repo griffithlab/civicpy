@@ -1,4 +1,5 @@
 """Module for representing CIViC assertion record as GKS AAC 2017 Study Statement"""
+
 from abc import ABC
 from enum import Enum
 import re
@@ -49,12 +50,13 @@ from civicpy.civic import (
 )
 
 
-class CivicGksExportError(Exception):
-    """Custom error for CIViC GKS exporter exceptions"""
+class CivicGksRecordError(Exception):
+    """Custom error for CIViC GKS Record exceptions"""
 
 
 class CivicInteractionType(str, Enum):
-    """Define constraints for supported CIViC interaction types translation to GKS
+    """Define constraints for the translation of supported CIViC interaction types into
+    GKS
 
     SEQUENTIAL is not currently supported
     """
@@ -64,10 +66,10 @@ class CivicInteractionType(str, Enum):
 
 
 class CivicEvidenceAssertionType(str, Enum):
-    """Define constraints for supported CIViC evidence and assertion types translation
-    to GKS
+    """Define constraints for the translation of supported CIViC evidence and assertion
+    types into GKS
 
-    DIAGNOSTIC, ONCOGENIC, PREDISPOSING are not currently supported
+    ONCOGENIC and PREDISPOSING are not currently supported
     """
 
     PREDICTIVE = "PREDICTIVE"
@@ -136,21 +138,20 @@ class _CivicGksAssertionRecord(ABC):
             methodType="variant curation standard operating procedure",
         )
     )
-
     _assertion: Assertion = PrivateAttr()
 
     def __init__(self, assertion: Assertion) -> None:
         """Initialize _CivicGksAssertionRecord class
 
-        :param assertion: CIViC GKS assertion record
-        :raises CivicGksExportError: If CIViC assertion is not able to be represented as \
+        :param assertion: CIViC assertion record
+        :raises CivicGksRecordError: If CIViC assertion is not able to be represented as
             GKS object
         """
         object.__setattr__(self, "_assertion", assertion)
 
         if not self._assertion.is_valid_for_gks_json(emit_warnings=True):
-            err_msg = "Assertion is not valid for GKS export."
-            raise CivicGksExportError(err_msg)
+            err_msg = "Assertion is not valid for GKS."
+            raise CivicGksRecordError(err_msg)
 
         classification, strength = self.classification_and_strength(
             self._assertion.amp_level
@@ -254,14 +255,16 @@ class _CivicGksAssertionRecord(ABC):
             else record.evidence_type
         )
 
-        if record_type == "PREDICTIVE":
+        if record_type == CivicEvidenceAssertionType.PREDICTIVE:
             condition_key = "conditionQualifier"
-            params["objectTherapeutic"] = self.therapeutic(record.therapies, self._assertion.therapy_interaction_type)
+            params["objectTherapeutic"] = self.therapeutic(
+                record.therapies, self._assertion.therapy_interaction_type
+            )
             proposition = VariantTherapeuticResponseProposition
         else:
             condition_key = "objectCondition"
 
-            if record_type == "PROGNOSTIC":
+            if record_type == CivicEvidenceAssertionType.PROGNOSTIC:
                 proposition = VariantPrognosticProposition
             else:
                 proposition = VariantDiagnosticProposition
@@ -287,13 +290,15 @@ class _CivicGksAssertionRecord(ABC):
 
         Only the CIViC evidence items that are supported for GKS will be included
 
+        :raises CivicGksRecordError: If evidence item is not valid for GKS
         :return: List of CIViC evidence lines
         """
         evidence_lines: list[EvidenceLine] = []
 
         for evidence_item in self._assertion.evidence_items:
             if not evidence_item.is_valid_for_gks_json(emit_warnings=True):
-                continue
+                err_msg = f"Evidence {evidence_item.id} is not valid for GKS."
+                raise CivicGksRecordError(err_msg)
 
             ev_source = evidence_item.source
 
@@ -449,16 +454,14 @@ class _CivicGksAssertionRecord(ABC):
         """Get GKS predicate
 
         :param record: CIViC assertion or evidence item
-        :raises CivicGksExportError: If significance is not supported for GKS
+        :raises CivicGksRecordError: If significance is not supported for GKS
         :return: GKS predicate
         """
         try:
             return CLIN_SIG_TO_PREDICATE[record.significance]
         except KeyError:
-            err_msg = (
-                f"Significance is not supported for GKS export: {record.significance}"
-            )
-            raise CivicGksExportError(err_msg)
+            err_msg = f"Significance is not supported for GKS: {record.significance}"
+            raise CivicGksRecordError(err_msg)
 
     @staticmethod
     def therapeutic(
@@ -468,7 +471,7 @@ class _CivicGksAssertionRecord(ABC):
 
         :param therapies: List of CIViC therapy records
         :param therapy_interaction_type: The interaction type for ``therapies``
-        :raises CivicGksExportError: If no therapies are found
+        :raises CivicGksRecordError: If no therapies are found
         :return: GKS therapeutic (single therapy record) or TherapyGroup (multiple
             therapies)
         """
@@ -508,7 +511,7 @@ class _CivicGksAssertionRecord(ABC):
 
         if not therapies:
             err_msg = "No therapies found"
-            raise CivicGksExportError(err_msg)
+            raise CivicGksRecordError(err_msg)
 
         if len(therapies) == 1:
             therapy: Therapy = therapies[0]
@@ -516,7 +519,7 @@ class _CivicGksAssertionRecord(ABC):
         else:
             membership_operator = (
                 MembershipOperator.AND
-                if therapy_interaction_type == "COMBINATION"
+                if therapy_interaction_type == CivicInteractionType.COMBINATION
                 else MembershipOperator.OR
             )
             therapies_mc: list[MappableConcept] = [_get_therapy(t) for t in therapies]

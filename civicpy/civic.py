@@ -401,28 +401,26 @@ def _is_valid(warnings: list[str], emit_warnings: bool = False) -> bool:
     """
     if not warnings:
         return True
-    else:
-        if emit_warnings:
-            for warning in warnings:
-                logging.warning(warning)
-        return False
+
+    if emit_warnings:
+        for warning in warnings:
+            logging.warning(warning)
+    return False
 
 
 def _is_valid_for_gks_json(cls, emit_warnings: bool = False) -> bool:
-    """Determine whether Evidence is able to be represented as GKS model
+    """Determine whether ``cls`` is able to be represented as GKS model
 
     :param cls: The instance to validate
     :param emit_warnings: Whether to log warnings, defaults to False
-    :raises ValueError: If cls is not of type Assertion or Evidence
-    :return: ``True`` if Evidence is able to be represented as GKS model. ``False``
+    :raises TypeError: If ``cls`` is not of type Assertion or Evidence
+    :return: ``True`` if ``cls`` is able to be represented as GKS model. ``False``
         otherwise
     """
     if not isinstance(cls, (Assertion, Evidence)):
-        raise TypeError(f"Instance must be of type Assertion or Evidence: {type(cls)}.")
+        raise TypeError(f"{type(cls)} is not an instance of `Assertion` or `Evidence`.")
 
-    class_name = cls.__class__.__name__
-    prefix = f"{class_name} {cls.id}"
-
+    prefix = f"{cls.__class__.__name__} {cls.id}"
     warnings = []
 
     if cls.status != "accepted":
