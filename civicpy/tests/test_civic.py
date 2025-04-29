@@ -832,3 +832,30 @@ def test_is_valid_for_vcf_warnings(caplog):
     assert "Unsupported variant base(s) for variant 613. Skipping." in caplog.text
 
     #currently no case for unsupported ref bases
+
+def test_is_valid_for_gks_warnings_assertion(caplog):
+    """Test that is_valid_for_gks_json works correctly for assertions"""
+    not_accepted = civic.get_assertion_by_id(117)
+    assert not not_accepted.is_valid_for_gks_json(emit_warnings=True)
+    assert "Assertion 117 does not have 'accepted' status. Skipping" in caplog.text
+
+    oncogenic_fusion = civic.get_assertion_by_id(101)
+    assert not oncogenic_fusion.is_valid_for_gks_json(emit_warnings=True)
+    assert "Assertion 101 type is not one of: 'DIAGNOSTIC', 'PREDICTIVE', or 'PROGNOSTIC'. Skipping" in caplog.text
+    assert "Assertion 101 variant is not a ``GeneVariant``. Skipping" in caplog.text
+
+    complex_mp = civic.get_assertion_by_id(88)
+    assert not complex_mp.is_valid_for_gks_json(emit_warnings=True)
+    assert "Assertion 88 has a complex molecular profile. Skipping" in caplog.text
+
+def test_is_valid_for_gks_warnings_evidence(caplog):
+    """Test that is_valid_for_gks_json works correctly for evidence items"""
+    not_accepted_oncogenic_fusion = civic.get_evidence_by_id(6936)
+    assert not not_accepted_oncogenic_fusion.is_valid_for_gks_json(emit_warnings=True)
+    assert "Evidence 6936 type is not one of: 'DIAGNOSTIC', 'PREDICTIVE', or 'PROGNOSTIC'. Skipping" in caplog.text
+    assert "Evidence 6936 variant is not a ``GeneVariant``. Skipping" in caplog.text
+    assert "Evidence 6936 does not have 'accepted' status. Skipping" in caplog.text
+
+    complex_mp = civic.get_evidence_by_id(8177)
+    assert not complex_mp.is_valid_for_gks_json(emit_warnings=True)
+    assert "Evidence 8177 has a complex molecular profile. Skipping" in caplog.text

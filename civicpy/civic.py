@@ -1145,14 +1145,20 @@ class Evidence(CivicRecord):
         return self.molecular_profile.variants
 
 
-    def is_valid_for_gks_json(self, emit_warnings=False) -> bool:
+    def is_valid_for_gks_json(self, emit_warnings: bool = False) -> bool:
+        """Determine whether Evidence is able to be represented as GKS model
+
+        :param emit_warnings: Whether to log warnings, defaults to False
+        :return: ``True`` if Evidence is able to be represented as GKS model. ``False``
+            otherwise
+        """
         warnings = []
 
         if self.status != "accepted":
             warnings.append(f"Evidence {self.id} does not have 'accepted' status. Skipping")
 
         if self.evidence_type not in ("DIAGNOSTIC", "PREDICTIVE", "PREDICTIVE", "PROGNOSTIC"):
-            warnings.append(f"Evidence type is not one of: 'DIAGNOSTIC', 'PREDICTIVE', or 'PROGNOSTIC'. Skipping")
+            warnings.append(f"Evidence {self.id} type is not one of: 'DIAGNOSTIC', 'PREDICTIVE', or 'PROGNOSTIC'. Skipping")
 
         len_mp_variants = len(self.molecular_profile.variants)
         if len_mp_variants > 1:
@@ -1291,14 +1297,20 @@ class Assertion(CivicRecord):
         """
         return self.molecular_profile.variants
 
-    def is_valid_for_gks_json(self, emit_warnings=False) -> bool:
+    def is_valid_for_gks_json(self, emit_warnings: bool = False) -> bool:
+        """Determine whether Assertion is able to be represented as GKS model
+
+        :param emit_warnings: Whether to log warnings, defaults to False
+        :return: ``True`` if Assertion is able to be represented as GKS model. ``False``
+            otherwise
+        """
         warnings = []
 
         if self.status != "accepted":
             warnings.append(f"Assertion {self.id} does not have 'accepted' status. Skipping")
 
         if self.assertion_type not in ("DIAGNOSTIC", "PREDICTIVE", "PREDICTIVE", "PROGNOSTIC"):
-            warnings.append(f"Assertion type is not one of: 'DIAGNOSTIC', 'PREDICTIVE', or 'PROGNOSTIC'. Skipping")
+            warnings.append(f"Assertion {self.id} type is not one of: 'DIAGNOSTIC', 'PREDICTIVE', or 'PROGNOSTIC'. Skipping")
 
         len_mp_variants = len(self.molecular_profile.variants)
         if len_mp_variants > 1:

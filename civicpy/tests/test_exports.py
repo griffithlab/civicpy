@@ -1,7 +1,8 @@
+from unittest.mock import patch
 import pytest
 from deepdiff import DeepDiff
 from ga4gh.va_spec.base import Statement, EvidenceLine, TherapyGroup
-from ga4gh.va_spec.aac_2017 import VariantTherapeuticResponseStudyStatement
+from ga4gh.va_spec.aac_2017 import VariantTherapeuticResponseStudyStatement, VariantDiagnosticStudyStatement, VariantPrognosticStudyStatement
 
 
 from civicpy import civic
@@ -9,30 +10,36 @@ from civicpy.exports.civic_vcf_record import CivicVcfRecord
 from civicpy.exports.civic_gks_record import (
     CivicGksExportError,
     CivicGksPredictiveAssertion,
+    CivicGksDiagnosticAssertion,
+    CivicGksPrognosticAssertion
 )
 
 
-#snv
+# snv
 @pytest.fixture(scope="module")
 def v600e():
     return civic.get_variant_by_id(12)
 
-#simple insertion
+
+# simple insertion
 @pytest.fixture(scope="module")
 def a56fs():
     return civic.get_variant_by_id(1785)
 
-#simple deletion
+
+# simple deletion
 @pytest.fixture(scope="module")
 def v273fs():
     return civic.get_variant_by_id(762)
 
-#complex insertion
+
+# complex insertion
 @pytest.fixture(scope="module")
 def v2444fs():
     return civic.get_variant_by_id(137)
 
-#complex deletion
+
+# complex deletion
 @pytest.fixture(scope="module")
 def l158fs():
     return civic.get_variant_by_id(2137)
@@ -49,6 +56,21 @@ def aid7():
     """Create test fixture for predictive assertion (combination therapy)"""
     return civic.get_assertion_by_id(7)
 
+
+@pytest.fixture(scope="module")
+def aid9():
+    """Create test fixture for diagnostic assertion"""
+    return civic.get_assertion_by_id(9)
+
+@pytest.fixture(scope="module")
+def aid19():
+    """Create test fixture for predictive assertion (substitution therapy)"""
+    return civic.get_assertion_by_id(19)
+
+@pytest.fixture(scope="module")
+def aid20():
+    """Create test fixture for prognostic assertion"""
+    return civic.get_assertion_by_id(20)
 
 @pytest.fixture(scope="module")
 def aid117():
@@ -309,40 +331,40 @@ class TestCivicVcfRecord(object):
         record = CivicVcfRecord(v600e)
         assert not caplog.records
         assert record.POS == 140453136
-        assert record.REF == 'A'
-        assert record.ALT[0].value == 'T'
+        assert record.REF == "A"
+        assert record.ALT[0].value == "T"
 
     def test_simple_insertion(self, caplog, a56fs):
         assert a56fs.is_insertion
         record = CivicVcfRecord(a56fs)
         assert not caplog.records
         assert record.POS == 10183697
-        assert record.REF == 'G'
-        assert record.ALT[0].value == 'GA'
+        assert record.REF == "G"
+        assert record.ALT[0].value == "GA"
 
     def test_simple_deletion(self, caplog, v273fs):
         assert v273fs.is_deletion
         record = CivicVcfRecord(v273fs)
         assert not caplog.records
         assert record.POS == 47641432
-        assert record.REF == 'GT'
-        assert record.ALT[0].value == 'G'
+        assert record.REF == "GT"
+        assert record.ALT[0].value == "G"
 
     def test_complex_insertion(self, caplog, v2444fs):
         assert v2444fs.is_insertion
         record = CivicVcfRecord(v2444fs)
         assert not caplog.records
         assert record.POS == 139390861
-        assert record.REF == 'GG'
-        assert record.ALT[0].value == 'GTGT'
+        assert record.REF == "GG"
+        assert record.ALT[0].value == "GTGT"
 
     def test_complex_deletion(self, caplog, l158fs):
         assert l158fs.is_deletion
         record = CivicVcfRecord(l158fs)
         assert not caplog.records
         assert record.POS == 10191480
-        assert record.REF == 'TGAA'
-        assert record.ALT[0].value == 'TC'
+        assert record.REF == "TGAA"
+        assert record.ALT[0].value == "TC"
 
     def test_addrecord_from_gene(self):
         gene = civic.get_gene_by_id(24)
@@ -414,8 +436,23 @@ class TestCivicGksPredictiveAssertion(object):
         therapy_ids = {t.id for t in therapy.therapies}
         assert therapy_ids == {"civic.tid:19", "civic.tid:22"}
 
-    def test_valid_substitution_therapy(self):
-        """TODO: Test that substitution therapy works as expected"""
+    @patch.object(civic.Assertion, "is_valid_for_gks_json")
+    @patch.object(civic.FusionVariant, "hgvs_expressions", create=True)
+    @patch.object(civic.FusionVariant, "coordinates", create=True)
+    @patch.object(civic.FusionVariant, "gene", new=civic.get_gene_by_id(1590), create=True)
+    def test_valid_substitution_therapy(self, test_coordinates, test_hgvs_expressions, test_is_valid_for_gks_json, aid19):
+        """Test that substitution therapy works as expected"""
+        test_coordinates.return_value = None
+        test_is_valid_for_gks_json.return_value = True
+        test_hgvs_expressions.return_value = None
+        record = CivicGksPredictiveAssertion(aid19)
+        assert isinstance(record, VariantTherapeuticResponseStudyStatement)
+        therapy = record.proposition.objectTherapeutic.root
+        assert isinstance(therapy, TherapyGroup)
+        assert therapy.membershipOperator == "OR"
+        assert len(therapy.therapies) == 2
+        therapy_ids = {t.id for t in therapy.therapies}
+        assert therapy_ids == {"civic.tid:5", "civic.tid:20"}
 
     def test_invalid(self, aid117):
         """Test that invalid assertions raises custom exception"""
@@ -426,8 +463,25 @@ class TestCivicGksPredictiveAssertion(object):
 
 
 class TestCivicGksPrognosticAssertion(object):
-    """TODO: Test that CivicGksPrognosticAssertion works as expected"""
+    """Test that CivicGksPrognosticAssertion works as expected"""
 
+    def test_valid(self, aid20):
+        """Test that valid assertion works as expected"""
+        record = CivicGksPrognosticAssertion(aid20)
+        assert isinstance(record, VariantPrognosticStudyStatement)
+        assert len(record.hasEvidenceLines) > 1
+        assert record.proposition.predicate == "associatedWithWorseOutcomeFor"
+        assert record.strength.primaryCoding.code.root == "Level A"
+        assert record.classification.primaryCoding.code.root == "Tier I"
 
 class TestCivicGksDiagnosticAssertion(object):
-    """TODO: Test that CivicGksDiagnosticAssertion works as expected"""
+    """Test that CivicGksDiagnosticAssertion works as expected"""
+
+    def test_valid(self, aid9):
+        """Test that valid assertion works as expected"""
+        record = CivicGksDiagnosticAssertion(aid9)
+        assert isinstance(record, VariantDiagnosticStudyStatement)
+        assert len(record.hasEvidenceLines) > 1
+        assert record.proposition.predicate == "isDiagnosticInclusionCriterionFor"
+        assert record.strength.primaryCoding.code.root == "Level C"
+        assert record.classification.primaryCoding.code.root == "Tier II"
