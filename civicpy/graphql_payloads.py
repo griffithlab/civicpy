@@ -858,3 +858,77 @@ def _construct_get_all_phenotypes_payload():
             }
         }
     """
+
+def _construct_get_organization_payload():
+    return """
+        query organization($id: Int!) {
+            organization(id: $id) {
+                id
+                name
+                url
+                description
+            }
+        }"""
+
+
+def _construct_get_all_organizations_payload():
+    return """
+        query organizations($after: String) {
+            organizations(after: $after) {
+              totalCount
+              pageInfo {
+                hasNextPage
+                endCursor
+              }
+              nodes {
+                id
+                name
+                url
+                description
+              }
+            }
+        }
+    """
+
+def _construct_get_endorsement_payload():
+    return """
+        query endorsement($id: Int!) {
+            endorsement(id: $id) {
+                id
+                assertion {
+                  id
+                }
+                organization {
+                  id
+                }
+                status
+                last_reviewed: lastReviewed
+                ready_for_clinvar_submission: readyForClinvarSubmission
+            }
+        }"""
+
+
+def _construct_get_all_endorsements_payload():
+    return """
+        query endorsements($after: String) {
+            endorsements(after: $after) {
+              totalCount
+              pageInfo {
+                hasNextPage
+                endCursor
+              }
+              nodes {
+                id
+                assertion {
+                  id
+                }
+                organization {
+                  id
+                }
+                status
+                last_reviewed: lastReviewed
+                ready_for_clinvar_submission: readyForClinvarSubmission
+              }
+            }
+        }
+    """

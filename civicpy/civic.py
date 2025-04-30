@@ -256,6 +256,8 @@ def update_cache(from_remote_cache=True, remote_cache_url=REMOTE_CACHE_URL,
         diseases = _get_elements_by_ids('disease', allow_cached=False, get_all=True)
         therapies = _get_elements_by_ids('therapy', allow_cached=False, get_all=True)
         phenotypes = _get_elements_by_ids('phenotype', allow_cached=False, get_all=True)
+        organizations = _get_elements_by_ids('organization', allow_cached=False, get_all=True)
+        endorsements = _get_elements_by_ids('endorsement', allow_cached=False, get_all=True)
         for e in evidence:
             e.assertions = [a for a in assertions if a.id in e.assertion_ids]
             e.therapies = [t for t in therapies if t.id in e.therapy_ids]
@@ -336,6 +338,12 @@ def update_cache(from_remote_cache=True, remote_cache_url=REMOTE_CACHE_URL,
             p.assertions = [a for a in assertions if p.id in a.phenotype_ids]
             p._partial = False
             CACHE[hash(p)] = p
+        for o in organizations:
+            o._partial = False
+            CACHE[hash(o)] = o
+        for e in endorsements:
+            e._partial = False
+            CACHE[hash(e)] = e
         CACHE['full_cached'] = datetime.now()
         _build_coordinate_table(variants)
         save_cache(local_cache_path=local_cache_path)
@@ -1374,12 +1382,11 @@ class Organization(CivicRecord):
     _SIMPLE_FIELDS = CivicRecord._SIMPLE_FIELDS.union({
         'name',
         'url',
-        'description'
+        'description',
     })
 
     _COMPLEX_FIELDS = CivicRecord._COMPLEX_FIELDS.union({
-        'profile_image',
-        'parent'
+        #'profile_image',
     })
 
 
@@ -1621,6 +1628,34 @@ class Source(CivicRecord):
     @molecular_profiles.setter
     def molecular_profiles(self, value):
         self._molecular_profiles = value
+
+
+class Endorsement(CivicRecord):
+    _SIMPLE_FIELDS = CivicRecord._SIMPLE_FIELDS.union({
+        'assertion_id',
+        'organization_id',
+        'status',
+        'last_reviewed',
+        'ready_for_clinvar_submission',
+    })
+
+    _COMPLEX_FIELDS = CivicRecord._COMPLEX_FIELDS.union({
+        #'profile_image',
+    })
+
+    @property
+    def assertion(self):
+        """
+        The :class:`Assertion` object this endorsement endorses.
+        """
+        return get_assertion_by_id(self.assertion_id)
+
+    @property
+    def organization(self):
+        """
+        The :class:`Organization` object this endorsement was made on behalf of.
+        """
+        return get_organization_by_id(self.organization_id)
 
 
 class CivicAttribute(CivicRecord, dict):
@@ -1881,6 +1916,9 @@ def _postprocess_response_element(e, element):
         del e['sources']
         e['variant_ids'] = [v['id'] for v in e['variants']['nodes']]
         del e['variants']
+    elif element == 'endorsement':
+        e['assertion_id'] = e['assertion']['id']
+        e['organization_id'] = e['organization']['id']
     return e
 
 
@@ -1902,6 +1940,8 @@ def _request_by_ids(element, ids):
         'disease': graphql_payloads._construct_get_disease_payload,
         'therapy': graphql_payloads._construct_get_therapy_payload,
         'phenotype': graphql_payloads._construct_get_phenotype_payload,
+        'organization': graphql_payloads._construct_get_organization_payload,
+        'endorsement': graphql_payloads._construct_get_endorsement_payload,
     }
     payload_method = payload_methods[element]
     payload = payload_method()
@@ -2314,6 +2354,25 @@ def get_phenotype_by_id(phenotype_id):
     return get_phenotypes_by_ids([phenotype_id])[0]
 
 
+# Organization
+
+def get_organizations_by_ids(organization_id_list):
+    """
+    :param list organization_id_list: A list of CIViC organization IDs to query against to cache and (as needed) CIViC.
+    :returns: A list of :class:`Organization` objects.
+    """
+    logging.info('Getting organizations...')
+    organizations = _get_elements_by_ids('organization', organization_id_list)
+    return organizations
+
+def get_organization_by_id(organization_id):
+    """
+    :param int organization_id: A single CIViC organization ID.
+    :returns: A :class:`Organization` object.
+    """
+    return get_organizations_by_ids([organization_id])[0]
+
+
 ###########
 # Get All #
 ###########
@@ -2330,6 +2389,14 @@ def get_all_assertions(include_status=['accepted','submitted','rejected'], allow
     """
     assertions = _get_elements_by_ids('assertion', allow_cached=allow_cached, get_all=True)
     return [a for a in assertions if a.status in include_status]
+
+def get_all_assertions_ready_for_clinvar_submission_for_org(organization_id, allow_cached=True):
+    endorsements = get_all_endorsements(include_status=["accepted"], allow_cached=allow_cached)
+    assertions = []
+    for e in endorsements:
+        if e.organization_id == organization_id and e.ready_for_clinvar_submission:
+            assertions.append(e.assertion)
+    return assertions
 
 
 # Molecular Profile
@@ -2632,6 +2699,27 @@ def get_all_phenotypes(include_status=['accepted','submitted','rejected'], allow
         return resp
     else:
         return phenotypes
+
+# Endorsement
+
+def get_all_endorsements(include_status=['accepted','submitted','rejected'], allow_cached=True):
+    """
+    Queries CIViC for all endorsements.
+
+    :param list include_status: A list of statuses. Only endorsements for assertions matching the given statuses will be returned.
+    :param bool allow_cached: Indicates whether or not object retrieval from CACHE is allowed. If **False** it will query the CIViC database directly.
+    :returns: A list of :class:`Endorsement` objects.
+    """
+    endorsements = _get_elements_by_ids('endorsement', get_all=True, allow_cached=allow_cached)
+    if include_status:
+        assert CACHE.get('assertions_all_ids', False)
+        resp = list()
+        for e in endorsements:
+            if e.assertion.status in include_status:
+                resp.append(e)
+        return resp
+    else:
+        return endorsements
 
 
 #########################
