@@ -1969,6 +1969,8 @@ def _request_all(element):
         'disease': graphql_payloads._construct_get_all_diseases_payload,
         'therapy': graphql_payloads._construct_get_all_therapies_payload,
         'phenotype': graphql_payloads._construct_get_all_phenotypes_payload,
+        'organization': graphql_payloads._construct_get_all_organizations_payload,
+        'endorsement': graphql_payloads._construct_get_all_endorsements_payload,
     }
     payload_method = payload_methods[element]
     payload = payload_method()
@@ -2373,6 +2375,25 @@ def get_organization_by_id(organization_id):
     return get_organizations_by_ids([organization_id])[0]
 
 
+# Endorsement
+
+def get_endorsements_by_ids(endorsement_id_list):
+    """
+    :param list endorsement_id_list: A list of CIViC endorsement IDs to query against to cache and (as needed) CIViC.
+    :returns: A list of :class:`Endorsement` objects.
+    """
+    logging.info('Getting endorsements...')
+    endorsements = _get_elements_by_ids('endorsement', endorsement_id_list)
+    return endorsements
+
+def get_endorsement_by_id(endorsement_id):
+    """
+    :param int endorsement_id: A single CIViC endorsement ID.
+    :returns: A :class:`Endorsement` object.
+    """
+    return get_endorsements_by_ids([endorsement_id])[0]
+
+
 ###########
 # Get All #
 ###########
@@ -2706,6 +2727,20 @@ def get_all_phenotypes(include_status=['accepted','submitted','rejected'], allow
         return resp
     else:
         return phenotypes
+
+
+# Organization
+
+def get_all_organizations(allow_cached=True):
+    """
+    Queries CIViC for all endorsements.
+
+    :param bool allow_cached: Indicates whether or not object retrieval from CACHE is allowed. If **False** it will query the CIViC database directly.
+    :returns: A list of :class:`Organization` objects.
+    """
+    organizations = _get_elements_by_ids('organization', get_all=True, allow_cached=allow_cached)
+    return organizations
+
 
 # Endorsement
 
@@ -3345,3 +3380,23 @@ def get_phenotype_by_name(name):
     if len(matching_phenotypes) == 0:
         raise Exception("No phenotypes with name: {}".format(name))
     return matching_phenotypes[0]
+
+# Endorsement
+
+def search_endorsements_by_organization_id(organization_id):
+    """
+    :param int organization_id: A CIViC :class:`Organization` ID.
+    :returns: A list of :class:`Endorsement` objects.
+    """
+    endorsements = _get_elements_by_ids('endorsement', get_all=True)
+    matching_endorsements = [e for e in endorsements if e.organization_id == organization_id]
+    return endorsements
+
+def search_endorsements_by_assertion_id(assertion_id):
+    """
+    :param int assertion_id: A CIViC :class:`Assertion` ID.
+    :returns: A list of :class:`Endorsement` objects.
+    """
+    endorsements = _get_elements_by_ids('endorsement', get_all=True)
+    matching_endorsements = [e for e in endorsements if e.assertion_id == assertion_id]
+    return endorsements
