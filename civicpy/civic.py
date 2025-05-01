@@ -2391,6 +2391,13 @@ def get_all_assertions(include_status=['accepted','submitted','rejected'], allow
     return [a for a in assertions if a.status in include_status]
 
 def get_all_assertions_ready_for_clinvar_submission_for_org(organization_id, allow_cached=True):
+    """
+    Queries CIViC for all assertions endorsed by a specific organization that are ready for submission to ClinVar.
+
+    :param int organization_id: The CIViC organization ID that endorsed the assertion(s) for submission to ClinVar.
+    :param bool allow_cached: Indicates whether or not object retrieval from CACHE is allowed. If **False** it will query the CIViC database directly.
+    :returns: A list of :class:`Assertion` objects endorsed by a specific organization that are ready for submission to ClinVar.
+    """
     endorsements = get_all_endorsements(include_status=["accepted"], allow_cached=allow_cached)
     assertions = []
     for e in endorsements:

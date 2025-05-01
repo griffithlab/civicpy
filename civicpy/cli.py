@@ -89,7 +89,7 @@ def create_gks_json(organization_id: int, output_json: Path) -> None:
             except CivicGksRecordError:
                 continue
             records.append(gks_record)
-    if len(records) == 0:
+    if not records:
         logging.warning('No assertions ready for submission to ClinVar found for organization {}'.format(organization_id))
     else:
         CivicGksWriter(output_json, records)
