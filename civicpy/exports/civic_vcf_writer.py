@@ -49,8 +49,8 @@ class CivicVcfWriter():
         'CIViC Assertion ACMG Codes',
         'CIViC Assertion AMP Category',
         'CIViC Assertion NCCN Guideline',
-        'CIVIC Assertion Regulatory Approval',
-        'CIVIC Assertion FDA Companion Test',
+        'CIViC Assertion Regulatory Approval',
+        'CIViC Assertion FDA Companion Test',
     ]))
 
     SUPPORTED_VERSIONS = [4.2]
