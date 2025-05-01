@@ -640,6 +640,55 @@ Phenotype
 .. _Human Phenotype Ontology: https://hpo.jax.org/
 
 
+Organization
+^^^^^^^^^^^^
+
+.. autoclass:: Organization
+   :members:
+
+   .. attribute:: name
+
+      The name of the organization.
+
+   .. attribute:: url
+
+      The URL of the organization's website.
+
+   .. attribute:: description
+
+      A description of the organization.
+
+
+Endorsement
+^^^^^^^^^^^
+
+.. autoclass:: Endorsement
+   :members:
+
+   .. attribute:: assertion_id
+
+      The :attr:`CivicRecord.id` of the :class:`Assertion` record that this endorsement pertains to.
+
+   .. attribute:: last_reviewed
+
+      Timestamp reflecting the last time the endorsement was reviewed and put
+      into active status.
+
+   .. attribute:: organization_id
+
+      The :attr:`CivicRecord.id` of the :class:`Organziation` record that endorsed the assertion.
+
+   .. attribute:: ready_for_clinvar_submission
+
+      Boolean, reflecting whether the endorsement meets all criteria for
+      submission of the assertion to ClinVar.
+
+   .. attribute:: status
+
+      The status of the endorsement. One of ``ACTIVE``, ``REQUIRES_REVIEW``,
+      or ``REVOKED ``.
+
+
 CIViC Attributes
 ^^^^^^^^^^^^^^^^
 
