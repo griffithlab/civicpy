@@ -454,6 +454,16 @@ class TestGenes(object):
         assert gene.type == 'gene'
         assert gene.id == 58
 
+    def test_get_by_name(self):
+        gene = civic.get_gene_by_name('BRAF')
+        assert gene.name == 'BRAF'
+        assert gene.type == 'gene'
+
+    def test_get_by_entrez_id(self):
+        gene = civic.get_gene_by_entrez_id(673)
+        assert gene.entrez_id == 673
+        assert gene.type == 'gene'
+
     def test_attributes(self):
         gene = civic.get_gene_by_id(58)
         assert gene.name == 'VHL'
@@ -482,6 +492,16 @@ class TestFactors(object):
         factor = civic.get_factor_by_id(61748)
         assert factor.type == 'factor'
         assert factor.id == 61748
+
+    def test_get_by_name(self):
+        factor = civic.get_factor_by_name('MSI')
+        assert factor.type == 'factor'
+        assert factor.name == 'MSI'
+
+    def test_get_by_ncit_id(self):
+        factor = civic.get_factor_by_ncit_id('C36318')
+        assert factor.type == 'factor'
+        assert factor.ncit_id == 'C36318'
 
     def test_attributes(self):
         factor = civic.get_factor_by_id(61748)
@@ -523,6 +543,15 @@ class TestFusions(object):
         fusion = civic.get_fusion_by_id(61753)
         assert len(fusion.variants) == 1
         assert len(fusion.sources) == 0
+
+    def test_get_fusion_by_name(self):
+        fusion = civic.get_fusion_by_name("BCR::ABL1")
+        assert fusion.id == 61802
+        assert fusion.name == 'BCR::ABL1'
+
+    def test_search_fusions_by_partner_gene_id(self):
+        fusions = civic.search_fusions_by_partner_gene_id(573)
+        assert len(fusions) >= 5
 
 
 class TestDiseases(object):
@@ -600,6 +629,88 @@ class TestTherapies(object):
         assert len(trametinib.evidence) >= 138
         assert trametinib.evidence == trametinib.evidence_items
         assert len(trametinib.assertions) >= 3
+
+
+class TestSource(object):
+    def test_get_all(self):
+        sources = civic.get_all_sources()
+        assert len(sources) >= 3938
+
+    def test_get_by_id(self):
+        s = civic.get_source_by_id(1)
+        assert s.id == 1
+        assert s.type == 'source'
+
+    def test_attributes(self):
+        s = civic.get_source_by_id(947)
+        assert s.citation == 'McArthur et al., 2014'
+        assert s.citation_id == '24508103'
+        assert s.source_type == 'PUBMED'
+        assert s.abstract.startswith('In the BRIM-3 trial,')
+        assert s.author_string.startswith('Grant A McArthur,')
+        assert s.full_journal_title == 'The Lancet. Oncology'
+        assert s.journal == 'Lancet Oncol'
+        assert s.pmc_id == 'PMC4382632'
+        assert s.publication_date == '2014-3'
+        assert s.source_url == 'http://www.ncbi.nlm.nih.gov/pubmed/24508103'
+        assert s.title.startswith('Safety and efficacy of vemurafenib')
+        assert len(s.clinical_trials) == 1
+
+    def test_get_pubmed_source_by_id(self):
+        s = civic.get_pubmed_source_by_id('24889366')
+        assert s.citation_id == '24889366'
+        assert s.source_type == 'PUBMED'
+
+    def test_get_ash_source_by_doi(self):
+        s = civic.get_ash_source_by_doi('10.1182/blood-2021-145491')
+        assert s.citation_id == '10.1182/blood-2021-145491'
+        assert s.source_type == 'ASH'
+
+    def test_get_asco_source_by_id(self):
+        s = civic.get_asco_source_by_id('144555')
+        assert s.citation_id == '144555'
+        assert s.asco_abstract_id == 5005
+        assert s.source_type == 'ASCO'
+
+
+class TestOrganization(object):
+    def test_get_all(self):
+        organizations = civic.get_all_organizations()
+        assert len(organizations) >= 24
+
+    def test_get_by_id(self):
+        o = civic.get_organization_by_id(1)
+        assert o.id == 1
+        assert o.type == 'organization'
+
+    def test_attributes(self):
+        org = civic.get_organization_by_id(1)
+        assert org.name == 'The McDonnell Genome Institute'
+        assert org.url == 'http://genome.wustl.edu/'
+
+#class TestEndorsement(object):
+#    def test_get_all(self):
+#        endorsement = civic.get_all_endorsements()
+#        assert len(endorsements) >= #TODO add number
+#
+#    def test_get_by_id(self):
+#        e = civic.get_endorsement_by_id(1)
+#        assert e.id == 1
+#        assert e.type == 'endorsement'
+#
+#    def test_attributes(self):
+#        e = civic.get_endorsement_by_id(1)
+#        assert e.organization_id == #TODO add number
+#        assert e.assertion_id == #TODO add number
+
+#    def test_search_endorsements_by_organization_id(self):
+#        endorsements = civic.search_endorsements_by_organization_id(#TODO add
+#        ID)
+#        assert len(endorsements) >= #TODO add number
+
+#    def test_search_endorsements_by_assertion_id(self):
+#        endorsements = civic.search_endorsements_by_assertion_id(#TODO add ID)
+#        assert len(endorsements) >= #TODO add number
 
 
 class TestPhenotypes(object):
