@@ -3390,7 +3390,7 @@ def search_endorsements_by_organization_id(organization_id):
     """
     endorsements = _get_elements_by_ids('endorsement', get_all=True)
     matching_endorsements = [e for e in endorsements if e.organization_id == organization_id]
-    return endorsements
+    return matching_endorsements
 
 def search_endorsements_by_assertion_id(assertion_id):
     """
@@ -3399,4 +3399,4 @@ def search_endorsements_by_assertion_id(assertion_id):
     """
     endorsements = _get_elements_by_ids('endorsement', get_all=True)
     matching_endorsements = [e for e in endorsements if e.assertion_id == assertion_id]
-    return endorsements
+    return matching_endorsements
