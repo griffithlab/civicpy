@@ -49,8 +49,8 @@ class CivicVcfWriter():
         'CIViC Assertion ACMG Codes',
         'CIViC Assertion AMP Category',
         'CIViC Assertion NCCN Guideline',
-        'CIVIC Assertion Regulatory Approval',
-        'CIVIC Assertion FDA Companion Test',
+        'CIViC Assertion Regulatory Approval',
+        'CIViC Assertion FDA Companion Test',
     ]))
 
     SUPPORTED_VERSIONS = [4.2]
@@ -60,7 +60,8 @@ class CivicVcfWriter():
         self.version = version
         self.create_header()
         vcf_writer = vcfpy.Writer.from_path(filepath, self.header)
-        for vcf_record in vcf_records:
+        sorted_vcf_records = self.sort_vcf_records(vcf_records)
+        for vcf_record in sorted_vcf_records:
             vcf_writer.write_record(vcf_record)
         vcf_writer.close()
 
@@ -98,3 +99,12 @@ class CivicVcfWriter():
             ('Type', 'String'),
             ('Description', self.CSQ_DESCRIPTION),
         ]))
+
+    def sort_vcf_records(self, vcf_records):
+        vcf_records.sort(key=lambda x: int(x.POS))
+        int_chromosomes = [i for i in vcf_records if i.CHROM.isdigit()]
+        string_chromosomes = [i for i in vcf_records if not i.CHROM.isdigit()]
+        int_chromosomes.sort(key=lambda x: int(x.CHROM))
+        string_chromosomes.sort(key=lambda x: x.CHROM)
+        sorted_records = int_chromosomes + string_chromosomes
+        return sorted_records
