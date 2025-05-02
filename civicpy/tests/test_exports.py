@@ -87,11 +87,13 @@ def aid117():
 
 @pytest.fixture(scope="module")
 def organization1():
+    """Create test fixture for organization"""
     return civic.get_organization_by_id(1)
 
 
 @pytest.fixture(scope="module")
 def endorsement3():
+    """Create test fixture for active endorsement"""
     return civic.get_endorsement_by_id(3)
 
 
