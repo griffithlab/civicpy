@@ -21,6 +21,8 @@ from ga4gh.va_spec.aac_2017 import (
     VariantTherapeuticResponseStudyStatement,
 )
 from ga4gh.va_spec.base import (
+    Agent,
+    Contribution,
     DiagnosticPredicate,
     Direction,
     Document,
@@ -41,8 +43,10 @@ from pydantic import PrivateAttr
 from civicpy.civic import (
     Assertion,
     Coordinate,
+    Endorsement,
     Evidence,
     Disease,
+    Organization,
     Therapy,
     GeneVariant,
     MolecularProfile,
@@ -148,10 +152,18 @@ class _CivicGksAssertionRecord(ABC):
     )
     _assertion: Assertion = PrivateAttr()
 
-    def __init__(self, assertion: Assertion) -> None:
+    def __init__(
+        self,
+        assertion: Assertion,
+        endorsement: Endorsement | None = None,
+        organization: Organization | None = None,
+    ) -> None:
         """Initialize _CivicGksAssertionRecord class
 
         :param assertion: CIViC assertion record
+        :param endorsement: CIViC endorsement for the assertion, defaults to None
+        :param organization: CIViC organization that made the endorsement, defaults to
+            None
         :raises CivicGksRecordError: If CIViC assertion is not able to be represented as
             GKS object
         """
@@ -165,8 +177,24 @@ class _CivicGksAssertionRecord(ABC):
             self._assertion.amp_level
         )
 
+        if endorsement and organization:
+            contributions = [
+                Contribution(
+                    activityType=f"{endorsement.type}.last_reviewed",
+                    date=endorsement.last_reviewed.split("T", 1)[0],
+                    contributor=Agent(
+                        id=f"civic.{organization.type}:{organization.id}",
+                        name=organization.name,
+                        description=organization.description,
+                    ),
+                )
+            ]
+        else:
+            contributions = None
+
         super().__init__(
             id=f"civic.aid:{self._assertion.id}",
+            contributions=contributions,
             description=self._assertion.description,
             specifiedBy=self.method(),
             proposition=self.proposition(self._assertion),

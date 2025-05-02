@@ -86,6 +86,33 @@ def aid117():
 
 
 @pytest.fixture(scope="module")
+def organization1():
+    return civic.get_organization_by_id(1)
+
+
+@pytest.fixture(scope="module")
+def endorsement3():
+    return civic.get_endorsement_by_id(3)
+
+
+@pytest.fixture(scope="module")
+def gks_contributions():
+    return [
+        {
+            "type": "Contribution",
+            "contributor": {
+                "id": "civic.organization:1",
+                "type": "Agent",
+                "name": "The McDonnell Genome Institute",
+                "description": "The McDonnell Genome Institute (MGI) is a world leader in the fast-paced, constantly changing field of genomics. A truly unique institution, we are pushing the limits of academic research by creating, testing, and implementing new approaches to the study of biology with the goal of understanding human health and disease, as well as evolution and the biology of other organisms.",
+            },
+            "activityType": "endorsement.last_reviewed",
+            "date": "2025-03-19",
+        }
+    ]
+
+
+@pytest.fixture(scope="module")
 def gks_method():
     """Create test fixture for method GKS representation."""
     return {
@@ -293,10 +320,19 @@ def gks_eid2997(
 
 
 @pytest.fixture(scope="module")
-def gks_aid6(gks_method, gks_mpid33, gks_gid19, gks_tid146, gks_did8, gks_eid2997):
+def gks_aid6(
+    gks_contributions,
+    gks_method,
+    gks_mpid33,
+    gks_gid19,
+    gks_tid146,
+    gks_did8,
+    gks_eid2997,
+):
     """Create CIVIC AID6 GKS representation."""
     params = {
         "id": "civic.aid:6",
+        "contributions": gks_contributions,
         "description": "L858R is among the most common sensitizing EGFR mutations in NSCLC, and is assessed via DNA mutational analysis, including Sanger sequencing and next generation sequencing methods. Tyrosine kinase inhibitor afatinib is FDA approved as a first line systemic therapy in NSCLC with sensitizing EGFR mutation (civic.EID:2997).",
         "type": "Statement",
         "specifiedBy": gks_method,
@@ -418,9 +454,11 @@ class TestCivicVcfRecord(object):
 class TestCivicGksPredictiveAssertion(object):
     """Test that CivicGksPredictiveAssertion works as expected"""
 
-    def test_valid_single_therapy(self, aid6, gks_aid6):
+    def test_valid_single_therapy(self, aid6, endorsement3, organization1, gks_aid6):
         """Test that single therapy works as expected"""
-        record = CivicGksPredictiveAssertion(aid6)
+        record = CivicGksPredictiveAssertion(
+            aid6, endorsement=endorsement3, organization=organization1
+        )
         assert isinstance(record, VariantTherapeuticResponseStudyStatement)
         assert len(record.hasEvidenceLines) > 1
 

@@ -75,17 +75,24 @@ def create_gks_json(organization_id: int, output_json: Path) -> None:
     :param organization_id: The CIViC organization ID that endorsed the assertion(s) for submission to ClinVar
     :param output_json: The output file path to write the JSON file to
     """
-    records = []
+    try:
+        organization = civic.get_organization_by_id(organization_id)
+    except Exception:
+        logging.exception("Error getting organization %i", organization_id)
+        return
 
-    for assertion in civic.get_all_assertions_ready_for_clinvar_submission_for_org(organization_id):
+    records = []
+    for endorsement in civic.get_all_endorsements_ready_for_clinvar_submission_for_org(organization_id):
+        assertion = civic.get_assertion_by_id(endorsement.assertion_id)
         if assertion.is_valid_for_gks_json():
             try:
+
                 if assertion.assertion_type == "DIAGNOSTIC":
-                    gks_record = CivicGksDiagnosticAssertion(assertion)
+                    gks_record = CivicGksDiagnosticAssertion(assertion, endorsement=endorsement, organization=organization)
                 elif assertion.assertion_type == "PREDICTIVE":
-                    gks_record = CivicGksPredictiveAssertion(assertion)
+                    gks_record = CivicGksPredictiveAssertion(assertion, endorsement=endorsement, organization=organization)
                 else:
-                    gks_record = CivicGksPrognosticAssertion(assertion)
+                    gks_record = CivicGksPrognosticAssertion(assertion, endorsement=endorsement, organization=organization)
             except CivicGksRecordError:
                 continue
             records.append(gks_record)

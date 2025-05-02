@@ -436,7 +436,9 @@ def _is_valid_for_gks_json(cls, emit_warnings: bool = False) -> bool:
 
     record_type = cls.evidence_type if isinstance(cls, Evidence) else cls.assertion_type
     if record_type not in ("DIAGNOSTIC", "PREDICTIVE", "PREDICTIVE", "PROGNOSTIC"):
-        warnings.append(f"{prefix} type is not one of: 'DIAGNOSTIC', 'PREDICTIVE', or 'PROGNOSTIC'. Skipping")
+        warnings.append(
+            f"{prefix} type is not one of: 'DIAGNOSTIC', 'PREDICTIVE', or 'PROGNOSTIC'. Skipping"
+        )
 
     len_mp_variants = len(cls.molecular_profile.variants)
     if len_mp_variants > 1:
@@ -3400,3 +3402,17 @@ def search_endorsements_by_assertion_id(assertion_id):
     endorsements = _get_elements_by_ids('endorsement', get_all=True)
     matching_endorsements = [e for e in endorsements if e.assertion_id == assertion_id]
     return matching_endorsements
+
+
+def get_all_endorsements_ready_for_clinvar_submission_for_org(
+    organization_id: int,
+) -> list[Endorsement]:
+    """
+    Queries CIViC for all endorsements by a specific organization that are ready for submission to ClinVar.
+
+    :param int organization_id: A CIViC :class:`Organization` ID.
+    :returns: A list of :class:`Endorsement` objects endorsed by a specific organization
+        that are ready for submission to ClinVar.
+    """
+    endorsements = search_endorsements_by_organization_id(organization_id)
+    return [e for e in endorsements if e.ready_for_clinvar_submission]

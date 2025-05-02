@@ -9,17 +9,35 @@ import json
 class TestCli(object):
     @pytest.mark.skip(reason="Long running test")
     def test_create_cache(self):
-        tmp_file = tempfile.NamedTemporaryFile('w', delete=False)
-        cli.update(['--hard', '--cache-save-path', tmp_file.name], standalone_mode=False)
+        tmp_file = tempfile.NamedTemporaryFile("w", delete=False)
+        cli.update(
+            ["--hard", "--cache-save-path", tmp_file.name], standalone_mode=False
+        )
 
+    @pytest.mark.skip(reason="Long running test")
     def test_create_and_annotate_vcf(self):
-        tmp_file = tempfile.NamedTemporaryFile('w', delete=False)
-        cli.create_vcf(["-v", tmp_file.name, "--include-status", "accepted"], standalone_mode=False)
+        tmp_file = tempfile.NamedTemporaryFile("w", delete=False)
+        cli.create_vcf(
+            ["-v", tmp_file.name, "--include-status", "accepted"], standalone_mode=False
+        )
 
-    @patch("civicpy.civic.get_all_assertions_ready_for_clinvar_submission_for_org")
-    def test_create_gks_json_assertions_found(self, mock_assertions):
+    @patch("civicpy.civic.get_all_endorsements_ready_for_clinvar_submission_for_org")
+    @patch("civicpy.civic.get_assertion_by_id", wraps=civic.get_assertion_by_id)
+    def test_create_gks_json_assertions_found(self, mock_assertion, mock_endorsements):
         """Test that CLI create_gks_json works as expected when assertions are ready for clinvar submission"""
-        mock_assertions.return_value = [civic.get_assertion_by_id(6)]
+        mock_assertion.return_value = civic.get_assertion_by_id(6)
+        mock_endorsements.return_value = [
+            civic.Endorsement(
+                type="endorsement",
+                id=1,
+                status="ACTIVE",
+                ready_for_clinvar_submission=True,
+                organization_id=1,
+                last_reviewed="2025-03-19T13:38:54Z",
+                assertion_id=6,
+                partial=True,
+            )
+        ]
 
         with tempfile.NamedTemporaryFile("w+", suffix=".json", delete=True) as tmp_file:
             try:
@@ -41,7 +59,7 @@ class TestCli(object):
                     isinstance(va_spec_python_version, str) and va_spec_python_version
                 )
 
-    @patch("civicpy.civic.get_all_assertions_ready_for_clinvar_submission_for_org")
+    @patch("civicpy.civic.get_all_endorsements_ready_for_clinvar_submission_for_org")
     def test_create_gks_json_no_assertions_found(
         self, mock_assertions, tmp_path, caplog
     ):

@@ -78,6 +78,7 @@ Endorsements
 ~~~~~~~~~~~~
 
 .. autofunction:: get_all_endorsements
+.. autofunction:: get_all_endorsements_ready_for_clinvar_submission_for_org
 
 By ID
 -----

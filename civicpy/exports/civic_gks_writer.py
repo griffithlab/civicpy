@@ -1,8 +1,10 @@
 """Module for writing CIViC GKS representation to JSON"""
 
+from datetime import datetime
 from importlib.metadata import PackageNotFoundError, version
 import json
 from pathlib import Path
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -62,10 +64,27 @@ class CivicGksWriter:
         :raises ValueError: If ``filepath`` does not have `.json` suffix
         :param gks_records: List CIViC assertions represented as GKS objects
         """
+
+        def _default(obj: Any) -> str:
+            """Converting datetime objects to ISO-formatted dates (YYYY-MM-DD)
+
+            :param obj: Python object to serialize
+            :raises TypeError: If an unsupported type
+            :return: JSON string where datetime objects appear as YYYY-MM-DD
+            """
+
+            if isinstance(obj, datetime):
+                return obj.isoformat().split("T", 1)[0]
+
+            err_msg = f"Object of type {type(obj)} is not JSON serializable"
+            raise TypeError(err_msg)
+
         if filepath.suffix.lower() != ".json":
             err_msg = "Output file path must end in '.json'."
             raise ValueError(err_msg)
 
         output = GksOutput(gks_records=gks_records)
         with filepath.open("w+") as wf:
-            json.dump(output.model_dump(exclude_none=True), wf, indent=2)
+            json.dump(
+                output.model_dump(exclude_none=True), wf, indent=2, default=_default
+            )
