@@ -283,7 +283,7 @@ Here's an example of how to export all assertions to GKS JSON::
 Here's an example of how to export all assertions endorsed by a specific organization that are
 ready for submission to ClinVar.::
 
-	  from civicpy import civic
+    from civicpy import civic
     from civicpy.exports.civic_gks_writer import CivicGksWriter
     from civicpy.exports.civic_vcf_record import CivicVcfRecord
 
