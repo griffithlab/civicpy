@@ -40,7 +40,12 @@ class GksOutput(BaseModel):
 
 
 class CivicGksWriter:
-    """Class for writing CIViC GKS assertions to JSON file"""
+    """Class for writing CIViC GKS assertions to JSON file
+
+    :param filepath: The output file path to write the JSON file to
+    :raises ValueError: If ``filepath`` does not have `.json` suffix
+    :param gks_records: List CIViC assertions represented as GKS objects
+    """
 
     def __init__(
         self,
@@ -54,7 +59,7 @@ class CivicGksWriter:
         """Initialize CivicGksWriter class
 
         :param filepath: The output file path to write the JSON file to
-        :raises ValueError: If ``filepath`` does has '.json' suffix
+        :raises ValueError: If ``filepath`` does not have `.json` suffix
         :param gks_records: List CIViC assertions represented as GKS objects
         """
         if filepath.suffix.lower() != ".json":

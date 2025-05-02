@@ -126,7 +126,12 @@ _SNP_RE = re.compile(r"RS\d+")
 
 
 class _CivicGksAssertionRecord(ABC):
-    """Abstract class for CIViC assertion record represented as GKS"""
+    """Abstract class for CIViC assertion record represented as GKS
+
+    :param assertion: CIViC assertion record
+    :raises CivicGksRecordError: If CIViC assertion is not able to be represented as
+        GKS object
+    """
 
     _method: Method = PrivateAttr(
         Method(
