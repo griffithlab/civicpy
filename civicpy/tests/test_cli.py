@@ -59,6 +59,23 @@ class TestCli(object):
                     isinstance(va_spec_python_version, str) and va_spec_python_version
                 )
 
+    def test_create_gks_json_no_organization(
+        self, tmp_path, caplog
+    ):
+        """Test that CLI create_gks_json works as expected when organization ID does not exist"""
+        output_file = tmp_path / "gks.json"
+
+        try:
+            cli.create_gks_json(["--organization-id", 99999999, "-o", output_file])
+        except SystemExit as e:
+            assert e.code == 0
+
+        assert not output_file.exists()
+        assert (
+            "Error getting organization 99999999"
+            in caplog.text
+        )
+
     @patch("civicpy.civic.get_all_endorsements_ready_for_clinvar_submission_for_org")
     def test_create_gks_json_no_assertions_found(
         self, mock_assertions, tmp_path, caplog

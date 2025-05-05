@@ -156,14 +156,11 @@ class _CivicGksAssertionRecord(ABC):
         self,
         assertion: Assertion,
         endorsement: Endorsement | None = None,
-        organization: Organization | None = None,
     ) -> None:
         """Initialize _CivicGksAssertionRecord class
 
         :param assertion: CIViC assertion record
         :param endorsement: CIViC endorsement for the assertion, defaults to None
-        :param organization: CIViC organization that made the endorsement, defaults to
-            None
         :raises CivicGksRecordError: If CIViC assertion is not able to be represented as
             GKS object
         """
@@ -177,7 +174,8 @@ class _CivicGksAssertionRecord(ABC):
             self._assertion.amp_level
         )
 
-        if endorsement and organization:
+        if endorsement:
+            organization = endorsement.organization
             contributions = [
                 Contribution(
                     activityType=f"{endorsement.type}.last_reviewed",
