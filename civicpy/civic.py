@@ -2950,7 +2950,7 @@ def get_gene_by_entrez_id(entrez_id):
     .. _Entrez ID: https://www.ncbi.nlm.nih.gov/gene/
     """
     genes = _get_elements_by_ids('gene', get_all=True)
-    matching_genes = [t for t in genes if g.entrez_id == entrez_id]
+    matching_genes = [g for g in genes if g.entrez_id == entrez_id]
     if len(matching_genes) == 0:
         raise Exception("No Gene with Entrez ID: {}".format(entrez_id))
     return matching_genes[0]
@@ -2964,7 +2964,7 @@ def get_gene_by_name(name):
     .. _HGNC Gene Symbol: https://www.genenames.org/
     """
     genes = _get_elements_by_ids('gene', get_all=True)
-    matching_genes = [t for t in genes if g.name == name]
+    matching_genes = [g for g in genes if g.name == name]
     if len(matching_genes) == 0:
         raise Exception("No Gene with HGNC Gene Symbol: {}".format(name))
     return matching_genes[0]
@@ -3089,7 +3089,7 @@ def get_ash_source_by_doi(doi):
     sources = _get_elements_by_ids('source', get_all=True)
     matching_sources = [s for s in sources if s.citation_id == doi and s.source_type == 'ASH']
     if len(matching_sources) == 0:
-        raise Exception("No ASH sources with DOI: {}".format(citation_id))
+        raise Exception("No ASH sources with DOI: {}".format(doi))
     return matching_sources[0]
 
 
