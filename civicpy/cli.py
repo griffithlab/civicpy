@@ -90,7 +90,10 @@ def create_gks_json(organization_id: int, output_json: Path) -> None:
                     gks_record = CivicGksDiagnosticAssertion(assertion, endorsement=endorsement)
                 elif assertion.assertion_type == "PREDICTIVE":
                     gks_record = CivicGksPredictiveAssertion(assertion, endorsement=endorsement)
+                elif: assertion.assertion_type == "PROGNOSTIC":
+                    gks_record = CivicGksPrognosticAssertion(assertion, endorsement=endorsement)
                 else:
+                     logging.warning('Assertion type {} is not currently supported for submission to ClinVar.'.format(assertion.assertion_type))
                     gks_record = CivicGksPrognosticAssertion(assertion, endorsement=endorsement)
             except CivicGksRecordError:
                 continue
