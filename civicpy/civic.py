@@ -1216,6 +1216,7 @@ class Assertion(CivicRecord):
         'assertion_type',
         'description',
         'disease_id',
+        'endorsement_ids',
         'evidence_ids',
         'fda_companion_test',
         'fda_regulatory_approval',
@@ -1235,15 +1236,17 @@ class Assertion(CivicRecord):
     _COMPLEX_FIELDS = CivicRecord._COMPLEX_FIELDS.union({
         'acmg_codes',
         'clingen_codes',
-        'therapies',
+        'endorsements',
         'evidence_items',
         'phenotypes',
+        'therapies',
     })
 
     def __init__(self, **kwargs):
         self._evidence_items = []
         self._therapies = []
         self._phenotypes = []
+        self._endorsements = []
         super().__init__(**kwargs)
 
     @property
@@ -1272,6 +1275,17 @@ class Assertion(CivicRecord):
         .. _Disease Ontology: http://disease-ontology.org/
         """
         return get_disease_by_id(self.disease_id)
+
+    @property
+    def endorsements(self):
+        """
+        Zero or more :class:`Endorsement` records representing organizations endorsing this assertion.
+        """
+        return self._endorsements
+
+    @endorsements.setter
+    def endorsements(self, value):
+        self._endorsements = value
 
     @property
     def therapies(self):
@@ -1385,11 +1399,28 @@ class Organization(CivicRecord):
         'name',
         'url',
         'description',
+        'endorsement_ids',
     })
 
     _COMPLEX_FIELDS = CivicRecord._COMPLEX_FIELDS.union({
         #'profile_image',
+        'endorsements',
     })
+
+    def __init__(self, **kwargs):
+        self._endorsements = []
+        super().__init__(**kwargs)
+
+    @property
+    def endorsements(self):
+        """
+        Zero or more :class:`Endorsement` records representing assertions endorsed by this organization.
+        """
+        return self._endorsements
+
+    @endorsements.setter
+    def endorsements(self, value):
+        self._endorsements = value
 
 
 class Therapy(CivicRecord):
@@ -1848,10 +1879,15 @@ def _postprocess_response_element(e, element):
         e['molecular_profile_id'] = e['molecular_profile']['id']
         e['evidence_ids'] = [evidence['id'] for evidence in e['evidenceItems']]
         e['disease_id'] = e['disease']['id'] if e['disease'] is not None else None
+        e['endorsement_ids'] = [endorsement['id'] for endorsement in e['endorsements']['nodes']]
         e['therapy_ids'] = [t['id'] for t in e['therapies']]
         e['phenotype_ids'] = [p['id'] for p in e['phenotypes']]
         e['status'] = e['status'].lower()
         del e['therapies']
+        del e['endorsements']
+    elif element == 'endorsement':
+        e['assertion_id'] = e['assertion']['id']
+        e['organization_id'] = e['organization']['id']
     elif element == 'evidence':
         e['source_id'] = e['source']['id']
         e['molecular_profile_id'] = e['molecular_profile']['id']
@@ -1861,9 +1897,7 @@ def _postprocess_response_element(e, element):
         e['phenotype_ids'] = [p['id'] for p in e['phenotypes']]
         e['status'] = e['status'].lower()
         del e['therapies']
-    elif element == 'gene':
-        e['source_ids'] = [v['id'] for v in e['sources']]
-        del e['sources']
+        del e['phenotypes']
     elif element == 'factor':
         e['source_ids'] = [v['id'] for v in e['sources']]
         del e['sources']
@@ -1878,11 +1912,16 @@ def _postprocess_response_element(e, element):
             e['five_prime_gene_id'] = e['fivePrimeGene']['id']
         else:
             e['five_prime_gene_id'] = None
+    elif element == 'gene':
+        e['source_ids'] = [v['id'] for v in e['sources']]
+        del e['sources']
     elif element == 'molecular_profile':
         e['source_ids'] = [s['id'] for s in e['sources']]
         del e['sources']
         e['variant_ids'] = [v['id'] for v in e['variants']]
         del e['variants']
+    elif element == 'organization':
+        e['endorsement_ids'] = [endorsement['id'] for endorsement in e['endorsements']]
     elif element == 'variant':
         e['feature_id'] = e['feature']['id']
         if e['__typename'] == 'GeneVariant':
@@ -1918,9 +1957,6 @@ def _postprocess_response_element(e, element):
         del e['sources']
         e['variant_ids'] = [v['id'] for v in e['variants']['nodes']]
         del e['variants']
-    elif element == 'endorsement':
-        e['assertion_id'] = e['assertion']['id']
-        e['organization_id'] = e['organization']['id']
     return e
 
 

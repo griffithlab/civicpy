@@ -391,6 +391,7 @@ class TestAssertions(object):
         assert assertion.disease.name == "Von Hippel-Lindau Disease"
         assert len(assertion.therapies) == 0
         assert len(assertion.phenotypes) == 3
+        assert len(assertion.endorsements) == 0
         assert assertion.molecular_profile.id == 1686
 
         # Test assertion with clingen_codes
@@ -687,6 +688,10 @@ class TestOrganization(object):
         org = civic.get_organization_by_id(1)
         assert org.name == 'The McDonnell Genome Institute'
         assert org.url == 'http://genome.wustl.edu/'
+
+    def test_properties(self):
+        org = civic.get_organization_by_id(14)
+        assert len(org.endorsements) >= 1
 
 #class TestEndorsement(object):
 #    def test_get_all(self):
