@@ -713,6 +713,9 @@ class Variant(CivicRecord):
         mp._include_status = self._include_status
         return mp
 
+    def is_valid_for_vcf(self, emit_warnings=False):
+        return False
+
 
 class GeneVariant(Variant):
     _SIMPLE_FIELDS = Variant._SIMPLE_FIELDS.union({
@@ -763,19 +766,27 @@ class GeneVariant(Variant):
         return (ref is not None and alt is None) or (ref is not None and alt is not None and len(ref) > len(alt))
 
     def is_valid_for_vcf(self, emit_warnings=False):
-        if self.coordinates.chromosome and self.coordinates.start and (self.coordinates.reference_bases or self.coordinates.variant_bases):
-            if self._valid_ref_bases():
-                if self._valid_alt_bases():
-                    return True
-                else:
-                    warning = "Unsupported variant base(s) for variant {}. Skipping.".format(self.id)
-            else:
-                warning = "Unsupported reference base(s) for variant {}. Skipping.".format(self.id)
+        warnings = []
+        if self.coordinates is None:
+            warnings.append("Variant {} has no coordinates. Skipping".format(self.id))
+        if self.coordinates.reference_build != 'GRCh37':
+            warnings.append("Variant coordinate reference build is not GRCh37 for variant {}. Skipping.".format(self.id))
+        if (self.is_insertion or self.is_deletion) and self.coordinates.representative_transcript is None:
+            warnings.append("Variant {} is an indel but coordinates are missing a representative transcript. Skipping.".format(self.id))
+        if not self._valid_alt_bases():
+            warnings.append("Unsupported variant base(s) for variant {}. Skipping.".format(self.id))
+        if not self._valid_ref_bases():
+            warnings.append("Unsupported reference base(s) for variant {}. Skipping.".format(self.id))
+        if not(self.coordinates.chromosome and self.coordinates.start and (self.coordinates.reference_bases or self.coordinates.variant_bases)):
+            warnings.append("Incomplete coordinates for variant {}. Skipping.".format(self.id))
+
+        if len(warnings) == 0:
+            return True
         else:
-            warning = "Incomplete coordinates for variant {}. Skipping.".format(self.id)
-        if emit_warnings:
-            logging.warning(warning)
-        return False
+            if emit_warnings:
+                for warning in warnings:
+                    logging.warning(warning)
+            return False
 
     def _valid_ref_bases(self):
         if self.coordinates.reference_bases is not None:
@@ -789,176 +800,7 @@ class GeneVariant(Variant):
         else:
             return True
 
-    def vcf_coordinates(self):
-        ensembl_server = "https://grch37.rest.ensembl.org"
-        if self.coordinates.reference_build != 'GRCh37':
-            return
-        if self.is_insertion:
-            if not self.coordinates.representative_transcript:
-                return
-            else:
-                start = self.coordinates.start
-                ext = "/sequence/region/human/{}:{}-{}".format(self.coordinates.chromosome, start, start)
-                r = requests.get(ensembl_server+ext, headers={ "Content-Type" : "text/plain"})
-                r.raise_for_status()
-                if self.coordinates.reference_bases == None or self.coordinates.reference_bases == '-' or self.coordinates.reference_bases == '':
-                    ref = r.text
-                else:
-                    ref = "{}{}".format(r.text, self.coordinates.reference_bases)
-                alt = "{}{}".format(r.text, self.coordinates.variant_bases)
-        elif self.is_deletion:
-            if not self.coordinates.representative_transcript:
-                return
-            else:
-                start = self.coordinates.start - 1
-                ext = "/sequence/region/human/{}:{}-{}".format(self.coordinates.chromosome, start, start)
-                r = requests.get(ensembl_server+ext, headers={ "Content-Type" : "text/plain"})
-                r.raise_for_status()
-                ref = "{}{}".format(r.text, self.coordinates.reference_bases)
-                if self.coordinates.variant_bases == None or self.coordinates.variant_bases == '-' or self.coordinates.variant_bases == '':
-                    alt = r.text
-                else:
-                    alt = "{}{}".format(r.text, self.coordinates.variant_bases)
-        else:
-            start = self.coordinates.start
-            ref = self.coordinates.reference_bases
-            alt = self.coordinates.variant_bases
-        return (start, ref, alt)
 
-    def csq_alt(self):
-        if self.coordinates.reference_build != 'GRCh37':
-            return
-        if self.is_insertion:
-            if not self.coordinates.representative_transcript:
-                return
-            else:
-                return self.coordinates.variant_bases
-        elif self.is_deletion:
-            if not self.coordinates.representative_transcript:
-                return
-            else:
-                return "-"
-        else:
-            return self.coordinates.variant_bases
-
-    def hgvs_c(self):
-        if self.coordinates.representative_transcript:
-            hgvs_cs = [e for e in self.hgvs_expressions if (':c.' in e) and (self.coordinates.representative_transcript in e)]
-            return hgvs_cs[0] if len(hgvs_cs) == 1 else ''
-        else:
-            return ''
-
-    def hgvs_p(self):
-        if self.coordinates.representative_transcript:
-            hgvs_ps = [e for e in self.hgvs_expressions if (':p.' in e) and (self.coordinates.representative_transcript in e)]
-            return hgvs_ps[0] if len(hgvs_ps) == 1 else ''
-        else:
-            return ''
-
-    def sanitized_name(self):
-        name = self.name
-        regex = re.compile(r"^([A-Z]+)([0-9]+)(=)(.*)$")
-        match = regex.match(name)
-        if match is not None:
-            name = "".join([match.group(1), match.group(2), match.group(1), match.group(4)])
-        return name
-
-    def csq(self, include_status=None):
-        if self.csq_alt() is None:
-            return []
-        else:
-            csq = []
-            for mp in self.molecular_profiles:
-                for evidence in mp.evidence:
-                    if include_status is not None and evidence.status not in include_status:
-                        continue
-                    special_character_table = str.maketrans(exports.VCFWriter.SPECIAL_CHARACTERS)
-                    csq.append('|'.join([
-                        self.csq_alt(),
-                        '&'.join(map(lambda t: t.name, self.variant_types)),
-                        self.gene.name,
-                        str(self.gene.entrez_id),
-                        'transcript',
-                        str(self.coordinates.representative_transcript),
-                        self.hgvs_c(),
-                        self.hgvs_p(),
-                        self.sanitized_name(),
-                        str(self.id),
-                        '&'.join(map(lambda a: a.translate(special_character_table), self.variant_aliases)),
-                        "https://civicdb.org/links/variants/{}".format(self.id),
-                        mp.sanitized_name(),
-                        str(mp.id),
-                        '&'.join(map(lambda a: a.translate(special_character_table), mp.aliases)),
-                        "https://civicdb.org/links/molecular-profiles/{}".format(mp.id),
-                        '&'.join(map(lambda e: e.strip().translate(special_character_table), self.hgvs_expressions)),
-                        str(self.allele_registry_id),
-                        '&'.join(self.clinvar_entries),
-                        str(mp.molecular_profile_score),
-                        "evidence",
-                        str(evidence.id),
-                        "https://civicdb.org/links/evidence/{}".format(evidence.id),
-                        "{} ({})".format(evidence.source.citation_id, evidence.source.source_type),
-                        str(evidence.variant_origin),
-                        evidence.status,
-                        str(evidence.significance or ''),
-                        str(evidence.evidence_direction or ''),
-                        evidence.disease.name if evidence.disease is not None else "",
-                        '&'.join([str(therapy) for therapy in evidence.therapies]),
-                        str(evidence.therapy_interaction_type or ""),
-                        '&'.join(["{} (HPO ID {})".format(phenotype.name, phenotype.hpo_id) for phenotype in evidence.phenotypes]),
-                        evidence.evidence_level,
-                        str(evidence.rating),
-                        "",
-                        "",
-                        "",
-                        "",
-                        "",
-                    ]))
-                for assertion in mp.assertions:
-                    if include_status is not None and assertion.status not in include_status:
-                        continue
-                    csq.append('|'.join([
-                        self.csq_alt(),
-                        '&'.join(map(lambda t: t.name, self.variant_types)),
-                        self.gene.name,
-                        str(self.gene.entrez_id),
-                        'transcript',
-                        str(self.coordinates.representative_transcript),
-                        self.hgvs_c(),
-                        self.hgvs_p(),
-                        self.sanitized_name(),
-                        str(self.id),
-                        '&'.join(map(lambda a: a.translate(special_character_table), self.variant_aliases)),
-                        "https://civicdb.org/links/variants/{}".format(self.id),
-                        mp.sanitized_name(),
-                        str(mp.id),
-                        '&'.join(map(lambda a: a.translate(special_character_table), mp.aliases)),
-                        "https://civicdb.org/links/molecular-profiles/{}".format(mp.id),
-                        '&'.join(map(lambda e: e.strip().translate(special_character_table), self.hgvs_expressions)),
-                        str(self.allele_registry_id),
-                        '&'.join(self.clinvar_entries),
-                        str(mp.molecular_profile_score),
-                        "assertion",
-                        str(assertion.id),
-                        "https://civicdb.org/links/assertion/{}".format(assertion.id),
-                        "",
-                        str(assertion.variant_origin),
-                        assertion.status,
-                        assertion.significance,
-                        assertion.assertion_direction,
-                        str(assertion.disease),
-                        '&'.join([str(therapy) for therapy in assertion.therapies]),
-                        str(assertion.therapy_interaction_type or ''),
-                        "",
-                        "",
-                        "",
-                        "&".join([acmg_code.code for acmg_code in assertion.acmg_codes]),
-                        str(assertion.amp_level or ''),
-                        assertion.format_nccn_guideline(),
-                        str(assertion.fda_regulatory_approval or ''),
-                        str(assertion.fda_companion_test or ''),
-                    ]))
-            return csq
 
 class FactorVariant(Variant):
     _SIMPLE_FIELDS = Variant._SIMPLE_FIELDS.union({
@@ -1295,6 +1137,14 @@ class Evidence(CivicRecord):
         """
         return self.description
 
+    @property
+    def variants(self):
+        """
+        One or more :class:`Variant` objects associated with this evidence's molecular profile.
+        """
+        return self.molecular_profile.variants
+
+
     #@statement.setter
     #def statement(self, value):
     #    self.description = value
@@ -1411,6 +1261,13 @@ class Assertion(CivicRecord):
             return ""
         else:
             return "{} (v{})".format(self.nccn_guideline, self.nccn_guideline_version)
+
+    @property
+    def variants(self):
+        """
+        One or more :class:`Variant` objects associated with this assertion's molecular profile.
+        """
+        return self.molecular_profile.variants
 
 
 class User(CivicRecord):
