@@ -693,29 +693,29 @@ class TestOrganization(object):
         org = civic.get_organization_by_id(14)
         assert len(org.endorsements) >= 1
 
-#class TestEndorsement(object):
-#    def test_get_all(self):
-#        endorsement = civic.get_all_endorsements()
-#        assert len(endorsements) >= #TODO add number
-#
-#    def test_get_by_id(self):
-#        e = civic.get_endorsement_by_id(1)
-#        assert e.id == 1
-#        assert e.type == 'endorsement'
-#
-#    def test_attributes(self):
-#        e = civic.get_endorsement_by_id(1)
-#        assert e.organization_id == #TODO add number
-#        assert e.assertion_id == #TODO add number
 
-#    def test_search_endorsements_by_organization_id(self):
-#        endorsements = civic.search_endorsements_by_organization_id(#TODO add
-#        ID)
-#        assert len(endorsements) >= #TODO add number
+class TestEndorsement(object):
+    def test_get_all(self):
+        endorsements = civic.get_all_endorsements()
+        assert len(endorsements) >= 4
 
-#    def test_search_endorsements_by_assertion_id(self):
-#        endorsements = civic.search_endorsements_by_assertion_id(#TODO add ID)
-#        assert len(endorsements) >= #TODO add number
+    def test_get_by_id(self):
+        e = civic.get_endorsement_by_id(1)
+        assert e.id == 1
+        assert e.type == 'endorsement'
+
+    def test_attributes(self):
+        e = civic.get_endorsement_by_id(1)
+        assert e.organization_id == 14
+        assert e.assertion_id == 101
+
+    def test_search_endorsements_by_organization_id(self):
+        endorsements = civic.search_endorsements_by_organization_id(1)
+        assert len(endorsements) >= 1
+
+    def test_search_endorsements_by_assertion_id(self):
+        endorsements = civic.search_endorsements_by_assertion_id(6)
+        assert len(endorsements) >= 1
 
 
 class TestPhenotypes(object):
