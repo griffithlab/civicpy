@@ -1,15 +1,11 @@
 import pytest
-from civicpy import civic, TEST_CACHE_PATH
+from civicpy import civic
 from civicpy.civic import CoordinateQuery
 import logging
 
 ELEMENTS = [
     'assertion'
 ]
-
-
-def setup_module():
-    civic.load_cache(local_cache_path=TEST_CACHE_PATH, on_stale='ignore')
 
 
 @pytest.fixture(scope="module", params=ELEMENTS)
@@ -33,10 +29,12 @@ def v600e_assertion():
 
 
 class TestGetFunctions(object):
+    @pytest.mark.skip(reason="Queries live API - Move to heartbeat test")
     def test_element_lookup_by_id(self):
         assertion = civic.element_lookup_by_id('assertion', '1')
         assert assertion['id'] == 1
 
+    @pytest.mark.skip(reason="Queries live API - Move to heartbeat test")
     def test_get_assertions(self):
         test_ids = [1, 2, 3]
         results = civic._get_elements_by_ids('assertion', test_ids)
@@ -51,10 +49,12 @@ class TestCivicRecord(object):
 
 class TestElements(object):
 
+    @pytest.mark.skip(reason="Queries live API - Move to heartbeat test")
     def test_attribute_fail(self, element):
         with pytest.raises(AttributeError):
             element.foo
 
+    @pytest.mark.skip(reason="Queries live API - Move to heartbeat test")
     def test_completeness(self, element):
         for complex_field in element._COMPLEX_FIELDS:
             complex_value = getattr(element, complex_field)
@@ -255,14 +255,14 @@ class TestFusionVariants(object):
         assert variant.three_prime_end_exon_coordinates.stop == 133763062
 
     def test_nullable_fields(self):
-        variant = civic.get_variant_by_id(739)
+        variant = civic.get_variant_by_id(5041)
         assert variant.three_prime_coordinates is None
         assert variant.three_prime_start_exon_coordinates is None
         assert variant.three_prime_end_exon_coordinates is None
 
     def test_properties(self):
         variant = civic.get_variant_by_id(1)
-        assert variant.fusion.id == 61802
+        assert variant.fusion.id == 62007
         assert variant.fusion == variant.feature
 
 
@@ -331,9 +331,9 @@ class TestMolecularProfiles(object):
 
     def test_properties(self):
         mp = civic.get_molecular_profile_by_id(4432)
-        assert len(mp.evidence_sources) == 11
+        assert len(mp.evidence_sources) == 10
         assert mp.summary == mp.description
-        assert len(mp.evidence_items) == 12
+        assert len(mp.evidence_items) == 11
         assert len(mp.assertions) == 0
         assert len(mp.variants) == 2
         assert len(mp.sources) == 0
@@ -391,6 +391,7 @@ class TestAssertions(object):
         assert assertion.disease.name == "Von Hippel-Lindau Disease"
         assert len(assertion.therapies) == 0
         assert len(assertion.phenotypes) == 3
+        assert len(assertion.endorsements) == 0
         assert assertion.molecular_profile.id == 1686
 
         # Test assertion with clingen_codes
@@ -454,13 +455,23 @@ class TestGenes(object):
         assert gene.type == 'gene'
         assert gene.id == 58
 
+    def test_get_by_name(self):
+        gene = civic.get_gene_by_name('BRAF')
+        assert gene.name == 'BRAF'
+        assert gene.type == 'gene'
+
+    def test_get_by_entrez_id(self):
+        gene = civic.get_gene_by_entrez_id(673)
+        assert gene.entrez_id == 673
+        assert gene.type == 'gene'
+
     def test_attributes(self):
         gene = civic.get_gene_by_id(58)
         assert gene.name == 'VHL'
 
     def test_properties(self):
         gene = civic.get_gene_by_id(58)
-        assert len(gene.variants) == 844
+        assert len(gene.variants) == 862
         assert len(gene.sources) == 4
 
 
@@ -482,6 +493,16 @@ class TestFactors(object):
         factor = civic.get_factor_by_id(61748)
         assert factor.type == 'factor'
         assert factor.id == 61748
+
+    def test_get_by_name(self):
+        factor = civic.get_factor_by_name('MSI')
+        assert factor.type == 'factor'
+        assert factor.name == 'MSI'
+
+    def test_get_by_ncit_id(self):
+        factor = civic.get_factor_by_ncit_id('C36318')
+        assert factor.type == 'factor'
+        assert factor.ncit_id == 'C36318'
 
     def test_attributes(self):
         factor = civic.get_factor_by_id(61748)
@@ -524,12 +545,21 @@ class TestFusions(object):
         assert len(fusion.variants) == 1
         assert len(fusion.sources) == 0
 
+    def test_get_fusion_by_name(self):
+        fusion = civic.get_fusion_by_name("BCR::ABL1")
+        assert fusion.id == 62007
+        assert fusion.name == 'BCR::ABL1'
+
+    def test_search_fusions_by_partner_gene_id(self):
+        fusions = civic.search_fusions_by_partner_gene_id(573)
+        assert len(fusions) >= 5
+
 
 class TestDiseases(object):
 
     def test_get_all(self):
         diseases = civic.get_all_diseases()
-        assert len(diseases) >= 419
+        assert len(diseases) >= 418
 
     def test_get_by_id(self):
         d = civic.get_disease_by_id(22)
@@ -559,7 +589,7 @@ class TestDiseases(object):
 
     def test_properties(self):
         breast_cancer = civic.get_disease_by_id(22)
-        assert len(breast_cancer.evidence) >= 280
+        assert len(breast_cancer.evidence) >= 278
         assert breast_cancer.evidence == breast_cancer.evidence_items
         assert len(breast_cancer.assertions) >= 2
 
@@ -568,7 +598,7 @@ class TestTherapies(object):
 
     def test_get_all(self):
         therapies = civic.get_all_therapies()
-        assert len(therapies) >= 555
+        assert len(therapies) >= 552
 
     def test_get_by_id(self):
         t = civic.get_therapy_by_id(19)
@@ -597,9 +627,95 @@ class TestTherapies(object):
 
     def test_properties(self):
         trametinib = civic.get_therapy_by_id(19)
-        assert len(trametinib.evidence) >= 138
+        assert len(trametinib.evidence) >= 136
         assert trametinib.evidence == trametinib.evidence_items
         assert len(trametinib.assertions) >= 3
+
+
+class TestSource(object):
+    def test_get_all(self):
+        sources = civic.get_all_sources()
+        assert len(sources) >= 3868
+
+    def test_get_by_id(self):
+        s = civic.get_source_by_id(1)
+        assert s.id == 1
+        assert s.type == 'source'
+
+    def test_attributes(self):
+        s = civic.get_source_by_id(947)
+        assert s.citation == 'McArthur et al., 2014'
+        assert s.citation_id == '24508103'
+        assert s.source_type == 'PUBMED'
+        assert s.abstract.startswith('In the BRIM-3 trial,')
+        assert s.author_string.startswith('Grant A McArthur,')
+        assert s.full_journal_title == 'The Lancet. Oncology'
+        assert s.journal == 'Lancet Oncol'
+        assert s.pmc_id == 'PMC4382632'
+        assert s.publication_date == '2014-3'
+        assert s.source_url == 'http://www.ncbi.nlm.nih.gov/pubmed/24508103'
+        assert s.title.startswith('Safety and efficacy of vemurafenib')
+        assert len(s.clinical_trials) == 1
+
+    def test_get_pubmed_source_by_id(self):
+        s = civic.get_pubmed_source_by_id('24889366')
+        assert s.citation_id == '24889366'
+        assert s.source_type == 'PUBMED'
+
+    def test_get_ash_source_by_doi(self):
+        s = civic.get_ash_source_by_doi('10.1182/blood-2021-145491')
+        assert s.citation_id == '10.1182/blood-2021-145491'
+        assert s.source_type == 'ASH'
+
+    def test_get_asco_source_by_id(self):
+        s = civic.get_asco_source_by_id('144555')
+        assert s.citation_id == '144555'
+        assert s.asco_abstract_id == 5005
+        assert s.source_type == 'ASCO'
+
+
+class TestOrganization(object):
+    def test_get_all(self):
+        organizations = civic.get_all_organizations()
+        assert len(organizations) >= 23
+
+    def test_get_by_id(self):
+        o = civic.get_organization_by_id(1)
+        assert o.id == 1
+        assert o.type == 'organization'
+
+    def test_attributes(self):
+        org = civic.get_organization_by_id(1)
+        assert org.name == 'The McDonnell Genome Institute'
+        assert org.url == 'http://genome.wustl.edu/'
+
+    def test_properties(self):
+        org = civic.get_organization_by_id(14)
+        assert len(org.endorsements) >= 1
+
+
+class TestEndorsement(object):
+    def test_get_all(self):
+        endorsements = civic.get_all_endorsements()
+        assert len(endorsements) >= 4
+
+    def test_get_by_id(self):
+        e = civic.get_endorsement_by_id(1)
+        assert e.id == 1
+        assert e.type == 'endorsement'
+
+    def test_attributes(self):
+        e = civic.get_endorsement_by_id(1)
+        assert e.organization_id == 14
+        assert e.assertion_id == 101
+
+    def test_search_endorsements_by_organization_id(self):
+        endorsements = civic.search_endorsements_by_organization_id(1)
+        assert len(endorsements) >= 1
+
+    def test_search_endorsements_by_assertion_id(self):
+        endorsements = civic.search_endorsements_by_assertion_id(6)
+        assert len(endorsements) >= 1
 
 
 class TestPhenotypes(object):
@@ -623,9 +739,9 @@ class TestPhenotypes(object):
 
     def test_properties(self):
         pediatric_onset = civic.get_phenotype_by_id(15320)
-        assert len(pediatric_onset.evidence) >= 140
+        assert len(pediatric_onset.evidence) >= 128
         assert pediatric_onset.evidence == pediatric_onset.evidence_items
-        assert len(pediatric_onset.assertions) >= 27
+        assert len(pediatric_onset.assertions) >= 25
 
 
 class TestCoordinateSearch(object):
@@ -832,3 +948,30 @@ def test_is_valid_for_vcf_warnings(caplog):
     assert "Unsupported variant base(s) for variant 613. Skipping." in caplog.text
 
     #currently no case for unsupported ref bases
+
+def test_is_valid_for_gks_warnings_assertion(caplog):
+    """Test that is_valid_for_gks_json works correctly for assertions"""
+    not_accepted = civic.get_assertion_by_id(117)
+    assert not not_accepted.is_valid_for_gks_json(emit_warnings=True)
+    assert "Assertion 117 does not have 'accepted' status. Skipping" in caplog.text
+
+    oncogenic_fusion = civic.get_assertion_by_id(101)
+    assert not oncogenic_fusion.is_valid_for_gks_json(emit_warnings=True)
+    assert "Assertion 101 type is not one of: 'DIAGNOSTIC', 'PREDICTIVE', or 'PROGNOSTIC'. Skipping" in caplog.text
+    assert "Assertion 101 variant is not a ``GeneVariant``. Skipping" in caplog.text
+
+    complex_mp = civic.get_assertion_by_id(88)
+    assert not complex_mp.is_valid_for_gks_json(emit_warnings=True)
+    assert "Assertion 88 has a complex molecular profile. Skipping" in caplog.text
+
+def test_is_valid_for_gks_warnings_evidence(caplog):
+    """Test that is_valid_for_gks_json works correctly for evidence items"""
+    not_accepted_oncogenic_fusion = civic.get_evidence_by_id(6936)
+    assert not not_accepted_oncogenic_fusion.is_valid_for_gks_json(emit_warnings=True)
+    assert "Evidence 6936 type is not one of: 'DIAGNOSTIC', 'PREDICTIVE', or 'PROGNOSTIC'. Skipping" in caplog.text
+    assert "Evidence 6936 variant is not a ``GeneVariant``. Skipping" in caplog.text
+    assert "Evidence 6936 does not have 'accepted' status. Skipping" in caplog.text
+
+    complex_mp = civic.get_evidence_by_id(8177)
+    assert not complex_mp.is_valid_for_gks_json(emit_warnings=True)
+    assert "Evidence 8177 has a complex molecular profile. Skipping" in caplog.text

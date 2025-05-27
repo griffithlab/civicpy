@@ -1,5 +1,9 @@
+from pathlib import Path
 import click
+import logging
 from civicpy import LOCAL_CACHE_PATH, civic
+from civicpy.exports.civic_gks_record import CivicGksRecordError, CivicGksPredictiveAssertion, CivicGksDiagnosticAssertion, CivicGksPrognosticAssertion
+from civicpy.exports.civic_gks_writer import CivicGksWriter
 from civicpy.exports.civic_vcf_writer import CivicVcfWriter
 from civicpy.exports.civic_vcf_record import CivicVcfRecord
 from civicpy.civic import CoordinateQuery
@@ -39,9 +43,65 @@ def create_vcf(vcf_file_path, include_status):
     """Create a VCF file of CIViC variants"""
     records = []
     for variant in civic.get_all_gene_variants(include_status=include_status):
-        if variant.is_valid_for_vcf() and variant.coordinates is not None:
+        if variant.is_valid_for_vcf():
             records.append(CivicVcfRecord(variant, include_status))
     CivicVcfWriter(vcf_file_path, records)
+
+@cli.command(context_settings=CONTEXT_SETTINGS)
+@click.option(
+    "--organization-id",
+    required=True,
+    help="The CIViC organization ID that endorsed the assertion(s) for submission to ClinVar.",
+    type=int
+)
+@click.option(
+    "-o",
+    "--output-json",
+    required=True,
+    help="The output file path to write the JSON file to.",
+    type=click.Path(
+        exists=False,
+        readable=True,
+        dir_okay=False,
+        path_type=Path,
+    )
+)
+def create_gks_json(organization_id: int, output_json: Path) -> None:
+    """Create a JSON file for CIViC assertion records endorsed by a specific organization that are ready for ClinVar submission, represented as GKS objects.
+
+    For now, we will only support simple molecular profiles and diagnostic, prognostic,
+    or predictive assertions.
+
+    :param organization_id: The CIViC organization ID that endorsed the assertion(s) for submission to ClinVar
+    :param output_json: The output file path to write the JSON file to
+    """
+    try:
+        civic.get_organization_by_id(organization_id)
+    except Exception:
+        logging.exception("Error getting organization %i", organization_id)
+        return
+
+    records = []
+    for endorsement in civic.get_all_endorsements_ready_for_clinvar_submission_for_org(organization_id):
+        assertion = endorsement.assertion
+        if assertion.is_valid_for_gks_json():
+            try:
+                if assertion.assertion_type == "DIAGNOSTIC":
+                    gks_record = CivicGksDiagnosticAssertion(assertion, endorsement=endorsement)
+                elif assertion.assertion_type == "PREDICTIVE":
+                    gks_record = CivicGksPredictiveAssertion(assertion, endorsement=endorsement)
+                elif assertion.assertion_type == "PROGNOSTIC":
+                    gks_record = CivicGksPrognosticAssertion(assertion, endorsement=endorsement)
+                else:
+                    logging.warning('Assertion type {} is not currently supported for submission to ClinVar.'.format(assertion.assertion_type))
+            except CivicGksRecordError:
+                continue
+            records.append(gks_record)
+    if not records:
+        logging.warning('No assertions ready for submission to ClinVar found for organization {}'.format(organization_id))
+    else:
+        CivicGksWriter(output_json, records)
+
 
 @cli.command(context_settings=CONTEXT_SETTINGS)
 @click.option('--input-vcf', required=True,

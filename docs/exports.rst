@@ -11,6 +11,15 @@ and :mod:`civic_vcf_record` modules in the civicpy.exports namespace::
     >>>from civicpy.exports.civic_vcf_writer import CivicVcfWriter
     >>>from civicpy.exports.civic_vcf_record import CivicVcfRecord
 
+CIViCPy also supports exporting of CIViC assertion records to JSON files, where
+assertions are represented as Global Alliance for Genomics and Health (GA4GH) Genomic
+Knowledge Standards (GKS) objects. GKS JSON exports are maintained via the
+:mod:`civic_gks_writer` and :mod:`civic_gks_record` modules in the civicpy.exports
+namespace::
+
+    >>>from civicpy.exports.civic_gks_writer import CivicGksWriter
+    >>>from civicpy.exports.civic_gks_record import CivicGksPredictiveAssertion, CivicGksDiagnosticAssertion, CivicGksPrognosticAssertion
+
 Other file formats are planned for future releases. Suggestions are welcome on our
 `GitHub issues page <https://github.com/griffithlab/civicpy/issues>`_.
 
@@ -198,3 +207,100 @@ Here's an example of how to export all variants from CIViC to VCF::
 
 .. _`IGV`: https://software.broadinstitute.org/software/igv/
 .. _`VEP`: https://useast.ensembl.org/info/docs/tools/vep/index.html
+
+GKS JSON
+--------
+
+GKS JSON files are written using the :class:`civicpy.exports.civic_gks_writer.CivicGksWriter`
+class to which you add :class:`civicpy.exports.civic_gks_record.CivicGksPredictiveAssertion`,
+:class:`civicpy.exports.civic_gks_record.CivicGksDiagnosticAssertion`, or
+:class:`civicpy.exports.civic_gks_record.CivicGksPrognosticAssertion` during initialization.
+
+In order to verify whether an assertion can be converted to a CivicGksAssertionRecord
+object, the convenience method ``is_valid_for_gks_json`` can be called on a
+:class:`civic.Assertion` object.
+
+_CivicGksAssertionRecord
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. autoclass:: civicpy.exports.civic_gks_record._CivicGksAssertionRecord
+   :members:
+   :show-inheritance:
+
+CivicGksPredictiveAssertion
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. autoclass:: civicpy.exports.civic_gks_record.CivicGksPredictiveAssertion
+   :members:
+   :show-inheritance:
+
+CivicGksDiagnosticAssertion
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. autoclass:: civicpy.exports.civic_gks_record.CivicGksDiagnosticAssertion
+   :members:
+   :show-inheritance:
+
+CivicGksPrognosticAssertion
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. autoclass:: civicpy.exports.civic_gks_record.CivicGksPrognosticAssertion
+   :members:
+   :show-inheritance:
+
+CivicGksWriter
+~~~~~~~~~~~~~~
+
+.. autoclass:: civicpy.exports.civic_gks_writer.CivicGksWriter
+   :members:
+
+Examples
+~~~~~~~~
+
+Here's an example of how to export all assertions to GKS JSON::
+
+    from civicpy import civic
+    from civicpy.exports.civic_gks_writer import CivicGksWriter
+    from civicpy.exports.civic_vcf_record import CivicVcfRecord
+
+    records = []
+
+    for assertion in civic.get_all_assertions():
+      if assertion.is_valid_for_gks_json():
+        try:
+          if assertion.assertion_type == "DIAGNOSTIC":
+            gks_record = CivicGksDiagnosticAssertion(assertion)
+          elif assertion.assertion_type == "PREDICTIVE":
+            gks_record = CivicGksPredictiveAssertion(assertion)
+          else:
+            gks_record = CivicGksPrognosticAssertion(assertion)
+        except CivicGksRecordError:
+          continue
+
+        records.append(gks_record)
+    CivicGksWriter("gks.json", records)
+
+Here's an example of how to export all assertions endorsed by a specific organization that are
+ready for submission to ClinVar.::
+
+    from civicpy import civic
+    from civicpy.exports.civic_gks_writer import CivicGksWriter
+    from civicpy.exports.civic_vcf_record import CivicVcfRecord
+
+    records = []
+    organization_id = 1
+
+    for assertion in civic.get_all_assertions_ready_for_clinvar_submission_for_org(organization_id):
+      if assertion.is_valid_for_gks_json():
+        try:
+          if assertion.assertion_type == "DIAGNOSTIC":
+            gks_record = CivicGksDiagnosticAssertion(assertion)
+          elif assertion.assertion_type == "PREDICTIVE":
+            gks_record = CivicGksPredictiveAssertion(assertion)
+          else:
+            gks_record = CivicGksPrognosticAssertion(assertion)
+        except CivicGksRecordError:
+          continue
+
+        records.append(gks_record)
+    CivicGksWriter("gks.json", records)

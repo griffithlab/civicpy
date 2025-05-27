@@ -256,6 +256,8 @@ def update_cache(from_remote_cache=True, remote_cache_url=REMOTE_CACHE_URL,
         diseases = _get_elements_by_ids('disease', allow_cached=False, get_all=True)
         therapies = _get_elements_by_ids('therapy', allow_cached=False, get_all=True)
         phenotypes = _get_elements_by_ids('phenotype', allow_cached=False, get_all=True)
+        organizations = _get_elements_by_ids('organization', allow_cached=False, get_all=True)
+        endorsements = _get_elements_by_ids('endorsement', allow_cached=False, get_all=True)
         for e in evidence:
             e.assertions = [a for a in assertions if a.id in e.assertion_ids]
             e.therapies = [t for t in therapies if t.id in e.therapy_ids]
@@ -284,6 +286,7 @@ def update_cache(from_remote_cache=True, remote_cache_url=REMOTE_CACHE_URL,
         for a in assertions:
             a.evidence_items = [e for e in evidence if e.id in a.evidence_ids]
             a.therapies = [t for t in therapies if t.id in a.therapy_ids]
+            a.endorsements = [e for e in endorsements if e.id in a.endorsement_ids]
             a._partial = False
             CACHE[hash(a)] = a
         for vg in variant_groups:
@@ -336,6 +339,12 @@ def update_cache(from_remote_cache=True, remote_cache_url=REMOTE_CACHE_URL,
             p.assertions = [a for a in assertions if p.id in a.phenotype_ids]
             p._partial = False
             CACHE[hash(p)] = p
+        for o in organizations:
+            o._partial = False
+            CACHE[hash(o)] = o
+        for e in endorsements:
+            e._partial = False
+            CACHE[hash(e)] = e
         CACHE['full_cached'] = datetime.now()
         _build_coordinate_table(variants)
         save_cache(local_cache_path=local_cache_path)
@@ -390,6 +399,58 @@ def _build_coordinate_table(variants):
     MODULE.COORDINATE_TABLE_START = df.start.sort_values()
     MODULE.COORDINATE_TABLE_STOP = df.stop.sort_values()
     MODULE.COORDINATE_TABLE_CHR = df.chr.sort_values()
+
+
+def _is_valid(warnings: list[str], emit_warnings: bool = False) -> bool:
+    """Determine whether object is valid
+
+    :param warnings: List of warnings. If warnings exist, then object is invalid
+    :param emit_warnings: Whether to log warnings, defaults to False
+    :return: ``True`` if object is valid. ``False`` otherwise
+    """
+    if not warnings:
+        return True
+
+    if emit_warnings:
+        for warning in warnings:
+            logging.warning(warning)
+    return False
+
+
+def _is_valid_for_gks_json(cls, emit_warnings: bool = False) -> bool:
+    """Determine whether ``cls`` is able to be represented as GKS model
+
+    :param cls: The instance to validate
+    :param emit_warnings: Whether to log warnings, defaults to False
+    :raises TypeError: If ``cls`` is not of type Assertion or Evidence
+    :return: ``True`` if ``cls`` is able to be represented as GKS model. ``False``
+        otherwise
+    """
+    if not isinstance(cls, (Assertion, Evidence)):
+        raise TypeError(f"{type(cls)} is not an instance of `Assertion` or `Evidence`.")
+
+    prefix = f"{cls.__class__.__name__} {cls.id}"
+    warnings = []
+
+    if cls.status != "accepted":
+        warnings.append(f"{prefix} does not have 'accepted' status. Skipping")
+
+    record_type = cls.evidence_type if isinstance(cls, Evidence) else cls.assertion_type
+    if record_type not in ("DIAGNOSTIC", "PREDICTIVE", "PROGNOSTIC"):
+        warnings.append(
+            f"{prefix} type is not one of: 'DIAGNOSTIC', 'PREDICTIVE', or 'PROGNOSTIC'. Skipping"
+        )
+
+    len_mp_variants = len(cls.molecular_profile.variants)
+    if len_mp_variants > 1:
+        warnings.append(f"{prefix} has a complex molecular profile. Skipping")
+    elif len_mp_variants == 1:
+        if not isinstance(cls.molecular_profile.variants[0], GeneVariant):
+            warnings.append(f"{prefix} variant is not a ``GeneVariant``. Skipping")
+    else:
+        warnings.append(f"{prefix} has no variants. Skipping")
+
+    return _is_valid(warnings, emit_warnings)
 
 
 class CivicRecord:
@@ -780,13 +841,7 @@ class GeneVariant(Variant):
         if not(self.coordinates.chromosome and self.coordinates.start and (self.coordinates.reference_bases or self.coordinates.variant_bases)):
             warnings.append("Incomplete coordinates for variant {}. Skipping.".format(self.id))
 
-        if len(warnings) == 0:
-            return True
-        else:
-            if emit_warnings:
-                for warning in warnings:
-                    logging.warning(warning)
-            return False
+        return _is_valid(warnings, emit_warnings)
 
     def _valid_ref_bases(self):
         if self.coordinates.reference_bases is not None:
@@ -1145,9 +1200,14 @@ class Evidence(CivicRecord):
         return self.molecular_profile.variants
 
 
-    #@statement.setter
-    #def statement(self, value):
-    #    self.description = value
+    def is_valid_for_gks_json(self, emit_warnings: bool = False) -> bool:
+        """Determine whether Evidence is able to be represented as GKS model
+
+        :param emit_warnings: Whether to log warnings, defaults to False
+        :return: ``True`` if Evidence is able to be represented as GKS model. ``False``
+            otherwise
+        """
+        return _is_valid_for_gks_json(self, emit_warnings)
 
 
 class Assertion(CivicRecord):
@@ -1157,6 +1217,7 @@ class Assertion(CivicRecord):
         'assertion_type',
         'description',
         'disease_id',
+        'endorsement_ids',
         'evidence_ids',
         'fda_companion_test',
         'fda_regulatory_approval',
@@ -1176,15 +1237,17 @@ class Assertion(CivicRecord):
     _COMPLEX_FIELDS = CivicRecord._COMPLEX_FIELDS.union({
         'acmg_codes',
         'clingen_codes',
-        'therapies',
+        'endorsements',
         'evidence_items',
         'phenotypes',
+        'therapies',
     })
 
     def __init__(self, **kwargs):
         self._evidence_items = []
         self._therapies = []
         self._phenotypes = []
+        self._endorsements = []
         super().__init__(**kwargs)
 
     @property
@@ -1213,6 +1276,17 @@ class Assertion(CivicRecord):
         .. _Disease Ontology: http://disease-ontology.org/
         """
         return get_disease_by_id(self.disease_id)
+
+    @property
+    def endorsements(self):
+        """
+        Zero or more :class:`Endorsement` records representing organizations endorsing this assertion.
+        """
+        return self._endorsements
+
+    @endorsements.setter
+    def endorsements(self, value):
+        self._endorsements = value
 
     @property
     def therapies(self):
@@ -1269,6 +1343,14 @@ class Assertion(CivicRecord):
         """
         return self.molecular_profile.variants
 
+    def is_valid_for_gks_json(self, emit_warnings: bool = False) -> bool:
+        """Determine whether Assertion is able to be represented as GKS model
+
+        :param emit_warnings: Whether to log warnings, defaults to False
+        :return: ``True`` if Assertion is able to be represented as GKS model. ``False``
+            otherwise
+        """
+        return _is_valid_for_gks_json(self, emit_warnings)
 
 class User(CivicRecord):
     _SIMPLE_FIELDS = CivicRecord._SIMPLE_FIELDS.union({
@@ -1317,13 +1399,29 @@ class Organization(CivicRecord):
     _SIMPLE_FIELDS = CivicRecord._SIMPLE_FIELDS.union({
         'name',
         'url',
-        'description'
+        'description',
+        'endorsement_ids',
     })
 
     _COMPLEX_FIELDS = CivicRecord._COMPLEX_FIELDS.union({
-        'profile_image',
-        'parent'
+        #'profile_image',
+        'endorsements',
     })
+
+    def __init__(self, **kwargs):
+        self._endorsements = []
+        super().__init__(**kwargs)
+
+    @property
+    def endorsements(self):
+        """
+        Zero or more :class:`Endorsement` records representing assertions endorsed by this organization.
+        """
+        return self._endorsements
+
+    @endorsements.setter
+    def endorsements(self, value):
+        self._endorsements = value
 
 
 class Therapy(CivicRecord):
@@ -1566,6 +1664,34 @@ class Source(CivicRecord):
         self._molecular_profiles = value
 
 
+class Endorsement(CivicRecord):
+    _SIMPLE_FIELDS = CivicRecord._SIMPLE_FIELDS.union({
+        'assertion_id',
+        'organization_id',
+        'status',
+        'last_reviewed',
+        'ready_for_clinvar_submission',
+    })
+
+    _COMPLEX_FIELDS = CivicRecord._COMPLEX_FIELDS.union({
+        #'profile_image',
+    })
+
+    @property
+    def assertion(self):
+        """
+        The :class:`Assertion` object this endorsement endorses.
+        """
+        return get_assertion_by_id(self.assertion_id)
+
+    @property
+    def organization(self):
+        """
+        The :class:`Organization` object this endorsement was made on behalf of.
+        """
+        return get_organization_by_id(self.organization_id)
+
+
 class CivicAttribute(CivicRecord, dict):
 
     _SIMPLE_FIELDS = {'type'}
@@ -1754,10 +1880,15 @@ def _postprocess_response_element(e, element):
         e['molecular_profile_id'] = e['molecular_profile']['id']
         e['evidence_ids'] = [evidence['id'] for evidence in e['evidenceItems']]
         e['disease_id'] = e['disease']['id'] if e['disease'] is not None else None
+        e['endorsement_ids'] = [endorsement['id'] for endorsement in e['endorsements']['nodes']]
         e['therapy_ids'] = [t['id'] for t in e['therapies']]
         e['phenotype_ids'] = [p['id'] for p in e['phenotypes']]
         e['status'] = e['status'].lower()
         del e['therapies']
+        del e['endorsements']
+    elif element == 'endorsement':
+        e['assertion_id'] = e['assertion']['id']
+        e['organization_id'] = e['organization']['id']
     elif element == 'evidence':
         e['source_id'] = e['source']['id']
         e['molecular_profile_id'] = e['molecular_profile']['id']
@@ -1767,9 +1898,7 @@ def _postprocess_response_element(e, element):
         e['phenotype_ids'] = [p['id'] for p in e['phenotypes']]
         e['status'] = e['status'].lower()
         del e['therapies']
-    elif element == 'gene':
-        e['source_ids'] = [v['id'] for v in e['sources']]
-        del e['sources']
+        del e['phenotypes']
     elif element == 'factor':
         e['source_ids'] = [v['id'] for v in e['sources']]
         del e['sources']
@@ -1784,11 +1913,16 @@ def _postprocess_response_element(e, element):
             e['five_prime_gene_id'] = e['fivePrimeGene']['id']
         else:
             e['five_prime_gene_id'] = None
+    elif element == 'gene':
+        e['source_ids'] = [v['id'] for v in e['sources']]
+        del e['sources']
     elif element == 'molecular_profile':
         e['source_ids'] = [s['id'] for s in e['sources']]
         del e['sources']
         e['variant_ids'] = [v['id'] for v in e['variants']]
         del e['variants']
+    elif element == 'organization':
+        e['endorsement_ids'] = [endorsement['id'] for endorsement in e['endorsements']]
     elif element == 'variant':
         e['feature_id'] = e['feature']['id']
         if e['__typename'] == 'GeneVariant':
@@ -1845,6 +1979,8 @@ def _request_by_ids(element, ids):
         'disease': graphql_payloads._construct_get_disease_payload,
         'therapy': graphql_payloads._construct_get_therapy_payload,
         'phenotype': graphql_payloads._construct_get_phenotype_payload,
+        'organization': graphql_payloads._construct_get_organization_payload,
+        'endorsement': graphql_payloads._construct_get_endorsement_payload,
     }
     payload_method = payload_methods[element]
     payload = payload_method()
@@ -1872,6 +2008,8 @@ def _request_all(element):
         'disease': graphql_payloads._construct_get_all_diseases_payload,
         'therapy': graphql_payloads._construct_get_all_therapies_payload,
         'phenotype': graphql_payloads._construct_get_all_phenotypes_payload,
+        'organization': graphql_payloads._construct_get_all_organizations_payload,
+        'endorsement': graphql_payloads._construct_get_all_endorsements_payload,
     }
     payload_method = payload_methods[element]
     payload = payload_method()
@@ -2257,6 +2395,44 @@ def get_phenotype_by_id(phenotype_id):
     return get_phenotypes_by_ids([phenotype_id])[0]
 
 
+# Organization
+
+def get_organizations_by_ids(organization_id_list):
+    """
+    :param list organization_id_list: A list of CIViC organization IDs to query against to cache and (as needed) CIViC.
+    :returns: A list of :class:`Organization` objects.
+    """
+    logging.info('Getting organizations...')
+    organizations = _get_elements_by_ids('organization', organization_id_list)
+    return organizations
+
+def get_organization_by_id(organization_id):
+    """
+    :param int organization_id: A single CIViC organization ID.
+    :returns: A :class:`Organization` object.
+    """
+    return get_organizations_by_ids([organization_id])[0]
+
+
+# Endorsement
+
+def get_endorsements_by_ids(endorsement_id_list):
+    """
+    :param list endorsement_id_list: A list of CIViC endorsement IDs to query against to cache and (as needed) CIViC.
+    :returns: A list of :class:`Endorsement` objects.
+    """
+    logging.info('Getting endorsements...')
+    endorsements = _get_elements_by_ids('endorsement', endorsement_id_list)
+    return endorsements
+
+def get_endorsement_by_id(endorsement_id):
+    """
+    :param int endorsement_id: A single CIViC endorsement ID.
+    :returns: A :class:`Endorsement` object.
+    """
+    return get_endorsements_by_ids([endorsement_id])[0]
+
+
 ###########
 # Get All #
 ###########
@@ -2273,6 +2449,21 @@ def get_all_assertions(include_status=['accepted','submitted','rejected'], allow
     """
     assertions = _get_elements_by_ids('assertion', allow_cached=allow_cached, get_all=True)
     return [a for a in assertions if a.status in include_status]
+
+def get_all_assertions_ready_for_clinvar_submission_for_org(organization_id, allow_cached=True):
+    """
+    Queries CIViC for all assertions endorsed by a specific organization that are ready for submission to ClinVar.
+
+    :param int organization_id: The CIViC organization ID that endorsed the assertion(s) for submission to ClinVar.
+    :param bool allow_cached: Indicates whether or not object retrieval from CACHE is allowed. If **False** it will query the CIViC database directly.
+    :returns: A list of :class:`Assertion` objects endorsed by a specific organization that are ready for submission to ClinVar.
+    """
+    endorsements = get_all_endorsements(include_status=["accepted"], allow_cached=allow_cached)
+    assertions = []
+    for e in endorsements:
+        if e.organization_id == organization_id and e.ready_for_clinvar_submission:
+            assertions.append(e.assertion)
+    return assertions
 
 
 # Molecular Profile
@@ -2575,6 +2766,41 @@ def get_all_phenotypes(include_status=['accepted','submitted','rejected'], allow
         return resp
     else:
         return phenotypes
+
+
+# Organization
+
+def get_all_organizations(allow_cached=True):
+    """
+    Queries CIViC for all endorsements.
+
+    :param bool allow_cached: Indicates whether or not object retrieval from CACHE is allowed. If **False** it will query the CIViC database directly.
+    :returns: A list of :class:`Organization` objects.
+    """
+    organizations = _get_elements_by_ids('organization', get_all=True, allow_cached=allow_cached)
+    return organizations
+
+
+# Endorsement
+
+def get_all_endorsements(include_status=['accepted','submitted','rejected'], allow_cached=True):
+    """
+    Queries CIViC for all endorsements.
+
+    :param list include_status: A list of statuses. Only endorsements for assertions matching the given statuses will be returned.
+    :param bool allow_cached: Indicates whether or not object retrieval from CACHE is allowed. If **False** it will query the CIViC database directly.
+    :returns: A list of :class:`Endorsement` objects.
+    """
+    endorsements = _get_elements_by_ids('endorsement', get_all=True, allow_cached=allow_cached)
+    if include_status:
+        assert CACHE.get('assertions_all_ids', False)
+        resp = list()
+        for e in endorsements:
+            if e.assertion.status in include_status:
+                resp.append(e)
+        return resp
+    else:
+        return endorsements
 
 
 #########################
@@ -3193,3 +3419,37 @@ def get_phenotype_by_name(name):
     if len(matching_phenotypes) == 0:
         raise Exception("No phenotypes with name: {}".format(name))
     return matching_phenotypes[0]
+
+# Endorsement
+
+def search_endorsements_by_organization_id(organization_id):
+    """
+    :param int organization_id: A CIViC :class:`Organization` ID.
+    :returns: A list of :class:`Endorsement` objects.
+    """
+    endorsements = _get_elements_by_ids('endorsement', get_all=True)
+    matching_endorsements = [e for e in endorsements if e.organization_id == organization_id]
+    return matching_endorsements
+
+def search_endorsements_by_assertion_id(assertion_id):
+    """
+    :param int assertion_id: A CIViC :class:`Assertion` ID.
+    :returns: A list of :class:`Endorsement` objects.
+    """
+    endorsements = _get_elements_by_ids('endorsement', get_all=True)
+    matching_endorsements = [e for e in endorsements if e.assertion_id == assertion_id]
+    return matching_endorsements
+
+
+def get_all_endorsements_ready_for_clinvar_submission_for_org(
+    organization_id: int,
+) -> list[Endorsement]:
+    """
+    Queries CIViC for all endorsements by a specific organization that are ready for submission to ClinVar.
+
+    :param int organization_id: A CIViC :class:`Organization` ID.
+    :returns: A list of :class:`Endorsement` objects endorsed by a specific organization
+        that are ready for submission to ClinVar.
+    """
+    endorsements = search_endorsements_by_organization_id(organization_id)
+    return [e for e in endorsements if e.ready_for_clinvar_submission]

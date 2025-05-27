@@ -34,6 +34,9 @@ setup(
         'pysam',
         'backports-datetime-fromisoformat',
         'deprecation',
+        'ga4gh.vrs',
+        'ga4gh.cat_vrs',
+        'ga4gh.va_spec~=0.3.0'
     ],
     extras_require={
         'test': [
@@ -42,6 +45,7 @@ setup(
             'attrs==22.1.0',
             'coveralls',
             'coverage<7.4.4',
+            'deepdiff'
         ],
         'docs': [
             'sphinx',
@@ -49,7 +53,7 @@ setup(
             'sphinxcontrib.programoutput'
         ]
     },
-    python_requires='>=3.5',
+    python_requires='>=3.10',
     entry_points={
         'console_scripts': [
             'civicpy=civicpy.cli:cli'

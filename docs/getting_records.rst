@@ -37,6 +37,7 @@ Assertions
 ~~~~~~~~~~
 
 .. autofunction:: get_all_assertions
+.. autofunction:: get_all_assertions_ready_for_clinvar_submission_for_org
 
 Evidence Items
 ~~~~~~~~~~~~~~
@@ -67,6 +68,17 @@ Phenotypes
 ~~~~~~~~~~
 
 .. autofunction:: get_all_phenotypes
+
+Organizations
+~~~~~~~~~~~~~
+
+.. autofunction:: get_all_organizations
+
+Endorsements
+~~~~~~~~~~~~
+
+.. autofunction:: get_all_endorsements
+.. autofunction:: get_all_endorsements_ready_for_clinvar_submission_for_org
 
 By ID
 -----
@@ -142,6 +154,18 @@ Phenotypes
 .. autofunction:: get_phenotype_by_id
 .. autofunction:: get_phenotypes_by_ids
 
+Organizations
+~~~~~~~~~~~~~
+
+.. autofunction:: get_organization_by_id
+.. autofunction:: get_organizations_by_ids
+
+Endorsements
+~~~~~~~~~~~~
+
+.. autofunction:: get_endorsement_by_id
+.. autofunction:: get_endorsements_by_ids
+
 
 By Coordinates
 --------------
@@ -215,3 +239,9 @@ Phenotypes
 
 .. autofunction:: get_phenotype_by_hpo_id
 .. autofunction:: get_phenotype_by_name
+
+Endorsements
+~~~~~~~~~~~~
+
+.. autofunction:: search_endorsements_by_organization_id
+.. autofunction:: search_endorsements_by_assertion_id
