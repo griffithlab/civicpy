@@ -286,6 +286,7 @@ def update_cache(from_remote_cache=True, remote_cache_url=REMOTE_CACHE_URL,
         for a in assertions:
             a.evidence_items = [e for e in evidence if e.id in a.evidence_ids]
             a.therapies = [t for t in therapies if t.id in a.therapy_ids]
+            a.endorsements = [e for e in endorsements if e.id in a.endorsement_ids]
             a._partial = False
             CACHE[hash(a)] = a
         for vg in variant_groups:

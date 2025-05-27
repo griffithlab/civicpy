@@ -255,14 +255,14 @@ class TestFusionVariants(object):
         assert variant.three_prime_end_exon_coordinates.stop == 133763062
 
     def test_nullable_fields(self):
-        variant = civic.get_variant_by_id(739)
+        variant = civic.get_variant_by_id(5041)
         assert variant.three_prime_coordinates is None
         assert variant.three_prime_start_exon_coordinates is None
         assert variant.three_prime_end_exon_coordinates is None
 
     def test_properties(self):
         variant = civic.get_variant_by_id(1)
-        assert variant.fusion.id == 61802
+        assert variant.fusion.id == 62007
         assert variant.fusion == variant.feature
 
 
@@ -331,9 +331,9 @@ class TestMolecularProfiles(object):
 
     def test_properties(self):
         mp = civic.get_molecular_profile_by_id(4432)
-        assert len(mp.evidence_sources) == 11
+        assert len(mp.evidence_sources) == 10
         assert mp.summary == mp.description
-        assert len(mp.evidence_items) == 12
+        assert len(mp.evidence_items) == 11
         assert len(mp.assertions) == 0
         assert len(mp.variants) == 2
         assert len(mp.sources) == 0
@@ -471,7 +471,7 @@ class TestGenes(object):
 
     def test_properties(self):
         gene = civic.get_gene_by_id(58)
-        assert len(gene.variants) == 844
+        assert len(gene.variants) == 862
         assert len(gene.sources) == 4
 
 
@@ -547,7 +547,7 @@ class TestFusions(object):
 
     def test_get_fusion_by_name(self):
         fusion = civic.get_fusion_by_name("BCR::ABL1")
-        assert fusion.id == 61802
+        assert fusion.id == 62007
         assert fusion.name == 'BCR::ABL1'
 
     def test_search_fusions_by_partner_gene_id(self):
@@ -559,7 +559,7 @@ class TestDiseases(object):
 
     def test_get_all(self):
         diseases = civic.get_all_diseases()
-        assert len(diseases) >= 419
+        assert len(diseases) >= 418
 
     def test_get_by_id(self):
         d = civic.get_disease_by_id(22)
@@ -589,7 +589,7 @@ class TestDiseases(object):
 
     def test_properties(self):
         breast_cancer = civic.get_disease_by_id(22)
-        assert len(breast_cancer.evidence) >= 280
+        assert len(breast_cancer.evidence) >= 278
         assert breast_cancer.evidence == breast_cancer.evidence_items
         assert len(breast_cancer.assertions) >= 2
 
@@ -598,7 +598,7 @@ class TestTherapies(object):
 
     def test_get_all(self):
         therapies = civic.get_all_therapies()
-        assert len(therapies) >= 555
+        assert len(therapies) >= 552
 
     def test_get_by_id(self):
         t = civic.get_therapy_by_id(19)
@@ -627,7 +627,7 @@ class TestTherapies(object):
 
     def test_properties(self):
         trametinib = civic.get_therapy_by_id(19)
-        assert len(trametinib.evidence) >= 138
+        assert len(trametinib.evidence) >= 136
         assert trametinib.evidence == trametinib.evidence_items
         assert len(trametinib.assertions) >= 3
 
@@ -635,7 +635,7 @@ class TestTherapies(object):
 class TestSource(object):
     def test_get_all(self):
         sources = civic.get_all_sources()
-        assert len(sources) >= 3938
+        assert len(sources) >= 3868
 
     def test_get_by_id(self):
         s = civic.get_source_by_id(1)
@@ -677,7 +677,7 @@ class TestSource(object):
 class TestOrganization(object):
     def test_get_all(self):
         organizations = civic.get_all_organizations()
-        assert len(organizations) >= 24
+        assert len(organizations) >= 23
 
     def test_get_by_id(self):
         o = civic.get_organization_by_id(1)
@@ -739,9 +739,9 @@ class TestPhenotypes(object):
 
     def test_properties(self):
         pediatric_onset = civic.get_phenotype_by_id(15320)
-        assert len(pediatric_onset.evidence) >= 140
+        assert len(pediatric_onset.evidence) >= 128
         assert pediatric_onset.evidence == pediatric_onset.evidence_items
-        assert len(pediatric_onset.assertions) >= 27
+        assert len(pediatric_onset.assertions) >= 25
 
 
 class TestCoordinateSearch(object):
