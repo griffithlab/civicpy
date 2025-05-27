@@ -1,15 +1,11 @@
 import pytest
-from civicpy import civic, TEST_CACHE_PATH
+from civicpy import civic
 from civicpy.civic import CoordinateQuery
 import logging
 
 ELEMENTS = [
     'assertion'
 ]
-
-
-def setup_module():
-    civic.load_cache(local_cache_path=TEST_CACHE_PATH, on_stale='ignore')
 
 
 @pytest.fixture(scope="module", params=ELEMENTS)
@@ -33,10 +29,12 @@ def v600e_assertion():
 
 
 class TestGetFunctions(object):
+    @pytest.mark.skip(reason="Queries live API - Move to heartbeat test")
     def test_element_lookup_by_id(self):
         assertion = civic.element_lookup_by_id('assertion', '1')
         assert assertion['id'] == 1
 
+    @pytest.mark.skip(reason="Queries live API - Move to heartbeat test")
     def test_get_assertions(self):
         test_ids = [1, 2, 3]
         results = civic._get_elements_by_ids('assertion', test_ids)
@@ -51,10 +49,12 @@ class TestCivicRecord(object):
 
 class TestElements(object):
 
+    @pytest.mark.skip(reason="Queries live API - Move to heartbeat test")
     def test_attribute_fail(self, element):
         with pytest.raises(AttributeError):
             element.foo
 
+    @pytest.mark.skip(reason="Queries live API - Move to heartbeat test")
     def test_completeness(self, element):
         for complex_field in element._COMPLEX_FIELDS:
             complex_value = getattr(element, complex_field)

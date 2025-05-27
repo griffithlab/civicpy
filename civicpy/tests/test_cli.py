@@ -5,7 +5,6 @@ from civicpy import cli, civic
 import tempfile
 import json
 
-
 class TestCli(object):
     @pytest.mark.skip(reason="Long running test")
     def test_create_cache(self):
