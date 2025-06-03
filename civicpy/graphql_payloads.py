@@ -877,9 +877,6 @@ def _construct_get_organization_payload():
                 name
                 url
                 description
-                endorsements {
-                  id
-                }
             }
         }"""
 
@@ -898,9 +895,6 @@ def _construct_get_all_organizations_payload():
                 name
                 url
                 description
-                endorsements {
-                  id
-                }
               }
             }
         }

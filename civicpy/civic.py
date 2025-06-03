@@ -340,6 +340,7 @@ def update_cache(from_remote_cache=True, remote_cache_url=REMOTE_CACHE_URL,
             p._partial = False
             CACHE[hash(p)] = p
         for o in organizations:
+            o.endorsements = [e for e in endorsements if e.organization_id == o.id]
             o._partial = False
             CACHE[hash(o)] = o
         for e in endorsements:
@@ -1400,7 +1401,6 @@ class Organization(CivicRecord):
         'name',
         'url',
         'description',
-        'endorsement_ids',
     })
 
     _COMPLEX_FIELDS = CivicRecord._COMPLEX_FIELDS.union({
@@ -1921,8 +1921,6 @@ def _postprocess_response_element(e, element):
         del e['sources']
         e['variant_ids'] = [v['id'] for v in e['variants']]
         del e['variants']
-    elif element == 'organization':
-        e['endorsement_ids'] = [endorsement['id'] for endorsement in e['endorsements']]
     elif element == 'variant':
         e['feature_id'] = e['feature']['id']
         if e['__typename'] == 'GeneVariant':
