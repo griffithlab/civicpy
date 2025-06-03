@@ -3,7 +3,7 @@ dependencies:
 - pip
 - python=3.11
 - pip:
-  - sphinx==4.5.0
+  - sphinx==6.2.1
   - sphinxcontrib-programoutput
   - sphinxjp.themes.basicstrap
   - Cython
