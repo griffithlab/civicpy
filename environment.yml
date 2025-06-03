@@ -1,10 +1,10 @@
-name: py37
+name: py311
 dependencies:
 - pip
-- python=3.7.2
+- python=3.11
 - pip:
   - sphinxcontrib-programoutput
   - sphinxjp.themes.basicstrap
   - Cython
-  - pandas==0.24.1
+  - pandas==2.0.3
   - civicpy==5.0.0
