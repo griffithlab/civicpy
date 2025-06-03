@@ -1,8 +1,8 @@
 __title__ = 'civicpy'
 __description__ = 'CIViC variant knowledgebase analysis toolkit.'
 __url__ = 'http://civicpy.org'
-__major__ = '4'
-__minor__ = '1'
+__major__ = '5'
+__minor__ = '0'
 __patch__ = '0'
 __meta_label__ = ''
 __short_version__ = "{}.{}".format(__major__, __minor__)
