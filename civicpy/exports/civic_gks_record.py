@@ -125,6 +125,20 @@ CLIN_SIG_TO_PREDICATE = MappingProxyType(
     }
 )
 
+# CIViC variant origin to GKS allele origin (aligns with ClinVar API Schema)
+VARIANT_ORIGIN_TO_ALLELE_ORIGIN =  MappingProxyType(
+    {
+        "COMBINED": "unknown",
+        "COMMON_GERMLINE": "germline",
+        "MIXED": "unknown",
+        "NA": "not applicable",
+        "RARE_GERMLINE": "germline",
+        "SOMATIC": "somatic",
+        "UNKNOWN": "unknown",
+    }
+)
+
+
 # SNP pattern
 _SNP_RE = re.compile(r"RS\d+")
 
@@ -147,7 +161,7 @@ class _CivicGksAssertionRecord(ABC):
                 doi="10.1186/s13073-019-0687-x",
                 pmid=31779674,
             ),
-            methodType="variant curation standard operating procedure",
+            methodType="curation",
         )
     )
     _assertion: Assertion = PrivateAttr()
@@ -495,7 +509,17 @@ class _CivicGksAssertionRecord(ABC):
         :param record: CIViC assertion or evidence item
         :return: Allele origin qualifier
         """
-        return MappableConcept(name=record.variant_origin)
+        variant_origin = record.variant_origin
+
+        return MappableConcept(
+            name=VARIANT_ORIGIN_TO_ALLELE_ORIGIN[variant_origin],
+            extensions=[
+                Extension(
+                    name="civic_variant_origin",
+                    value=variant_origin
+                )
+            ]
+        )
 
     @staticmethod
     def predicate(

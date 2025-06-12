@@ -121,7 +121,7 @@ def gks_method():
             "pmid": 31779674,
             "type": "Document",
         },
-        "methodType": "variant curation standard operating procedure",
+        "methodType": "curation",
         "type": "Method",
     }
 
@@ -305,7 +305,15 @@ def gks_eid2997(
             "predicate": "predictsSensitivityTo",
             "objectTherapeutic": gks_tid146,
             "conditionQualifier": gks_did8,
-            "alleleOriginQualifier": {"name": "SOMATIC"},
+            "alleleOriginQualifier": {
+                "name": "somatic",
+                "extensions": [
+                    {
+                        "name": "civic_variant_origin",
+                        "value": "SOMATIC"
+                    }
+                ]
+            },
             "geneContextQualifier": gks_gid19,
             "subjectVariant": gks_mpid33,
         },
@@ -336,7 +344,15 @@ def gks_aid6(
             "type": "VariantTherapeuticResponseProposition",
             "subjectVariant": gks_mpid33,
             "geneContextQualifier": gks_gid19,
-            "alleleOriginQualifier": {"name": "SOMATIC"},
+            "alleleOriginQualifier": {
+                "name": "somatic",
+                "extensions": [
+                    {
+                        "name": "civic_variant_origin",
+                        "value": "SOMATIC"
+                    }
+                ]
+            },
             "predicate": "predictsSensitivityTo",
             "objectTherapeutic": gks_tid146,
             "conditionQualifier": gks_did8,
