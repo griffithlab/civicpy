@@ -100,7 +100,7 @@ class CivicGksWriter:
             raise ValueError(err_msg)
 
         metadata = GksOutputMetadata(
-            created_at=str(datetime.datetime.now(tz=datetime.UTC).strftime("%Y-%m-%d"))
+            created_at=str(datetime.datetime.now(tz=datetime.timezone.utc).strftime("%Y-%m-%d"))
         )
 
         if errors:
