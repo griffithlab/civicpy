@@ -1,6 +1,6 @@
 """Module for writing CIViC GKS representation to JSON"""
 
-from datetime import datetime
+import datetime
 from importlib.metadata import PackageNotFoundError, version
 import json
 from pathlib import Path
@@ -27,6 +27,23 @@ def get_pkg_version(name: str) -> str:
         return "unknown"
 
 
+class GksOutputMetadata(BaseModel):
+    """Define model for GKS JSON Output Metadata"""
+
+    va_spec_python_version: str = Field(
+        description="VA-Spec Python version. This can be used to derive the corresponding VA-Spec version.",
+        default_factory=lambda: get_pkg_version("ga4gh.va_spec"),
+    )
+    created_at: str
+
+
+class GksAssertionError(BaseModel):
+    """Define model for representing assertion errors when translating to GKS"""
+
+    assertion_id: int
+    message: str
+
+
 class GksOutput(BaseModel):
     """Define model for representing GKS JSON output"""
 
@@ -35,10 +52,9 @@ class GksOutput(BaseModel):
         | CivicGksPrognosticAssertion
         | CivicGksDiagnosticAssertion
     ]
-    va_spec_python_version: str = Field(
-        description="VA-Spec Python version. This can be used to derive the corresponding VA-Spec version.",
-        default_factory=lambda: get_pkg_version("ga4gh.va_spec"),
-    )
+    metadata: GksOutputMetadata
+    failed_assertion_ids: list[int] = []
+    errors: list[GksAssertionError] = []
 
 
 class CivicGksWriter:
@@ -57,6 +73,7 @@ class CivicGksWriter:
             | CivicGksPrognosticAssertion
             | CivicGksDiagnosticAssertion
         ],
+        errors: list[GksAssertionError] | None = None
     ):
         """Initialize CivicGksWriter class
 
@@ -72,8 +89,7 @@ class CivicGksWriter:
             :raises TypeError: If an unsupported type
             :return: JSON string where datetime objects appear as YYYY-MM-DD
             """
-
-            if isinstance(obj, datetime):
+            if isinstance(obj, datetime.datetime):
                 return obj.isoformat().split("T", 1)[0]
 
             err_msg = f"Object of type {type(obj)} is not JSON serializable"
@@ -83,7 +99,23 @@ class CivicGksWriter:
             err_msg = "Output file path must end in '.json'."
             raise ValueError(err_msg)
 
-        output = GksOutput(gks_records=gks_records)
+        metadata = GksOutputMetadata(
+            created_at=str(datetime.datetime.now(tz=datetime.timezone.utc).strftime("%Y-%m-%d"))
+        )
+
+        if errors:
+            failed_assertion_ids = [err.assertion_id for err in errors]
+        else:
+            errors = []
+            failed_assertion_ids = []
+
+        output = GksOutput(
+            gks_records=gks_records,
+            metadata=metadata,
+            failed_assertion_ids=failed_assertion_ids,
+            errors=errors
+        )
+
         with filepath.open("w+") as wf:
             json.dump(
                 output.model_dump(exclude_none=True), wf, indent=2, default=_default
