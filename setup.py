@@ -40,11 +40,11 @@ setup(
     ],
     extras_require={
         'test': [
-            'pytest==6.2.5',
-            'pytest-cov==5.0.0',
-            'attrs==22.1.0',
+            'pytest==8.4.1',
+            'pytest-cov==6.2.1',
+            'attrs==25.3.0',
             'coveralls',
-            'coverage<7.4.4',
+            'coverage==7.9.1',
             'deepdiff'
         ],
         'docs': [
