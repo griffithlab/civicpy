@@ -44,7 +44,7 @@ setup(
             'pytest-cov==5.0.0',
             'attrs==25.3.0',
             'coveralls',
-            'coverage<7.5',
+            'coverage==6.5.0',
             'deepdiff'
         ],
         'docs': [
