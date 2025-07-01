@@ -41,10 +41,10 @@ setup(
     extras_require={
         'test': [
             'pytest==8.4.1',
-            'pytest-cov==6.2.1',
+            'pytest-cov==5.0.0',
             'attrs==25.3.0',
             'coveralls',
-            'coverage==7.9.1',
+            'coverage<7.5',
             'deepdiff'
         ],
         'docs': [
