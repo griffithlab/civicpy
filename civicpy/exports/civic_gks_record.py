@@ -39,18 +39,18 @@ from ga4gh.va_spec.base import (
     VariantTherapeuticResponseProposition,
 )
 from ga4gh.vrs.models import Expression, Syntax
-from pydantic import PrivateAttr
 from civicpy.civic import (
     Assertion,
     Coordinate,
     Endorsement,
     Evidence,
     Disease,
+    Gene,
     Organization,
+    Source,
     Therapy,
     GeneVariant,
     MolecularProfile,
-    get_gene_by_id,
 )
 
 
@@ -129,252 +129,143 @@ CLIN_SIG_TO_PREDICATE = MappingProxyType(
 _SNP_RE = re.compile(r"RS\d+")
 
 
-class _CivicGksAssertionRecord(ABC):
-    """Abstract class for CIViC assertion record represented as GKS
+class CivicGksSop(Method):
+    """Class for representing CIViC Curation SOP as GKS Method"""
 
-    :param assertion: CIViC assertion record
-    :raises CivicGksRecordError: If CIViC assertion is not able to be represented as
-        GKS object
-    """
-
-    _method: Method = PrivateAttr(
-        Method(
+    def __init__(self) -> None:
+        """Initialize CivicGksSop class"""
+        super().__init__(
             id="civic.method:2019",
             name="CIViC Curation SOP (2019)",
             reportedIn=Document(
                 name="Danos et al., 2019, Genome Med.",
                 title="Standard operating procedure for curation and clinical interpretation of variants in cancer",
                 doi="10.1186/s13073-019-0687-x",
-                pmid=31779674,
+                pmid="31779674",
             ),
             methodType="variant curation standard operating procedure",
         )
-    )
-    _assertion: Assertion = PrivateAttr()
 
-    def __init__(
-        self,
-        assertion: Assertion,
-        endorsement: Endorsement | None = None,
-    ) -> None:
-        """Initialize _CivicGksAssertionRecord class
 
-        :param assertion: CIViC assertion record
-        :param endorsement: CIViC endorsement for the assertion, defaults to None
-        :raises CivicGksRecordError: If CIViC assertion is not able to be represented as
-            GKS object
+class CivicGksGene(MappableConcept):
+    """Class for representing CIViC Gene as MappableConcept
+
+    :param gene: CIViC gene record
+    """
+
+    def __init__(self, gene: Gene) -> None:
+        """Initialize CivicGksGene class
+
+        :param gene: CIViC gene record
         """
-        object.__setattr__(self, "_assertion", assertion)
-
-        if not self._assertion.is_valid_for_gks_json(emit_warnings=True):
-            err_msg = "Assertion is not valid for GKS."
-            raise CivicGksRecordError(err_msg)
-
-        classification, strength = self.classification_and_strength(
-            self._assertion.amp_level
-        )
-
-        if endorsement:
-            organization = endorsement.organization
-            contributions = [
-                Contribution(
-                    activityType=f"{endorsement.type}.last_reviewed",
-                    date=endorsement.last_reviewed.split("T", 1)[0],
-                    contributor=Agent(
-                        id=f"civic.{organization.type}:{organization.id}",
-                        name=organization.name,
-                        description=organization.description,
-                    ),
-                )
-            ]
-        else:
-            contributions = None
-
         super().__init__(
-            id=f"civic.aid:{self._assertion.id}",
-            contributions=contributions,
-            description=self._assertion.description,
-            specifiedBy=self.method(),
-            proposition=self.proposition(self._assertion),
-            direction=self.direction(self._assertion.assertion_direction),
-            classification=classification,
-            strength=strength,
-            hasEvidenceLines=self.evidence_lines(),
+            id=f"civic.gid:{gene.id}",
+            conceptType="Gene",
+            name=gene.name,
+            mappings=self.get_mappings(gene),
+            extensions=self.get_extensions(gene),
         )
 
-    def classification_and_strength(
-        self,
-        amp_level: str,
-    ) -> tuple[MappableConcept | None, MappableConcept | None]:
-        """Get classification and strength
+    def get_mappings(self, gene: Gene) -> list[ConceptMapping] | None:
+        """Get mappings for CIViC gene
 
-        :param amp_level: AMP/ASCO/CAP level
-        :return: Classification and strength, if found
+        :param gene: CIViC gene record
+        :return: List of mappings containing entrez ID for CIViC gene, if found.
+            Otherwise, ``None``.
         """
-        classification = None
-        strength = None
-        system = System.AMP_ASCO_CAP
-
-        if amp_level != "NA":
-            pattern = re.compile(r"TIER_(?P<tier>[IV]+)(?:_LEVEL_(?P<level>[A-D]))?")
-            match = pattern.match(amp_level).groupdict()
-            classification = MappableConcept(
-                primaryCoding=Coding(
-                    code=Classification(f"Tier {match['tier']}"), system=system
-                ),
-            )
-
-            level = match["level"]
-            evidence_strength = self.evidence_strength(CivicEvidenceLevel(level))
-            evidence_strength.primaryCoding.name = evidence_strength.name
+        if gene.entrez_id:
+            entrez_id = str(gene.entrez_id)
             mappings = [
                 ConceptMapping(
-                    coding=evidence_strength.primaryCoding,
+                    coding=Coding(
+                        id=f"ncbigene:{entrez_id}",
+                        code=entrez_id,
+                        system="https://www.ncbi.nlm.nih.gov/gene/",
+                    ),
                     relation=Relation.EXACT_MATCH,
                 )
             ]
-
-            strength = MappableConcept(
-                primaryCoding=Coding(code=Strength(f"Level {level}"), system=system),
-                mappings=mappings,
-            )
-
-        return classification, strength
-
-    def evidence_strength(self, evidence_level: CivicEvidenceLevel) -> MappableConcept:
-        """Get CIViC Evidence Item strength
-
-        :param evidence_level: CIViC evidence level
-        :return: Strength for CIViC evidence item
-        """
-        return MappableConcept(
-            name=CIVIC_EVIDENCE_LEVEL_TO_NAME[evidence_level],
-            primaryCoding=Coding(
-                system="https://civic.readthedocs.io/en/latest/model/evidence/level.html",
-                code=evidence_level.value,
-            ),
-        )
-
-    def method(self) -> Method:
-        """Get GKS method
-
-        :return: GKS method
-        """
-        return self._method.default
-
-    def proposition(
-        self, record: Evidence | Assertion
-    ) -> (
-        VariantTherapeuticResponseProposition
-        | VariantDiagnosticProposition
-        | VariantPrognosticProposition
-    ):
-        """Get GKS proposition
-
-        :param record: CIViC assertion or evidence item
-        :return: GKS proposition
-        """
-        variant: GeneVariant = record.variants[0]
-
-        params = {
-            "subjectVariant": self.variant(record.molecular_profile, variant),
-            "geneContextQualifier": self.gene(variant.gene.id),
-            "alleleOriginQualifier": self.allele_origin_qualifier(record),
-            "predicate": self.predicate(record),
-        }
-
-        record_type = (
-            record.assertion_type
-            if isinstance(record, Assertion)
-            else record.evidence_type
-        )
-
-        if record_type == CivicEvidenceAssertionType.PREDICTIVE:
-            condition_key = "conditionQualifier"
-            params["objectTherapeutic"] = self.therapeutic(
-                record.therapies, self._assertion.therapy_interaction_type
-            )
-            proposition = VariantTherapeuticResponseProposition
         else:
-            condition_key = "objectCondition"
+            mappings = None
 
-            if record_type == CivicEvidenceAssertionType.PROGNOSTIC:
-                proposition = VariantPrognosticProposition
-            else:
-                proposition = VariantDiagnosticProposition
+        return mappings
 
-        params[condition_key] = self.condition(record.disease)
+    def get_extensions(self, gene: Gene) -> list[Extension] | None:
+        """Get extensions for CIViC gene
 
-        return proposition(**params)
-
-    def direction(self, record_direction: str) -> Direction | None:
-        """Get direction for CIViC assertion or evidence item
-
-        :param record_direction: CIViC assertion or evidence item's direction
-        :return: Direction for CIViC assertion or evidence item
+        :param gene: CIViC gene record
+        :return: List of extensions containing aliases and description for CIViC gene,
+            if found. Otherwise, ``None``.
         """
-        if record_direction == "SUPPORTS":
-            return Direction.SUPPORTS
-        if record_direction == "DOES_NOT_SUPPORT":
-            return Direction.DISPUTES
-        return None
+        if gene.aliases:
+            extensions = [Extension(name="aliases", value=gene.aliases)]
+        else:
+            extensions = []
 
-    def evidence_lines(self) -> list[EvidenceLine]:
-        """Get evidence lines for a CIViC assertion
+        if gene.description:
+            extensions.append(Extension(name="description", value=gene.description))
 
-        Only the CIViC evidence items that are supported for GKS will be included
+        return extensions or None
 
-        :raises CivicGksRecordError: If evidence item is not valid for GKS
-        :return: List of CIViC evidence lines
+
+class CivicGksMolecularProfile(CategoricalVariant):
+    """Class for representing CIViC Molecular Profile as CategoricalVariant
+
+    :param molecular_profile: CIViC molecular profile record
+    """
+
+    def __init__(self, molecular_profile: MolecularProfile) -> None:
+        """Initialize CivicGksMolecularProfile class
+
+        :param molecular_profile: CIViC molecular profile record
         """
-        evidence_lines: list[EvidenceLine] = []
+        aliases, mappings = self.get_aliases_and_mappings(molecular_profile)
 
-        for evidence_item in self._assertion.evidence_items:
-            if not evidence_item.is_valid_for_gks_json(emit_warnings=True):
-                err_msg = f"Evidence {evidence_item.id} is not valid for GKS."
-                raise CivicGksRecordError(err_msg)
-
-            ev_source = evidence_item.source
-
-            evidence_lines.append(
-                EvidenceLine(
-                    hasEvidenceItems=[
-                        Statement(
-                            id=f"civic.eid:{evidence_item.id}",
-                            description=evidence_item.description,
-                            specifiedBy=self.method(),
-                            proposition=self.proposition(evidence_item),
-                            direction=self.direction(evidence_item.evidence_direction),
-                            strength=self.evidence_strength(
-                                CivicEvidenceLevel(evidence_item.evidence_level)
-                            ),
-                            reportedIn=[
-                                Document(
-                                    id=f"civic.source:{ev_source.id}",
-                                    name=ev_source.citation,
-                                    title=ev_source.title,
-                                    pmid=int(ev_source.citation_id)
-                                    if ev_source.source_type == "PUBMED"
-                                    else None,
-                                )
-                            ],
-                        )
-                    ],
-                    directionOfEvidenceProvided=Direction.SUPPORTS,
-                )
-            )
-
-        return evidence_lines
+        super().__init__(
+            id=f"civic.mpid:{molecular_profile.id}",
+            name=molecular_profile.name,
+            description=molecular_profile.description,
+            aliases=aliases or None,
+            extensions=self.get_extensions(molecular_profile),
+            mappings=mappings or None,
+        )
 
     @staticmethod
-    def variant(
-        molecular_profile: MolecularProfile, variant: GeneVariant
-    ) -> CategoricalVariant:
-        """Get GKS CategoricalVariant
+    def get_aliases_and_mappings(
+        molecular_profile: MolecularProfile,
+    ) -> tuple[list[str], list[ConceptMapping]]:
+        """Get aliases and mappings for a molecular profile
 
-        :param molecular_profile: CIViC simple molecular profile
-        :param variant: CIViC variant corresponding to ``molecular_profile``
-        :return: GKS CategoricalVariant
+        :param molecular_profile: CIViC molecular profile record
+        :return: A tuple containing aliases and dbSNP mappings for a molecular profile.
+        """
+        aliases = []
+        mappings = []
+
+        for a in molecular_profile.aliases:
+            if _SNP_RE.match(a):
+                a = a.lower()
+                mappings.append(
+                    ConceptMapping(
+                        coding=Coding(
+                            code=a,
+                            system="https://www.ncbi.nlm.nih.gov/snp/",
+                        ),
+                        relation=Relation.RELATED_MATCH,
+                    )
+                )
+            else:
+                aliases.append(a)
+
+        return aliases, mappings
+
+    @staticmethod
+    def get_extensions(molecular_profile: MolecularProfile) -> list[Extension]:
+        """Get extensions for CIViC molecular profile
+
+        :param molecular_profile: CIViC molecular profile record
+        :return: List of extensions containing molecular profile score, expressions,
+            and representative for a CIViC molecular profile record.
         """
         extensions = [
             Extension(
@@ -382,6 +273,8 @@ class _CivicGksAssertionRecord(ABC):
                 value=molecular_profile.molecular_profile_score,
             )
         ]
+
+        variant: GeneVariant = molecular_profile.variants[0]
         if variant.hgvs_expressions:
             expressions = []
 
@@ -421,75 +314,142 @@ class _CivicGksAssertionRecord(ABC):
                     },
                 )
             )
+        return extensions
 
-        aliases = []
-        mappings = []
-        for a in molecular_profile.aliases:
-            if _SNP_RE.match(a):
-                a = a.lower()
-                mappings.append(
-                    ConceptMapping(
-                        coding=Coding(
-                            code=a,
-                            system="https://www.ncbi.nlm.nih.gov/snp/",
-                        ),
-                        relation=Relation.RELATED_MATCH,
-                    )
-                )
-            else:
-                aliases.append(a)
 
-        return CategoricalVariant(
-            id=f"civic.mpid:{molecular_profile.id}",
-            name=molecular_profile.name,
-            description=molecular_profile.description,
-            aliases=aliases or None,
-            extensions=extensions,
-            mappings=mappings or None,
+class CivicGksDisease(MappableConcept):
+    """Class for representing CIViC Disease as MappableConcept
+
+    :param disease: CIViC disease record
+    """
+
+    def __init__(self, disease: Disease) -> None:
+        """Initialize CivicGksDisease class
+
+        :param disease: CIViC disease record
+        """
+        super().__init__(
+            id=f"civic.did:{disease.id}",
+            conceptType="Disease",
+            name=disease.name,
+            mappings=self.get_mappings(disease),
         )
 
     @staticmethod
-    def gene(gene_id: int) -> MappableConcept:
-        """Get GKS gene
+    def get_mappings(disease: Disease) -> list[ConceptMapping] | None:
+        """Get mappings for CIViC disease
 
-        :param gene_id: ID for CIViC gene
-        :return: GKS gene
+        :param disease: CIViC disease record
+        :return: List of mappings containing DOID for CIViC disease, if found.
+            Otherwise ``None``.
         """
-        gene = get_gene_by_id(gene_id)
-
-        if gene.aliases:
-            extensions = [Extension(name="aliases", value=gene.aliases)]
-        else:
-            extensions = []
-
-        if gene.description:
-            extensions.append(Extension(name="description", value=gene.description))
-
-        if gene.entrez_id:
-            entrez_id = str(gene.entrez_id)
+        if disease.doid:
+            doid = f"DOID:{disease.doid}"
             mappings = [
                 ConceptMapping(
                     coding=Coding(
-                        id=f"ncbigene:{entrez_id}",
-                        code=entrez_id,
-                        system="https://www.ncbi.nlm.nih.gov/gene/",
+                        id=doid,
+                        code=doid,
+                        system="https://disease-ontology.org/?id=",
                     ),
                     relation=Relation.EXACT_MATCH,
                 )
             ]
         else:
             mappings = None
+        return mappings
 
-        return MappableConcept(
-            id=f"civic.gid:{gene_id}",
-            conceptType="Gene",
-            name=gene.name,
-            mappings=mappings,
-            extensions=extensions or None,
+
+class CivicGksTherapy(MappableConcept):
+    """Class for representing CIViC Therapy as MappableConcept
+
+    :param therapy: CIViC therapy record
+    """
+
+    def __init__(self, therapy: Therapy) -> None:
+        """Initialize CivicGksTherapy class
+
+        :param therapy: CIViC therapy record
+        """
+        super().__init__(
+            id=f"civic.tid:{therapy.id}",
+            name=therapy.name,
+            conceptType="Therapy",
+            mappings=self.get_mappings(therapy),
+            extensions=self.get_extensions(therapy),
         )
 
     @staticmethod
-    def allele_origin_qualifier(record: Evidence | Assertion) -> MappableConcept:
+    def get_mappings(therapy: Therapy) -> list[ConceptMapping] | None:
+        """Get mappings for CIViC therapy
+
+        :param therapy: CIViC therapy record
+        :return: List of mappings containing NCIt ID for CIViC therapy, if found.
+            Otherwise ``None``.
+        """
+        if therapy.ncit_id:
+            mappings = [
+                ConceptMapping(
+                    coding=Coding(
+                        id=f"ncit:{therapy.ncit_id}",
+                        code=therapy.ncit_id,
+                        system="https://ncit.nci.nih.gov/ncitbrowser/ConceptReport.jsp?dictionary=NCI_Thesaurus&code=",
+                    ),
+                    relation=Relation.EXACT_MATCH,
+                )
+            ]
+        else:
+            mappings = None
+        return mappings
+
+    @staticmethod
+    def get_extensions(therapy: Therapy) -> list[Extension] | None:
+        """Get extensions for CIViC therapy
+
+        :param therapy: CIViC therapy record
+        :return: List of extensions containing aliases for a therapy.
+        """
+        if therapy.aliases:
+            extensions = [Extension(name="aliases", value=therapy.aliases)]
+        else:
+            extensions = None
+
+        return extensions
+
+
+class CivicGksTherapyGroup(TherapyGroup):
+    """Class for representing more than one CIViC therapies as a TherapyGroup
+
+    :param therapies: List of CIViC therapy records
+    :param therapy_interaction_type: Interaction type for list of therapies
+    """
+
+    def __init__(
+        self, therapies: list[Therapy], therapy_interaction_type: str | None
+    ) -> None:
+        """Initialize CivicGksTherapyGroup class
+
+        :param therapies: List of CIViC therapy records
+        :param therapy_interaction_type: Interaction type for list of therapies
+        :raises CivicGksRecordError: If no therapies were provided
+        """
+        if not therapies:
+            err_msg = "No therapies provided"
+            raise CivicGksRecordError(err_msg)
+
+        membership_operator = (
+            MembershipOperator.AND
+            if therapy_interaction_type == CivicInteractionType.COMBINATION
+            else MembershipOperator.OR
+        )
+        therapies_mc: list[MappableConcept] = [CivicGksTherapy(t) for t in therapies]
+
+        super().__init__(therapies=therapies_mc, membershipOperator=membership_operator)
+
+
+class _CivicGksEvidenceAssertionMixin:
+    @staticmethod
+    def get_allele_origin_qualifier(record: Evidence | Assertion) -> MappableConcept:
         """Get GKS allele origin qualifier
 
         :param record: CIViC assertion or evidence item
@@ -498,7 +458,7 @@ class _CivicGksAssertionRecord(ABC):
         return MappableConcept(name=record.variant_origin)
 
     @staticmethod
-    def predicate(
+    def get_predicate(
         record: Evidence | Assertion,
     ) -> (
         PrognosticPredicate | DiagnosticPredicate | TherapeuticResponsePredicate | None
@@ -516,97 +476,251 @@ class _CivicGksAssertionRecord(ABC):
             raise CivicGksRecordError(err_msg)
 
     @staticmethod
-    def therapeutic(
-        therapies: list[Therapy], therapy_interaction_type: str | None
-    ) -> MappableConcept | TherapyGroup | None:
-        """Get GKS therapeutic or TherapyGroup
+    def get_direction(record_direction: str) -> Direction | None:
+        """Get direction for CIViC assertion or evidence item
 
-        :param therapies: List of CIViC therapy records
-        :param therapy_interaction_type: The interaction type for ``therapies``
-        :raises CivicGksRecordError: If no therapies are found
-        :return: GKS therapeutic (single therapy record) or TherapyGroup (multiple
-            therapies)
+        :param record_direction: CIViC assertion or evidence item's direction
+        :return: Direction for CIViC assertion or evidence item
         """
-
-        def _get_therapy(therapy: Therapy) -> MappableConcept:
-            """Get GKS therapeutic
-
-            :param therapy: CIViC therapy
-            :return: GKS therapeutic
-            """
-            if therapy.aliases:
-                extensions = [Extension(name="aliases", value=therapy.aliases)]
-            else:
-                extensions = None
-
-            if therapy.ncit_id:
-                mappings = [
-                    ConceptMapping(
-                        coding=Coding(
-                            id=f"ncit:{therapy.ncit_id}",
-                            code=therapy.ncit_id,
-                            system="https://ncit.nci.nih.gov/ncitbrowser/ConceptReport.jsp?dictionary=NCI_Thesaurus&code=",
-                        ),
-                        relation=Relation.EXACT_MATCH,
-                    )
-                ]
-            else:
-                mappings = None
-
-            return MappableConcept(
-                id=f"civic.tid:{therapy.id}",
-                name=therapy.name,
-                conceptType="Therapy",
-                mappings=mappings,
-                extensions=extensions,
-            )
-
-        if not therapies:
-            err_msg = "No therapies found"
-            raise CivicGksRecordError(err_msg)
-
-        if len(therapies) == 1:
-            therapy: Therapy = therapies[0]
-            return _get_therapy(therapy)
-        else:
-            membership_operator = (
-                MembershipOperator.AND
-                if therapy_interaction_type == CivicInteractionType.COMBINATION
-                else MembershipOperator.OR
-            )
-            therapies_mc: list[MappableConcept] = [_get_therapy(t) for t in therapies]
-            return TherapyGroup(
-                therapies=therapies_mc, membershipOperator=membership_operator
-            )
+        if record_direction == "SUPPORTS":
+            return Direction.SUPPORTS
+        if record_direction == "DOES_NOT_SUPPORT":
+            return Direction.DISPUTES
+        return None
 
     @staticmethod
-    def condition(disease: Disease) -> MappableConcept:
-        """Get GKS condition
+    def get_evidence_strength(evidence_level: CivicEvidenceLevel) -> MappableConcept:
+        """Get CIViC Evidence Item strength
 
-        :param disease: CIViC disease
-        :return: GKS condition
+        :param evidence_level: CIViC evidence level
+        :return: Strength for CIViC evidence item
         """
-        if disease.doid:
-            doid = f"DOID:{disease.doid}"
+        return MappableConcept(
+            name=CIVIC_EVIDENCE_LEVEL_TO_NAME[evidence_level],
+            primaryCoding=Coding(
+                system="https://civic.readthedocs.io/en/latest/model/evidence/level.html",
+                code=evidence_level.value,
+            ),
+        )
+
+    def get_proposition(
+        self, record: Evidence | Assertion
+    ) -> (
+        VariantTherapeuticResponseProposition
+        | VariantDiagnosticProposition
+        | VariantPrognosticProposition
+    ):
+        """Get GKS proposition
+
+        :param record: CIViC assertion or evidence item
+        :return: GKS proposition
+        """
+        variant: GeneVariant = record.molecular_profile.variants[0]
+
+        params = {
+            "subjectVariant": CivicGksMolecularProfile(record.molecular_profile),
+            "geneContextQualifier": CivicGksGene(variant.gene),
+            "alleleOriginQualifier": self.get_allele_origin_qualifier(record),
+            "predicate": self.get_predicate(record),
+        }
+
+        record_type = (
+            record.assertion_type
+            if isinstance(record, Assertion)
+            else record.evidence_type
+        )
+
+        if record_type == CivicEvidenceAssertionType.PREDICTIVE:
+            condition_key = "conditionQualifier"
+            if len(record.therapies) == 1:
+                therapeutic = CivicGksTherapy(record.therapies[0])
+            else:
+                therapeutic = CivicGksTherapyGroup(
+                    record.therapies, record.therapy_interaction_type
+                )
+
+            params["objectTherapeutic"] = therapeutic
+            proposition = VariantTherapeuticResponseProposition
+        else:
+            condition_key = "objectCondition"
+
+            if record_type == CivicEvidenceAssertionType.PROGNOSTIC:
+                proposition = VariantPrognosticProposition
+            else:
+                proposition = VariantDiagnosticProposition
+
+        params[condition_key] = CivicGksDisease(record.disease)
+
+        return proposition(**params)
+
+
+class CivicGksSource(Document):
+    """Class for representing CIViC Source as Document
+
+    :param source: CIViC source record
+    """
+
+    def __init__(self, source: Source) -> None:
+        """Initialize CivicGksSource class
+
+        :param source: CIViC source record
+        """
+        super().__init__(
+            id=f"civic.source:{source.id}",
+            name=source.citation,
+            title=source.title,
+            pmid=source.citation_id if source.source_type == "PUBMED" else None,
+        )
+
+
+class CivicGksEvidence(Statement, _CivicGksEvidenceAssertionMixin):
+    """Class for representing CIViC Evidence item as Statement
+
+    :param evidence_item: CIViC evidence item
+    """
+
+    def __init__(self, evidence_item: Evidence) -> None:
+        """Initialize CivicGksEvidence class
+
+        :param evidence_item: CIViC evidence item
+        :raises CivicGksRecordError: If CIViC evidence item is not able to be
+            represented as GKS object
+        """
+        if not evidence_item.is_valid_for_gks_json(emit_warnings=True):
+            err_msg = f"Evidence {evidence_item.id} is not valid for GKS."
+            raise CivicGksRecordError(err_msg)
+
+        super().__init__(
+            id=f"civic.eid:{evidence_item.id}",
+            description=evidence_item.description,
+            specifiedBy=CivicGksSop(),
+            proposition=self.get_proposition(evidence_item),
+            direction=self.get_direction(evidence_item.evidence_direction),
+            strength=self.get_evidence_strength(
+                CivicEvidenceLevel(evidence_item.evidence_level)
+            ),
+            reportedIn=[CivicGksSource(evidence_item.source)],
+        )
+
+
+class _CivicGksAssertionRecord(_CivicGksEvidenceAssertionMixin, ABC):
+    """Abstract class for CIViC assertion record represented as GKS
+
+    :param assertion: CIViC assertion record
+    :raises CivicGksRecordError: If CIViC assertion is not able to be represented as
+        GKS object
+    """
+
+    def __init__(
+        self,
+        assertion: Assertion,
+        endorsement: Endorsement | None = None,
+    ) -> None:
+        """Initialize _CivicGksAssertionRecord class
+
+        :param assertion: CIViC assertion record
+        :param endorsement: CIViC endorsement for the assertion, defaults to None
+        :raises CivicGksRecordError: If CIViC assertion is not able to be represented as
+            GKS object
+        """
+        if not assertion.is_valid_for_gks_json(emit_warnings=True):
+            err_msg = "Assertion is not valid for GKS."
+            raise CivicGksRecordError(err_msg)
+
+        classification, strength = self.get_classification_and_strength(
+            assertion.amp_level
+        )
+        contributions = self.get_contributions(endorsement) if endorsement else None
+
+        super().__init__(
+            id=f"civic.aid:{assertion.id}",
+            contributions=contributions,
+            description=assertion.description,
+            specifiedBy=CivicGksSop(),
+            proposition=self.get_proposition(assertion),
+            direction=self.get_direction(assertion.assertion_direction),
+            classification=classification,
+            strength=strength,
+            hasEvidenceLines=self.get_evidence_lines(assertion),
+        )
+
+    @staticmethod
+    def get_contributions(endorsement: Endorsement) -> list[Contribution]:
+        """Get contributions for an endorsement
+
+        :param endorsement: Endorsement for assertion
+        :return: List of contributions containing when the endorsement was last reviewed
+        """
+        organization: Organization = endorsement.organization
+        return [
+            Contribution(
+                activityType=f"{endorsement.type}.last_reviewed",
+                date=endorsement.last_reviewed.split("T", 1)[0],
+                contributor=Agent(
+                    id=f"civic.{organization.type}:{organization.id}",
+                    name=organization.name,
+                    description=organization.description,
+                ),
+            )
+        ]
+
+    def get_classification_and_strength(
+        self,
+        amp_level: str,
+    ) -> tuple[MappableConcept | None, MappableConcept | None]:
+        """Get classification and strength
+
+        :param amp_level: AMP/ASCO/CAP level
+        :return: Classification and strength, if found
+        """
+        classification = None
+        strength = None
+        system = System.AMP_ASCO_CAP
+
+        if amp_level != "NA":
+            pattern = re.compile(r"TIER_(?P<tier>[IV]+)(?:_LEVEL_(?P<level>[A-D]))?")
+            match = pattern.match(amp_level).groupdict()
+            classification = MappableConcept(
+                primaryCoding=Coding(
+                    code=Classification(f"Tier {match['tier']}"), system=system
+                ),
+            )
+
+            level = match["level"]
+            evidence_strength = self.get_evidence_strength(CivicEvidenceLevel(level))
+            evidence_strength.primaryCoding.name = evidence_strength.name
             mappings = [
                 ConceptMapping(
-                    coding=Coding(
-                        id=doid,
-                        code=doid,
-                        system="https://disease-ontology.org/?id=",
-                    ),
+                    coding=evidence_strength.primaryCoding,
                     relation=Relation.EXACT_MATCH,
                 )
             ]
-        else:
-            mappings = None
 
-        return MappableConcept(
-            id=f"civic.did:{disease.id}",
-            conceptType="Disease",
-            name=disease.name,
-            mappings=mappings,
-        )
+            strength = MappableConcept(
+                primaryCoding=Coding(code=Strength(f"Level {level}"), system=system),
+                mappings=mappings,
+            )
+
+        return classification, strength
+
+    def get_evidence_lines(self, assertion: Assertion) -> list[EvidenceLine]:
+        """Get evidence lines for a CIViC assertion
+
+        Only the CIViC evidence items that are supported for GKS will be included
+
+        :param assertion: CIViC assertion
+        :return: List of CIViC evidence lines
+        """
+        evidence_lines: list[EvidenceLine] = []
+
+        for evidence_item in assertion.evidence_items:
+            evidence_lines.append(
+                EvidenceLine(
+                    hasEvidenceItems=[CivicGksEvidence(evidence_item)],
+                    directionOfEvidenceProvided=Direction.SUPPORTS,
+                )
+            )
+        return evidence_lines
 
 
 class CivicGksPredictiveAssertion(
