@@ -118,7 +118,7 @@ def gks_method():
             "name": "Danos et al., 2019, Genome Med.",
             "title": "Standard operating procedure for curation and clinical interpretation of variants in cancer",
             "doi": "10.1186/s13073-019-0687-x",
-            "pmid": 31779674,
+            "pmid": "31779674",
             "type": "Document",
         },
         "methodType": "variant curation standard operating procedure",
@@ -273,7 +273,7 @@ def gks_source592():
         "id": "civic.source:1725",
         "name": "Dungo et al., 2013",
         "title": "Afatinib: first global approval.",
-        "pmid": 23982599,
+        "pmid": "23982599",
         "type": "Document",
     }
 
