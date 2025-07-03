@@ -112,6 +112,12 @@ class TestEvidence(object):
         assert len(evidence.therapies) == 1
         assert len(evidence.phenotypes) == 0
 
+        evidence = civic.get_evidence_by_id(7365)
+        expected_phenotype_ids = {15320, 16642}
+        assert set(evidence.phenotype_ids) == expected_phenotype_ids
+        assert len(evidence.phenotypes) == 2
+        for p in evidence.phenotypes:
+            assert p.id in expected_phenotype_ids
 
 class TestVariants(object):
 
