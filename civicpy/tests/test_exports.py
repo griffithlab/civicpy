@@ -1,7 +1,7 @@
 from unittest.mock import patch
 import pytest
 from deepdiff import DeepDiff
-from ga4gh.va_spec.base import Statement, EvidenceLine, TherapyGroup
+from ga4gh.va_spec.base import Statement, TherapyGroup
 from ga4gh.va_spec.aac_2017 import (
     VariantTherapeuticResponseStudyStatement,
     VariantDiagnosticStudyStatement,
@@ -27,9 +27,11 @@ from civicpy.exports.civic_gks_record import (
 def v600e():
     return civic.get_variant_by_id(12)
 
+
 @pytest.fixture(scope="module")
 def v600e_mp():
     return civic.get_molecular_profile_by_id(12)
+
 
 # simple insertion
 @pytest.fixture(scope="module")
@@ -54,10 +56,12 @@ def v2444fs():
 def l158fs():
     return civic.get_variant_by_id(2137)
 
+
 @pytest.fixture(scope="module")
 def eid9285():
     """Create test fixture for functional evidence"""
     return civic.get_evidence_by_id(9285)
+
 
 @pytest.fixture(scope="module")
 def aid6():
@@ -125,10 +129,16 @@ def gks_method():
         "id": "civic.method:2019",
         "name": "CIViC Curation SOP (2019)",
         "reportedIn": {
+            "id": "pmid:31779674",
             "name": "Danos et al., 2019, Genome Med.",
             "title": "Standard operating procedure for curation and clinical interpretation of variants in cancer",
             "doi": "10.1186/s13073-019-0687-x",
             "pmid": "31779674",
+            "urls": [
+                "https://doi.org/10.1186/s13073-019-0687-x",
+                "https://pubmed.ncbi.nlm.nih.gov/31779674/",
+            ],
+            "aliases": ["CIViC curation SOP"],
             "type": "Document",
         },
         "methodType": "curation",
@@ -235,7 +245,6 @@ def gks_did8():
         "mappings": [
             {
                 "coding": {
-                    "id": "DOID:3908",
                     "code": "DOID:3908",
                     "system": "https://disease-ontology.org/?id=",
                 },
@@ -309,6 +318,16 @@ def gks_eid2997(
                 "system": "https://civic.readthedocs.io/en/latest/model/evidence/level.html",
                 "code": "A",
             },
+            "mappings": [
+                {
+                    "coding": {
+                        "code": "e000001",
+                        "name": "authoritative evidence",
+                        "system": "https://go.osu.edu/evidence-codes",
+                    },
+                    "relation": "exactMatch",
+                }
+            ],
         },
         "proposition": {
             "type": "VariantTherapeuticResponseProposition",
@@ -317,18 +336,13 @@ def gks_eid2997(
             "conditionQualifier": gks_did8,
             "alleleOriginQualifier": {
                 "name": "somatic",
-                "extensions": [
-                    {
-                        "name": "civic_variant_origin",
-                        "value": "SOMATIC"
-                    }
-                ]
+                "extensions": [{"name": "civic_variant_origin", "value": "SOMATIC"}],
             },
             "geneContextQualifier": gks_gid19,
             "subjectVariant": gks_mpid33,
         },
         "specifiedBy": gks_method,
-        "reportedIn": [gks_source592],
+        "reportedIn": [gks_source592, "https://civicdb.org/links/evidence/2997"],
     }
     return Statement(**params)
 
@@ -356,12 +370,7 @@ def gks_aid6(
             "geneContextQualifier": gks_gid19,
             "alleleOriginQualifier": {
                 "name": "somatic",
-                "extensions": [
-                    {
-                        "name": "civic_variant_origin",
-                        "value": "SOMATIC"
-                    }
-                ]
+                "extensions": [{"name": "civic_variant_origin", "value": "SOMATIC"}],
             },
             "predicate": "predictsSensitivityTo",
             "objectTherapeutic": gks_tid146,
@@ -373,16 +382,6 @@ def gks_aid6(
                 "system": "AMP/ASCO/CAP (AAC) Guidelines, 2017",
                 "code": "Level A",
             },
-            "mappings": [
-                {
-                    "coding": {
-                        "system": "https://civic.readthedocs.io/en/latest/model/evidence/level.html",
-                        "code": "A",
-                        "name": "Validated association",
-                    },
-                    "relation": "exactMatch",
-                }
-            ],
         },
         "classification": {
             "primaryCoding": {
@@ -395,8 +394,15 @@ def gks_aid6(
                 "type": "EvidenceLine",
                 "hasEvidenceItems": [gks_eid2997],
                 "directionOfEvidenceProvided": "supports",
+                "strengthOfEvidenceProvided": {
+                    "primaryCoding": {
+                        "code": "Level A",
+                        "system": "AMP/ASCO/CAP (AAC) Guidelines, 2017",
+                    },
+                },
             }
         ],
+        "reportedIn": ["https://civicdb.org/links/assertion/6"],
     }
     return VariantTherapeuticResponseStudyStatement(**params)
 
@@ -480,12 +486,16 @@ class TestCivicGksMolecularProfile(object):
         """Test that get_extensions method works as expected"""
         variant = v600e_mp.variants[0]
 
-        with patch.object(variant, "hgvs_expressions", new=["N/A", "XR_001744858.1:n.1823-3918T>A"]):
+        with patch.object(
+            variant, "hgvs_expressions", new=["N/A", "XR_001744858.1:n.1823-3918T>A"]
+        ):
             gks_mp = CivicGksMolecularProfile(v600e_mp)
             extensions = gks_mp.get_extensions(v600e_mp)
             assert extensions
 
-            expressions = next((ext for ext in extensions if ext.name == "expressions"), None)
+            expressions = next(
+                (ext for ext in extensions if ext.name == "expressions"), None
+            )
             assert expressions is None
 
 
@@ -494,9 +504,7 @@ class TestCivicGksTherapyGroup(object):
 
     def test_no_therapies(self):
         """Test that CivicGksTherapyGroup works as expected when no therapies provided"""
-        with pytest.raises(
-            CivicGksRecordError, match=r"No therapies provided"
-        ):
+        with pytest.raises(CivicGksRecordError, match=r"No therapies provided"):
             CivicGksTherapyGroup(therapies=[], therapy_interaction_type=None)
 
 
@@ -516,23 +524,20 @@ class TestCivicGksPredictiveAssertion(object):
 
     def test_valid_single_therapy(self, aid6, endorsement4, gks_aid6):
         """Test that single therapy works as expected"""
-        record = CivicGksPredictiveAssertion(
-            aid6, endorsement=endorsement4
-        )
+        record = CivicGksPredictiveAssertion(aid6, endorsement=endorsement4)
         assert isinstance(record, VariantTherapeuticResponseStudyStatement)
-        assert len(record.hasEvidenceLines) > 1
+        assert len(record.hasEvidenceLines) == 1
 
         # Don't need to test ALL has evidence lines
+        check_evs = []
+        el = record.hasEvidenceLines[0]
+        assert len(el.hasEvidenceItems) == 6
+        for ev in el.hasEvidenceItems:
+            if ev.id == "civic.eid:2997":
+                check_evs.append(ev)
+
         record_copy = record.model_copy(deep=True)
-        check_els = []
-        for el in record_copy.hasEvidenceLines:
-            assert isinstance(el, EvidenceLine)
-            assert len(el.hasEvidenceItems) == 1
-
-            if el.hasEvidenceItems[0].id == "civic.eid:2997":
-                check_els.append(el)
-
-        record_copy.hasEvidenceLines = check_els
+        record_copy.hasEvidenceLines[0].hasEvidenceItems = check_evs
         record_copy = record_copy.model_dump(exclude_none=True)
         diff = DeepDiff(
             record_copy, gks_aid6.model_dump(exclude_none=True), ignore_order=True
@@ -543,7 +548,8 @@ class TestCivicGksPredictiveAssertion(object):
         """Test that combination therapy works as expected"""
         record = CivicGksPredictiveAssertion(aid7)
         assert isinstance(record, VariantTherapeuticResponseStudyStatement)
-        assert len(record.hasEvidenceLines) > 1
+        assert len(record.hasEvidenceLines) == 1
+        assert len(record.hasEvidenceLines[0].hasEvidenceItems) == 4
         therapy = record.proposition.objectTherapeutic.root
         assert isinstance(therapy, TherapyGroup)
         assert therapy.membershipOperator == "AND"
@@ -595,7 +601,8 @@ class TestCivicGksPrognosticAssertion(object):
         """Test that valid assertion works as expected"""
         record = CivicGksPrognosticAssertion(aid20)
         assert isinstance(record, VariantPrognosticStudyStatement)
-        assert len(record.hasEvidenceLines) > 1
+        assert len(record.hasEvidenceLines) == 1
+        assert len(record.hasEvidenceLines[0].hasEvidenceItems) == 6
         assert record.proposition.predicate == "associatedWithWorseOutcomeFor"
         assert record.strength.primaryCoding.code.root == "Level A"
         assert record.classification.primaryCoding.code.root == "Tier I"
@@ -608,7 +615,8 @@ class TestCivicGksDiagnosticAssertion(object):
         """Test that valid assertion works as expected"""
         record = CivicGksDiagnosticAssertion(aid9)
         assert isinstance(record, VariantDiagnosticStudyStatement)
-        assert len(record.hasEvidenceLines) > 1
+        assert len(record.hasEvidenceLines) == 1
+        assert len(record.hasEvidenceLines[0].hasEvidenceItems) == 2
         assert record.proposition.predicate == "isDiagnosticInclusionCriterionFor"
         assert record.strength.primaryCoding.code.root == "Level C"
         assert record.classification.primaryCoding.code.root == "Tier II"

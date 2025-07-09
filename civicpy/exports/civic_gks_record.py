@@ -9,6 +9,7 @@ from ga4gh.cat_vrs.models import CategoricalVariant
 from ga4gh.core.models import (
     Coding,
     ConceptMapping,
+    iriReference,
     Extension,
     MappableConcept,
     Relation,
@@ -39,6 +40,7 @@ from ga4gh.va_spec.base import (
     VariantTherapeuticResponseProposition,
 )
 from ga4gh.vrs.models import Expression, Syntax
+from pydantic import BaseModel
 from civicpy.civic import (
     Assertion,
     Coordinate,
@@ -126,7 +128,7 @@ CLIN_SIG_TO_PREDICATE = MappingProxyType(
 )
 
 # CIViC variant origin to GKS allele origin (aligns with ClinVar API Schema)
-VARIANT_ORIGIN_TO_ALLELE_ORIGIN =  MappingProxyType(
+VARIANT_ORIGIN_TO_ALLELE_ORIGIN = MappingProxyType(
     {
         "COMBINED": "unknown",
         "COMMON_GERMLINE": "germline",
@@ -152,10 +154,16 @@ class CivicGksSop(Method):
             id="civic.method:2019",
             name="CIViC Curation SOP (2019)",
             reportedIn=Document(
+                id="pmid:31779674",
                 name="Danos et al., 2019, Genome Med.",
                 title="Standard operating procedure for curation and clinical interpretation of variants in cancer",
                 doi="10.1186/s13073-019-0687-x",
                 pmid="31779674",
+                urls=[
+                    "https://doi.org/10.1186/s13073-019-0687-x",
+                    "https://pubmed.ncbi.nlm.nih.gov/31779674/",
+                ],
+                aliases=["CIViC curation SOP"],
             ),
             methodType="curation",
         )
@@ -358,12 +366,10 @@ class CivicGksDisease(MappableConcept):
             Otherwise ``None``.
         """
         if disease.doid:
-            doid = f"DOID:{disease.doid}"
             mappings = [
                 ConceptMapping(
                     coding=Coding(
-                        id=doid,
-                        code=doid,
+                        code=f"DOID:{disease.doid}",
                         system="https://disease-ontology.org/?id=",
                     ),
                     relation=Relation.EXACT_MATCH,
@@ -473,12 +479,7 @@ class _CivicGksEvidenceAssertionMixin:
 
         return MappableConcept(
             name=VARIANT_ORIGIN_TO_ALLELE_ORIGIN[variant_origin],
-            extensions=[
-                Extension(
-                    name="civic_variant_origin",
-                    value=variant_origin
-                )
-            ]
+            extensions=[Extension(name="civic_variant_origin", value=variant_origin)],
         )
 
     @staticmethod
@@ -519,12 +520,23 @@ class _CivicGksEvidenceAssertionMixin:
         :param evidence_level: CIViC evidence level
         :return: Strength for CIViC evidence item
         """
+        vicc_concept_vocab: ViccConceptVocab = VICC_CONCEPT_MAPPING[evidence_level]
         return MappableConcept(
             name=CIVIC_EVIDENCE_LEVEL_TO_NAME[evidence_level],
             primaryCoding=Coding(
                 system="https://civic.readthedocs.io/en/latest/model/evidence/level.html",
                 code=evidence_level.value,
             ),
+            mappings=[
+                ConceptMapping(
+                    coding=Coding(
+                        system="https://go.osu.edu/evidence-codes",
+                        code=vicc_concept_vocab.code,
+                        name=vicc_concept_vocab.name,
+                    ),
+                    relation=Relation.EXACT_MATCH,
+                )
+            ],
         )
 
     def get_proposition(
@@ -597,6 +609,34 @@ class CivicGksSource(Document):
         )
 
 
+class ViccConceptVocab(BaseModel):
+    """Define VICC Concept Vocab model"""
+
+    code: str
+    name: str
+
+
+VICC_CONCEPT_MAPPING: dict[CivicEvidenceLevel, ViccConceptVocab] = MappingProxyType(
+    {
+        CivicEvidenceLevel.A: ViccConceptVocab(
+            code="e000001", name="authoritative evidence"
+        ),
+        CivicEvidenceLevel.B: ViccConceptVocab(
+            code="e000005", name="clinical cohort evidence"
+        ),
+        CivicEvidenceLevel.C: ViccConceptVocab(
+            code="e000008", name="clinical case study evidence"
+        ),
+        CivicEvidenceLevel.D: ViccConceptVocab(
+            code="e000009", name="preclinical evidence"
+        ),
+        CivicEvidenceLevel.E: ViccConceptVocab(
+            code="e000010", name="inferential evidence"
+        ),
+    }
+)
+
+
 class CivicGksEvidence(Statement, _CivicGksEvidenceAssertionMixin):
     """Class for representing CIViC Evidence item as Statement
 
@@ -623,7 +663,10 @@ class CivicGksEvidence(Statement, _CivicGksEvidenceAssertionMixin):
             strength=self.get_evidence_strength(
                 CivicEvidenceLevel(evidence_item.evidence_level)
             ),
-            reportedIn=[CivicGksSource(evidence_item.source)],
+            reportedIn=[
+                CivicGksSource(evidence_item.source),
+                iriReference(f"https://civicdb.org/links/evidence/{evidence_item.id}"),
+            ],
         )
 
 
@@ -665,7 +708,10 @@ class _CivicGksAssertionRecord(_CivicGksEvidenceAssertionMixin, ABC):
             direction=self.get_direction(assertion.assertion_direction),
             classification=classification,
             strength=strength,
-            hasEvidenceLines=self.get_evidence_lines(assertion),
+            hasEvidenceLines=self.get_evidence_lines(assertion, strength),
+            reportedIn=[
+                iriReference(f"https://civicdb.org/links/assertion/{assertion.id}")
+            ],
         )
 
     @staticmethod
@@ -711,40 +757,40 @@ class _CivicGksAssertionRecord(_CivicGksEvidenceAssertionMixin, ABC):
             )
 
             level = match["level"]
-            evidence_strength = self.get_evidence_strength(CivicEvidenceLevel(level))
-            evidence_strength.primaryCoding.name = evidence_strength.name
-            mappings = [
-                ConceptMapping(
-                    coding=evidence_strength.primaryCoding,
-                    relation=Relation.EXACT_MATCH,
-                )
-            ]
-
             strength = MappableConcept(
-                primaryCoding=Coding(code=Strength(f"Level {level}"), system=system),
-                mappings=mappings,
+                primaryCoding=Coding(code=Strength(f"Level {level}"), system=system)
             )
 
         return classification, strength
 
-    def get_evidence_lines(self, assertion: Assertion) -> list[EvidenceLine]:
+    def get_evidence_lines(
+        self, assertion: Assertion, strength: MappableConcept
+    ) -> list[EvidenceLine]:
         """Get evidence lines for a CIViC assertion
 
         Only the CIViC evidence items that are supported for GKS will be included
 
         :param assertion: CIViC assertion
+        :param strength: The CIViC Assertion's strength
         :return: List of CIViC evidence lines
         """
-        evidence_lines: list[EvidenceLine] = []
+        direction = (
+            Direction.SUPPORTS
+            if assertion.assertion_direction == "SUPPORTS"
+            else Direction.DISPUTES
+        )
+        evidence_items = [
+            CivicGksEvidence(evidence_item)
+            for evidence_item in assertion.evidence_items
+        ]
 
-        for evidence_item in assertion.evidence_items:
-            evidence_lines.append(
-                EvidenceLine(
-                    hasEvidenceItems=[CivicGksEvidence(evidence_item)],
-                    directionOfEvidenceProvided=Direction.SUPPORTS,
-                )
+        return [
+            EvidenceLine(
+                hasEvidenceItems=evidence_items,
+                directionOfEvidenceProvided=direction,
+                strengthOfEvidenceProvided=strength,
             )
-        return evidence_lines
+        ]
 
 
 class CivicGksPredictiveAssertion(
