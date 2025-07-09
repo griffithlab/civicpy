@@ -12,10 +12,13 @@ from ga4gh.va_spec.aac_2017 import (
 from civicpy import civic
 from civicpy.exports.civic_vcf_record import CivicVcfRecord
 from civicpy.exports.civic_gks_record import (
+    CivicGksEvidence,
+    CivicGksMolecularProfile,
     CivicGksRecordError,
     CivicGksPredictiveAssertion,
     CivicGksDiagnosticAssertion,
     CivicGksPrognosticAssertion,
+    CivicGksTherapyGroup,
 )
 
 
@@ -24,6 +27,9 @@ from civicpy.exports.civic_gks_record import (
 def v600e():
     return civic.get_variant_by_id(12)
 
+@pytest.fixture(scope="module")
+def v600e_mp():
+    return civic.get_molecular_profile_by_id(12)
 
 # simple insertion
 @pytest.fixture(scope="module")
@@ -48,6 +54,10 @@ def v2444fs():
 def l158fs():
     return civic.get_variant_by_id(2137)
 
+@pytest.fixture(scope="module")
+def eid9285():
+    """Create test fixture for functional evidence"""
+    return civic.get_evidence_by_id(9285)
 
 @pytest.fixture(scope="module")
 def aid6():
@@ -118,7 +128,7 @@ def gks_method():
             "name": "Danos et al., 2019, Genome Med.",
             "title": "Standard operating procedure for curation and clinical interpretation of variants in cancer",
             "doi": "10.1186/s13073-019-0687-x",
-            "pmid": 31779674,
+            "pmid": "31779674",
             "type": "Document",
         },
         "methodType": "curation",
@@ -273,7 +283,7 @@ def gks_source592():
         "id": "civic.source:1725",
         "name": "Dungo et al., 2013",
         "title": "Afatinib: first global approval.",
-        "pmid": 23982599,
+        "pmid": "23982599",
         "type": "Document",
     }
 
@@ -461,6 +471,44 @@ class TestCivicVcfRecord(object):
         with pytest.raises(Exception) as context:
             CivicVcfRecord(evidence)
         assert "Variant is not a GeneVariant" in str(context.value)
+
+
+class TestCivicGksMolecularProfile(object):
+    """Test that CivicGksMolecularProfile works as expected"""
+
+    def test_get_extensions(self, v600e_mp):
+        """Test that get_extensions method works as expected"""
+        variant = v600e_mp.variants[0]
+
+        with patch.object(variant, "hgvs_expressions", new=["N/A", "XR_001744858.1:n.1823-3918T>A"]):
+            gks_mp = CivicGksMolecularProfile(v600e_mp)
+            extensions = gks_mp.get_extensions(v600e_mp)
+            assert extensions
+
+            expressions = next((ext for ext in extensions if ext.name == "expressions"), None)
+            assert expressions is None
+
+
+class TestCivicGksTherapyGroup(object):
+    """Test that CivicGksTherapyGroup works as expected"""
+
+    def test_no_therapies(self):
+        """Test that CivicGksTherapyGroup works as expected when no therapies provided"""
+        with pytest.raises(
+            CivicGksRecordError, match=r"No therapies provided"
+        ):
+            CivicGksTherapyGroup(therapies=[], therapy_interaction_type=None)
+
+
+class TestCivicGksEvidence(object):
+    """Test that CivicGksEvidence works as expected"""
+
+    def test_invalid(self, eid9285):
+        """Test that invalid assertions raises custom exception"""
+        with pytest.raises(
+            CivicGksRecordError, match=r"Evidence 9285 is not valid for GKS."
+        ):
+            CivicGksEvidence(eid9285)
 
 
 class TestCivicGksPredictiveAssertion(object):

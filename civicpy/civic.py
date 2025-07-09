@@ -1898,7 +1898,6 @@ def _postprocess_response_element(e, element):
         e['phenotype_ids'] = [p['id'] for p in e['phenotypes']]
         e['status'] = e['status'].lower()
         del e['therapies']
-        del e['phenotypes']
     elif element == 'factor':
         e['source_ids'] = [v['id'] for v in e['sources']]
         del e['sources']

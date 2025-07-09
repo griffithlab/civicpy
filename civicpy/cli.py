@@ -3,7 +3,7 @@ import click
 import logging
 from civicpy import LOCAL_CACHE_PATH, civic
 from civicpy.exports.civic_gks_record import CivicGksRecordError, CivicGksPredictiveAssertion, CivicGksDiagnosticAssertion, CivicGksPrognosticAssertion
-from civicpy.exports.civic_gks_writer import CivicGksWriter
+from civicpy.exports.civic_gks_writer import CivicGksWriter, GksAssertionError
 from civicpy.exports.civic_vcf_writer import CivicVcfWriter
 from civicpy.exports.civic_vcf_record import CivicVcfRecord
 from civicpy.civic import CoordinateQuery
@@ -81,10 +81,12 @@ def create_gks_json(organization_id: int, output_json: Path) -> None:
         logging.exception("Error getting organization %i", organization_id)
         return
 
-    records = []
+    records: list[CivicGksDiagnosticAssertion | CivicGksPredictiveAssertion | CivicGksPrognosticAssertion] = []
+    errors: list[GksAssertionError] = []
+
     for endorsement in civic.get_all_endorsements_ready_for_clinvar_submission_for_org(organization_id):
         assertion = endorsement.assertion
-        if assertion.is_valid_for_gks_json():
+        if assertion.is_valid_for_gks_json(emit_warnings=True):
             try:
                 if assertion.assertion_type == "DIAGNOSTIC":
                     gks_record = CivicGksDiagnosticAssertion(assertion, endorsement=endorsement)
@@ -93,14 +95,19 @@ def create_gks_json(organization_id: int, output_json: Path) -> None:
                 elif assertion.assertion_type == "PROGNOSTIC":
                     gks_record = CivicGksPrognosticAssertion(assertion, endorsement=endorsement)
                 else:
-                    logging.warning('Assertion type {} is not currently supported for submission to ClinVar.'.format(assertion.assertion_type))
-            except CivicGksRecordError:
+                    msg = f"Assertion type {assertion.assertion_type} is not currently supported for submission to ClinVar."
+                    logging.warning(msg)
+                    errors.append(GksAssertionError(assertion_id=assertion.id, message=str(msg)))
+            except CivicGksRecordError as e:
+                errors.append(GksAssertionError(assertion_id=assertion.id, message=str(e)))
                 continue
             records.append(gks_record)
+        else:
+            errors.append(GksAssertionError(assertion_id=assertion.id, message="Assertion is not valid for GKS JSON. See logs for more details."))
     if not records:
         logging.warning('No assertions ready for submission to ClinVar found for organization {}'.format(organization_id))
     else:
-        CivicGksWriter(output_json, records)
+        CivicGksWriter(output_json, records, errors=errors)
 
 
 @cli.command(context_settings=CONTEXT_SETTINGS)
