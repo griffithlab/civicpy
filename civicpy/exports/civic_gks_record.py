@@ -145,7 +145,7 @@ class _CivicGksAssertionRecord(ABC):
                 name="Danos et al., 2019, Genome Med.",
                 title="Standard operating procedure for curation and clinical interpretation of variants in cancer",
                 doi="10.1186/s13073-019-0687-x",
-                pmid=31779674,
+                pmid="31779674",
             ),
             methodType="variant curation standard operating procedure",
         )
@@ -353,7 +353,7 @@ class _CivicGksAssertionRecord(ABC):
                                     id=f"civic.source:{ev_source.id}",
                                     name=ev_source.citation,
                                     title=ev_source.title,
-                                    pmid=int(ev_source.citation_id)
+                                    pmid=ev_source.citation_id
                                     if ev_source.source_type == "PUBMED"
                                     else None,
                                 )
