@@ -27,9 +27,11 @@ from civicpy.exports.civic_gks_record import (
 def v600e():
     return civic.get_variant_by_id(12)
 
+
 @pytest.fixture(scope="module")
 def v600e_mp():
     return civic.get_molecular_profile_by_id(12)
+
 
 # simple insertion
 @pytest.fixture(scope="module")
@@ -54,10 +56,12 @@ def v2444fs():
 def l158fs():
     return civic.get_variant_by_id(2137)
 
+
 @pytest.fixture(scope="module")
 def eid9285():
     """Create test fixture for functional evidence"""
     return civic.get_evidence_by_id(9285)
+
 
 @pytest.fixture(scope="module")
 def aid6():
@@ -464,12 +468,16 @@ class TestCivicGksMolecularProfile(object):
         """Test that get_extensions method works as expected"""
         variant = v600e_mp.variants[0]
 
-        with patch.object(variant, "hgvs_expressions", new=["N/A", "XR_001744858.1:n.1823-3918T>A"]):
+        with patch.object(
+            variant, "hgvs_expressions", new=["N/A", "XR_001744858.1:n.1823-3918T>A"]
+        ):
             gks_mp = CivicGksMolecularProfile(v600e_mp)
             extensions = gks_mp.get_extensions(v600e_mp)
             assert extensions
 
-            expressions = next((ext for ext in extensions if ext.name == "expressions"), None)
+            expressions = next(
+                (ext for ext in extensions if ext.name == "expressions"), None
+            )
             assert expressions is None
 
 
@@ -478,9 +486,7 @@ class TestCivicGksTherapyGroup(object):
 
     def test_no_therapies(self):
         """Test that CivicGksTherapyGroup works as expected when no therapies provided"""
-        with pytest.raises(
-            CivicGksRecordError, match=r"No therapies provided"
-        ):
+        with pytest.raises(CivicGksRecordError, match=r"No therapies provided"):
             CivicGksTherapyGroup(therapies=[], therapy_interaction_type=None)
 
 
@@ -500,9 +506,7 @@ class TestCivicGksPredictiveAssertion(object):
 
     def test_valid_single_therapy(self, aid6, endorsement4, gks_aid6):
         """Test that single therapy works as expected"""
-        record = CivicGksPredictiveAssertion(
-            aid6, endorsement=endorsement4
-        )
+        record = CivicGksPredictiveAssertion(aid6, endorsement=endorsement4)
         assert isinstance(record, VariantTherapeuticResponseStudyStatement)
         assert len(record.hasEvidenceLines) > 1
 
