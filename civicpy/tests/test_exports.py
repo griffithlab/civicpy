@@ -95,6 +95,12 @@ def aid20():
 
 
 @pytest.fixture(scope="module")
+def aid93():
+    """Create test fixture for assertion with single phenotype"""
+    return civic.get_assertion_by_id(93)
+
+
+@pytest.fixture(scope="module")
 def aid115():
     """Create test fixture for assertion with phenotypes"""
     return civic.get_assertion_by_id(115)
@@ -415,6 +421,44 @@ def gks_aid6(
 
 
 @pytest.fixture(scope="module")
+def gks_aid93_object_condition():
+    """Create test fixture for GKS AID 93 object condition"""
+    return {
+        "conditions": [
+            {
+                "id": "civic.did:3225",
+                "conceptType": "Disease",
+                "name": "CNS Neuroblastoma With FOXR2 Activation",
+                "mappings": [
+                    {
+                        "coding": {
+                            "system": "https://disease-ontology.org/?id=",
+                            "code": "DOID:0080906",
+                        },
+                        "relation": "exactMatch",
+                    }
+                ],
+            },
+            {
+                "id": "civic.phenotype:15320",
+                "conceptType": "Phenotype",
+                "name": "Pediatric onset",
+                "mappings": [
+                    {
+                        "coding": {
+                            "system": "https://hpo.jax.org/app/browse/term/",
+                            "code": "HP:0410280",
+                        },
+                        "relation": "exactMatch",
+                    }
+                ],
+            },
+        ],
+        "membershipOperator": "AND",
+    }
+
+
+@pytest.fixture(scope="module")
 def gks_aid115_object_condition():
     """Create test fixture for GKS AID 115 object condition"""
     return {
@@ -689,7 +733,14 @@ class TestCivicGksPrognosticAssertion(object):
 class TestCivicGksDiagnosticAssertion(object):
     """Test that CivicGksDiagnosticAssertion works as expected"""
 
-    def test_valid(self, aid9, aid115, gks_aid115_object_condition):
+    def test_valid(
+        self,
+        aid9,
+        aid93,
+        gks_aid93_object_condition,
+        aid115,
+        gks_aid115_object_condition,
+    ):
         """Test that valid assertion works as expected"""
         record = CivicGksDiagnosticAssertion(aid9)
         assert isinstance(record, VariantDiagnosticStudyStatement)
@@ -698,6 +749,19 @@ class TestCivicGksDiagnosticAssertion(object):
         assert record.proposition.predicate == "isDiagnosticInclusionCriterionFor"
         assert record.strength.primaryCoding.code.root == "Level C"
         assert record.classification.primaryCoding.code.root == "Tier II"
+
+        # Single phenotype (complex condition set)
+        record = CivicGksDiagnosticAssertion(aid93)
+        assert isinstance(record, VariantDiagnosticStudyStatement)
+        record_object_condition = record.proposition.objectCondition
+        assert isinstance(record_object_condition, Condition)
+        assert isinstance(record_object_condition.root, ConditionSet)
+        diff = DeepDiff(
+            record_object_condition.model_dump(exclude_none=True),
+            gks_aid93_object_condition,
+            ignore_order=True,
+        )
+        assert diff == {}
 
         # Phenotypes (complex condition set)
         record = CivicGksDiagnosticAssertion(aid115)

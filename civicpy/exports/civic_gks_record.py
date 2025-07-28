@@ -630,14 +630,18 @@ class _CivicGksEvidenceAssertionMixin:
 
         if record.phenotypes:
             conditions = [gks_disease]
-            conditions.append(
-                ConditionSet(
-                    membershipOperator=MembershipOperator.OR,
-                    conditions=[
-                        CivicGksPhenotype(phenotype) for phenotype in record.phenotypes
-                    ],
+            if len(record.phenotypes) > 1:
+                conditions.append(
+                    ConditionSet(
+                        membershipOperator=MembershipOperator.OR,
+                        conditions=[
+                            CivicGksPhenotype(phenotype)
+                            for phenotype in record.phenotypes
+                        ],
+                    )
                 )
-            )
+            else:
+                conditions.append(CivicGksPhenotype(record.phenotypes[0]))
 
             params[condition_key] = ConditionSet(
                 membershipOperator=MembershipOperator.AND, conditions=conditions
