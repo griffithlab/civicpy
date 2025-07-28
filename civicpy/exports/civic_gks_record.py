@@ -739,3 +739,32 @@ class CivicGksPrognosticAssertion(
     _CivicGksAssertionRecord, VariantPrognosticStudyStatement
 ):
     """Class for representing CIViC prognostic assertion as GKS VariantPrognosticStudyStatement"""
+
+
+def create_gks_record_from_assertion(
+    assertion: Assertion, endorsement: Endorsement | None = None
+) -> (
+    CivicGksDiagnosticAssertion
+    | CivicGksPredictiveAssertion
+    | CivicGksPrognosticAssertion
+):
+    """Create GKS Record from CIViC Assertion
+
+    :param assertion: CIViC assertion record
+    :param endorsement: CIViC endorsement for the assertion, defaults to None
+    :raises NotImplementedError: If GKS Record translation is not yet supported.
+        Currently, only the following assertion types are supported: DIAGNOSTIC,
+        PREDICTIVE, and PROGNOSTIC.
+    :return: GKS Assertion Record object
+    """
+    if assertion.assertion_type == "DIAGNOSTIC":
+        return CivicGksDiagnosticAssertion(assertion, endorsement=endorsement)
+
+    if assertion.assertion_type == "PREDICTIVE":
+        return CivicGksPredictiveAssertion(assertion, endorsement=endorsement)
+
+    if assertion.assertion_type == "PROGNOSTIC":
+        return CivicGksPrognosticAssertion(assertion, endorsement=endorsement)
+
+    err_msg = f"Assertion type {assertion.assertion_type} is not currently supported"
+    raise NotImplementedError(err_msg)
