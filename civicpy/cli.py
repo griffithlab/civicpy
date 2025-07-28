@@ -2,7 +2,7 @@ from pathlib import Path
 import click
 import logging
 from civicpy import LOCAL_CACHE_PATH, civic
-from civicpy.exports.civic_gks_record import CivicGksRecordError, CivicGksPredictiveAssertion, CivicGksDiagnosticAssertion, CivicGksPrognosticAssertion
+from civicpy.exports.civic_gks_record import CivicGksRecordError, CivicGksPredictiveAssertion, CivicGksDiagnosticAssertion, CivicGksPrognosticAssertion, create_gks_record_from_assertion
 from civicpy.exports.civic_gks_writer import CivicGksWriter, GksAssertionError
 from civicpy.exports.civic_vcf_writer import CivicVcfWriter
 from civicpy.exports.civic_vcf_record import CivicVcfRecord
@@ -88,17 +88,8 @@ def create_gks_json(organization_id: int, output_json: Path) -> None:
         assertion = endorsement.assertion
         if assertion.is_valid_for_gks_json(emit_warnings=True):
             try:
-                if assertion.assertion_type == "DIAGNOSTIC":
-                    gks_record = CivicGksDiagnosticAssertion(assertion, endorsement=endorsement)
-                elif assertion.assertion_type == "PREDICTIVE":
-                    gks_record = CivicGksPredictiveAssertion(assertion, endorsement=endorsement)
-                elif assertion.assertion_type == "PROGNOSTIC":
-                    gks_record = CivicGksPrognosticAssertion(assertion, endorsement=endorsement)
-                else:
-                    msg = f"Assertion type {assertion.assertion_type} is not currently supported for submission to ClinVar."
-                    logging.warning(msg)
-                    errors.append(GksAssertionError(assertion_id=assertion.id, message=str(msg)))
-            except CivicGksRecordError as e:
+                gks_record = create_gks_record_from_assertion(assertion, endorsement=endorsement)
+            except (CivicGksRecordError, NotImplementedError) as e:
                 errors.append(GksAssertionError(assertion_id=assertion.id, message=str(e)))
                 continue
             records.append(gks_record)

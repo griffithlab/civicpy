@@ -19,6 +19,7 @@ from civicpy.exports.civic_gks_record import (
     CivicGksDiagnosticAssertion,
     CivicGksPrognosticAssertion,
     CivicGksTherapyGroup,
+    create_gks_record_from_assertion,
 )
 
 
@@ -710,3 +711,16 @@ class TestCivicGksDiagnosticAssertion(object):
             ignore_order=True,
         )
         assert diff == {}
+
+
+class TestCivicGksRecord(object):
+    """Test that GKS Record helper methods work correctly"""
+
+    def test_invalid(self, aid117):
+        """Test that unsupported assertion types raise NotImplementedError"""
+
+        with pytest.raises(
+            NotImplementedError,
+            match=r"Assertion type ONCOGENIC is not currently supported",
+        ):
+            create_gks_record_from_assertion(aid117)
