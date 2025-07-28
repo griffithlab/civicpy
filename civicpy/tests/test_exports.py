@@ -1,7 +1,7 @@
 from unittest.mock import patch
 import pytest
 from deepdiff import DeepDiff
-from ga4gh.va_spec.base import Statement, TherapyGroup
+from ga4gh.va_spec.base import Condition, ConditionSet, Statement, TherapyGroup
 from ga4gh.va_spec.aac_2017 import (
     VariantTherapeuticResponseStudyStatement,
     VariantDiagnosticStudyStatement,
@@ -91,6 +91,12 @@ def aid19():
 def aid20():
     """Create test fixture for prognostic assertion"""
     return civic.get_assertion_by_id(20)
+
+
+@pytest.fixture(scope="module")
+def aid115():
+    """Create test fixture for assertion with phenotypes"""
+    return civic.get_assertion_by_id(115)
 
 
 @pytest.fixture(scope="module")
@@ -407,6 +413,77 @@ def gks_aid6(
     return VariantTherapeuticResponseStudyStatement(**params)
 
 
+@pytest.fixture(scope="module")
+def gks_aid115_object_condition():
+    """Create test fixture for GKS AID 115 object condition"""
+    return {
+        "conditions": [
+            {
+                "id": "civic.did:3387",
+                "conceptType": "Disease",
+                "name": "Diffuse Astrocytoma, MYB- Or MYBL1-altered",
+                "mappings": [
+                    {
+                        "coding": {
+                            "system": "https://disease-ontology.org/?id=",
+                            "code": "DOID:0081279",
+                        },
+                        "relation": "exactMatch",
+                    }
+                ],
+            },
+            {
+                "conditions": [
+                    {
+                        "id": "civic.phenotype:8121",
+                        "conceptType": "Phenotype",
+                        "name": "Childhood onset",
+                        "mappings": [
+                            {
+                                "coding": {
+                                    "system": "https://hpo.jax.org/app/browse/term/",
+                                    "code": "HP:0011463",
+                                },
+                                "relation": "exactMatch",
+                            }
+                        ],
+                    },
+                    {
+                        "id": "civic.phenotype:2656",
+                        "conceptType": "Phenotype",
+                        "name": "Juvenile onset",
+                        "mappings": [
+                            {
+                                "coding": {
+                                    "system": "https://hpo.jax.org/app/browse/term/",
+                                    "code": "HP:0003621",
+                                },
+                                "relation": "exactMatch",
+                            }
+                        ],
+                    },
+                    {
+                        "id": "civic.phenotype:2643",
+                        "conceptType": "Phenotype",
+                        "name": "Adult onset",
+                        "mappings": [
+                            {
+                                "coding": {
+                                    "system": "https://hpo.jax.org/app/browse/term/",
+                                    "code": "HP:0003581",
+                                },
+                                "relation": "exactMatch",
+                            }
+                        ],
+                    },
+                ],
+                "membershipOperator": "OR",
+            },
+        ],
+        "membershipOperator": "AND",
+    }
+
+
 class TestCivicVcfRecord(object):
     def test_protein_altering(self, caplog, v600e):
         record = CivicVcfRecord(v600e)
@@ -611,7 +688,7 @@ class TestCivicGksPrognosticAssertion(object):
 class TestCivicGksDiagnosticAssertion(object):
     """Test that CivicGksDiagnosticAssertion works as expected"""
 
-    def test_valid(self, aid9):
+    def test_valid(self, aid9, aid115, gks_aid115_object_condition):
         """Test that valid assertion works as expected"""
         record = CivicGksDiagnosticAssertion(aid9)
         assert isinstance(record, VariantDiagnosticStudyStatement)
@@ -620,3 +697,16 @@ class TestCivicGksDiagnosticAssertion(object):
         assert record.proposition.predicate == "isDiagnosticInclusionCriterionFor"
         assert record.strength.primaryCoding.code.root == "Level C"
         assert record.classification.primaryCoding.code.root == "Tier II"
+
+        # Phenotypes (complex condition set)
+        record = CivicGksDiagnosticAssertion(aid115)
+        assert isinstance(record, VariantDiagnosticStudyStatement)
+        record_object_condition = record.proposition.objectCondition
+        assert isinstance(record_object_condition, Condition)
+        assert isinstance(record_object_condition.root, ConditionSet)
+        diff = DeepDiff(
+            record_object_condition.model_dump(exclude_none=True),
+            gks_aid115_object_condition,
+            ignore_order=True,
+        )
+        assert diff == {}
