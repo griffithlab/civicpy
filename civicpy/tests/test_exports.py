@@ -12,10 +12,14 @@ from ga4gh.va_spec.aac_2017 import (
 from civicpy import civic
 from civicpy.exports.civic_vcf_record import CivicVcfRecord
 from civicpy.exports.civic_gks_record import (
+    CivicGksEvidence,
+    CivicGksMolecularProfile,
     CivicGksRecordError,
     CivicGksPredictiveAssertion,
     CivicGksDiagnosticAssertion,
     CivicGksPrognosticAssertion,
+    CivicGksTherapyGroup,
+    create_gks_record_from_assertion,
 )
 
 
@@ -23,6 +27,11 @@ from civicpy.exports.civic_gks_record import (
 @pytest.fixture(scope="module")
 def v600e():
     return civic.get_variant_by_id(12)
+
+
+@pytest.fixture(scope="module")
+def v600e_mp():
+    return civic.get_molecular_profile_by_id(12)
 
 
 # simple insertion
@@ -47,6 +56,12 @@ def v2444fs():
 @pytest.fixture(scope="module")
 def l158fs():
     return civic.get_variant_by_id(2137)
+
+
+@pytest.fixture(scope="module")
+def eid9285():
+    """Create test fixture for functional evidence"""
+    return civic.get_evidence_by_id(9285)
 
 
 @pytest.fixture(scope="module")
@@ -447,14 +462,52 @@ class TestCivicVcfRecord(object):
         assert "Variant is not a GeneVariant" in str(context.value)
 
 
+class TestCivicGksMolecularProfile(object):
+    """Test that CivicGksMolecularProfile works as expected"""
+
+    def test_get_extensions(self, v600e_mp):
+        """Test that get_extensions method works as expected"""
+        variant = v600e_mp.variants[0]
+
+        with patch.object(
+            variant, "hgvs_expressions", new=["N/A", "XR_001744858.1:n.1823-3918T>A"]
+        ):
+            gks_mp = CivicGksMolecularProfile(v600e_mp)
+            extensions = gks_mp.get_extensions(v600e_mp)
+            assert extensions
+
+            expressions = next(
+                (ext for ext in extensions if ext.name == "expressions"), None
+            )
+            assert expressions is None
+
+
+class TestCivicGksTherapyGroup(object):
+    """Test that CivicGksTherapyGroup works as expected"""
+
+    def test_no_therapies(self):
+        """Test that CivicGksTherapyGroup works as expected when no therapies provided"""
+        with pytest.raises(CivicGksRecordError, match=r"No therapies provided"):
+            CivicGksTherapyGroup(therapies=[], therapy_interaction_type=None)
+
+
+class TestCivicGksEvidence(object):
+    """Test that CivicGksEvidence works as expected"""
+
+    def test_invalid(self, eid9285):
+        """Test that invalid assertions raises custom exception"""
+        with pytest.raises(
+            CivicGksRecordError, match=r"Evidence 9285 is not valid for GKS."
+        ):
+            CivicGksEvidence(eid9285)
+
+
 class TestCivicGksPredictiveAssertion(object):
     """Test that CivicGksPredictiveAssertion works as expected"""
 
     def test_valid_single_therapy(self, aid6, endorsement4, gks_aid6):
         """Test that single therapy works as expected"""
-        record = CivicGksPredictiveAssertion(
-            aid6, endorsement=endorsement4
-        )
+        record = CivicGksPredictiveAssertion(aid6, endorsement=endorsement4)
         assert isinstance(record, VariantTherapeuticResponseStudyStatement)
         assert len(record.hasEvidenceLines) > 1
 
@@ -548,3 +601,13 @@ class TestCivicGksDiagnosticAssertion(object):
         assert record.proposition.predicate == "isDiagnosticInclusionCriterionFor"
         assert record.strength.primaryCoding.code.root == "Level C"
         assert record.classification.primaryCoding.code.root == "Tier II"
+
+
+class TestCivicGksRecord(object):
+    """Test that GKS Record helper methods work correctly"""
+
+    def test_invalid(self, aid117):
+        """Test that unsupported assertion types raise NotImplementedError"""
+
+        with pytest.raises(NotImplementedError, match=r"Assertion type ONCOGENIC is not currently supported"):
+            create_gks_record_from_assertion(aid117)
