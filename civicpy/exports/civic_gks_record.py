@@ -610,7 +610,7 @@ class CivicGksSource(Document):
 
 
 class ViccConceptVocab(BaseModel):
-    """Define VICC Concept Vocab model"""
+    """Define VICC Concept Vocab model (https://go.osu.edu/evidence-codes)"""
 
     code: str
     name: str
