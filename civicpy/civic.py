@@ -3082,21 +3082,6 @@ def bulk_search_variants_by_coordinates(sorted_queries, search_mode='any'):
     :return:    returns a dictionary of Match lists, keyed by query
     """
 
-    def is_sorted(prev_q, current_q):
-        if prev_q['chr'] < current_q['chr']:
-            return True
-        if prev_q['chr'] > current_q['chr']:
-            return False
-        if prev_q['start'] < current_q['start']:
-            return True
-        if prev_q['start'] > current_q['start']:
-            return False
-        if prev_q['stop'] < current_q['stop']:
-            return True
-        if prev_q['stop'] > current_q['stop']:
-            return False
-        return True
-
     ct_pointer = 0
     query_pointer = 0
     last_query_pointer = -1
