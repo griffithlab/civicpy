@@ -176,6 +176,40 @@ def gks_mpid33():
                 },
                 "relation": "relatedMatch",
             },
+            {
+                "coding": {
+                    "code": "33",
+                    "id": "civic.mpid:33",
+                    "system": "https://civicdb.org/links/molecular_profile/",
+                },
+                "relation": "exactMatch",
+            },
+            {
+                "coding": {
+                    "code": "33",
+                    "id": "civic.variant:33",
+                    "name": "L858R",
+                    "system": "https://civicdb.org/links/variant/",
+                    "extensions": [
+                        {"name": "subtype", "value": "gene_variant"},
+                        {
+                            "name": "variant_types",
+                            "value": [
+                                {
+                                    "coding": {
+                                        "id": "civic.variant_type:47",
+                                        "code": "SO:0001583",
+                                        "name": "Missense Variant",
+                                        "system": "http://www.sequenceontology.org/browser/current_svn/term/",
+                                    },
+                                    "relation": "exactMatch",
+                                }
+                            ],
+                        },
+                    ],
+                },
+                "relation": "exactMatch",
+            },
         ],
         "extensions": [
             {
