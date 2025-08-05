@@ -566,7 +566,7 @@ class CivicGksSource(Document):
         :param source: CIViC source record
         """
         super().__init__(
-            id=f"civic.source:{source.id}",
+            id=f"civic.sid:{source.id}",
             name=source.citation,
             title=source.title,
             pmid=source.citation_id if source.source_type == "PUBMED" else None,
