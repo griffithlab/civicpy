@@ -187,7 +187,7 @@ def gks_mpid33():
             {
                 "coding": {
                     "code": "33",
-                    "id": "civic.variant:33",
+                    "id": "civic.vid:33",
                     "name": "L858R",
                     "system": "https://civicdb.org/links/variant/",
                     "extensions": [

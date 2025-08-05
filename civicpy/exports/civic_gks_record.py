@@ -291,7 +291,7 @@ class CivicGksMolecularProfile(CategoricalVariant):
 
             return ConceptMapping(
                 coding=Coding(
-                    id=f"civic.variant:{variant.id}",
+                    id=f"civic.vid:{variant.id}",
                     code=str(variant.id),
                     name=variant.name,
                     system="https://civicdb.org/links/variant/",
