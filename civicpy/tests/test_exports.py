@@ -1,4 +1,4 @@
-from unittest.mock import patch
+from unittest.mock import PropertyMock, patch
 import pytest
 from deepdiff import DeepDiff
 from ga4gh.va_spec.base import Condition, ConditionSet, Statement, TherapyGroup
@@ -169,6 +169,34 @@ def gks_mpid33():
         "name": "EGFR L858R",
         "aliases": ["LEU858ARG", "L813R", "LEU813ARG"],
         "mappings": [
+            {
+                "coding": {
+                    "code": "CA126713",
+                    "system": "https://reg.clinicalgenome.org/redmine/projects/registry/genboree_registry/by_canonicalid?canonicalid=",
+                },
+                "relation": "relatedMatch",
+            },
+            {
+                "coding": {
+                    "code": "16609",
+                    "system": "https://www.ncbi.nlm.nih.gov/clinvar/variation/",
+                },
+                "relation": "relatedMatch",
+            },
+            {
+                "coding": {
+                    "code": "376282",
+                    "system": "https://www.ncbi.nlm.nih.gov/clinvar/variation/",
+                },
+                "relation": "relatedMatch",
+            },
+            {
+                "coding": {
+                    "code": "376280",
+                    "system": "https://www.ncbi.nlm.nih.gov/clinvar/variation/",
+                },
+                "relation": "relatedMatch",
+            },
             {
                 "coding": {
                     "code": "rs121434568",
@@ -716,6 +744,15 @@ class TestCivicGksPredictiveAssertion(object):
     @patch.object(civic.Assertion, "is_valid_for_gks_json")
     @patch.object(civic.Assertion, "evidence_items")
     @patch.object(civic.FusionVariant, "hgvs_expressions", create=True)
+    @patch.object(
+        civic.FusionVariant,
+        "allele_registry_id",
+        create=True,
+        new_callable=PropertyMock,
+    )
+    @patch.object(
+        civic.FusionVariant, "clinvar_entries", create=True, new_callable=PropertyMock
+    )
     @patch.object(civic.FusionVariant, "coordinates", create=True)
     @patch.object(
         civic.FusionVariant, "gene", new=civic.get_gene_by_id(1590), create=True
@@ -723,6 +760,8 @@ class TestCivicGksPredictiveAssertion(object):
     def test_valid_substitution_therapy(
         self,
         test_coordinates,
+        teset_clinvar_entries,
+        test_allele_registry_id,
         test_hgvs_expressions,
         test_evidence_items,
         test_is_valid_for_gks_json,
@@ -730,6 +769,8 @@ class TestCivicGksPredictiveAssertion(object):
     ):
         """Test that substitution therapy works as expected"""
         test_coordinates.return_value = None
+        teset_clinvar_entries.return_value = []
+        test_allele_registry_id.return_value = None
         test_is_valid_for_gks_json.return_value = True
         test_evidence_items.return_value = []
         test_hgvs_expressions.return_value = None

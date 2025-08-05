@@ -315,6 +315,31 @@ class CivicGksMolecularProfile(CategoricalVariant):
             variant_concept_mapping,
         ]
 
+        allele_registry_id = variant.allele_registry_id
+        if allele_registry_id:
+            mappings.append(
+                ConceptMapping(
+                    coding=Coding(
+                        system="https://reg.clinicalgenome.org/redmine/projects/registry/genboree_registry/by_canonicalid?canonicalid=",
+                        code=allele_registry_id,
+                    ),
+                    relation=Relation.RELATED_MATCH,
+                )
+            )
+
+        clinvar_ids = variant.clinvar_entries
+        if clinvar_ids:
+            mappings.extend(
+                ConceptMapping(
+                    coding=Coding(
+                        system="https://www.ncbi.nlm.nih.gov/clinvar/variation/",
+                        code=clinvar_id,
+                    ),
+                    relation=Relation.RELATED_MATCH,
+                )
+                for clinvar_id in clinvar_ids
+            )
+
         for a in molecular_profile.aliases:
             if _SNP_RE.match(a):
                 a = a.lower()
