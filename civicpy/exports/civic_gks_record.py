@@ -283,7 +283,7 @@ class CivicGksMolecularProfile(CategoricalVariant):
                     ),
                     relation=Relation.EXACT_MATCH,
                 )
-                for vt in variant.variant_types
+                for vt in variant.variant_types if vt.url is not None
             ]
 
             if variant_types:
