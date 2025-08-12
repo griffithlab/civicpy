@@ -295,6 +295,10 @@ def gks_source592():
         "title": "Afatinib: first global approval.",
         "pmid": "23982599",
         "type": "Document",
+        "urls": [
+            "https://civicdb.org/links/source/1725",
+            "http://www.ncbi.nlm.nih.gov/pubmed/23982599",
+        ],
     }
 
 
@@ -629,5 +633,8 @@ class TestCivicGksRecord(object):
     def test_invalid(self, aid117):
         """Test that unsupported assertion types raise NotImplementedError"""
 
-        with pytest.raises(NotImplementedError, match=r"Assertion type ONCOGENIC is not currently supported"):
+        with pytest.raises(
+            NotImplementedError,
+            match=r"Assertion type ONCOGENIC is not currently supported",
+        ):
             create_gks_record_from_assertion(aid117)
