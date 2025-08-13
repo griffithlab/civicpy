@@ -298,7 +298,7 @@ class CivicGksMolecularProfile(CategoricalVariant):
                     id=f"civic.vid:{variant.id}",
                     code=str(variant.id),
                     name=variant.name,
-                    system="https://civicdb.org/links/variant/",
+                    system=f"{LINKS_URL}/variant/",
                     extensions=extensions,
                 ),
                 relation=Relation.EXACT_MATCH,
@@ -312,7 +312,7 @@ class CivicGksMolecularProfile(CategoricalVariant):
                 coding=Coding(
                     id=f"civic.mpid:{molecular_profile.id}",
                     code=str(molecular_profile.id),
-                    system="https://civicdb.org/links/molecular_profile/",
+                    system=f"{LINKS_URL}/molecular_profile/",
                 ),
                 relation=Relation.EXACT_MATCH,
             ),
