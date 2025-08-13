@@ -302,11 +302,15 @@ def gks_tid146():
 def gks_source592():
     """Create fixture for source 592 GKS representation"""
     return {
-        "id": "civic.source:1725",
+        "id": "civic.sid:1725",
         "name": "Dungo et al., 2013",
         "title": "Afatinib: first global approval.",
         "pmid": "23982599",
         "type": "Document",
+        "urls": [
+            "https://civicdb.org/links/source/1725",
+            "http://www.ncbi.nlm.nih.gov/pubmed/23982599",
+        ],
     }
 
 

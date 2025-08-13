@@ -19,14 +19,6 @@ def singularize(string):
     return string
 
 
-def search_url(element, use_search_meta):
-    element = pluralize(element).lower()
-    components = [API_URL, element]
-    if use_search_meta:
-        components.append('search')
-    return '/'.join(components)
-
-
 def snake_to_camel(snake_string):
     words = snake_string.split('_')
     cap_words = [x.capitalize() for x in words]
