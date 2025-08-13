@@ -43,6 +43,7 @@ from ga4gh.va_spec.base import (
 from ga4gh.vrs.models import Expression, Syntax
 from pydantic import BaseModel
 from civicpy.civic import (
+    LINKS_URL,
     Assertion,
     Coordinate,
     Endorsement,
@@ -56,6 +57,9 @@ from civicpy.civic import (
     GeneVariant,
     MolecularProfile,
 )
+
+
+PUBMED_URL = "https://pubmed.ncbi.nlm.nih.gov"
 
 
 class CivicGksRecordError(Exception):
@@ -163,7 +167,7 @@ class CivicGksSop(Method):
                 pmid="31779674",
                 urls=[
                     "https://doi.org/10.1186/s13073-019-0687-x",
-                    "https://pubmed.ncbi.nlm.nih.gov/31779674/",
+                    f"{PUBMED_URL}/31779674/",
                 ],
                 aliases=["CIViC curation SOP"],
             ),
@@ -736,16 +740,22 @@ class CivicGksSource(Document):
 
         :param source: CIViC source record
         """
+        urls = [f"{LINKS_URL}/source/{source.id}", source.source_url]
+        pmid = source.citation_id if source.source_type == "PUBMED" else None
+        if pmc_id := source.pmc_id:
+            urls.append(f"https://www.ncbi.nlm.nih.gov/pmc/articles/{pmc_id}")
+
         super().__init__(
-            id=f"civic.source:{source.id}",
+            id=f"civic.sid:{source.id}",
             name=source.citation,
             title=source.title,
-            pmid=source.citation_id if source.source_type == "PUBMED" else None,
+            pmid=pmid,
+            urls=urls,
         )
 
 
 class ViccConceptVocab(BaseModel):
-    """Define VICC Concept Vocab model"""
+    """Define VICC Concept Vocab model (https://go.osu.edu/evidence-codes)"""
 
     code: str
     name: str
@@ -800,7 +810,7 @@ class CivicGksEvidence(Statement, _CivicGksEvidenceAssertionMixin):
             ),
             reportedIn=[
                 CivicGksSource(evidence_item.source),
-                iriReference(f"https://civicdb.org/links/evidence/{evidence_item.id}"),
+                iriReference(f"{LINKS_URL}/evidence/{evidence_item.id}"),
             ],
         )
 
@@ -844,9 +854,7 @@ class _CivicGksAssertionRecord(_CivicGksEvidenceAssertionMixin, ABC):
             classification=classification,
             strength=strength,
             hasEvidenceLines=self.get_evidence_lines(assertion, strength),
-            reportedIn=[
-                iriReference(f"https://civicdb.org/links/assertion/{assertion.id}")
-            ],
+            reportedIn=[iriReference(f"{LINKS_URL}/assertion/{assertion.id}")],
         )
 
     @staticmethod
