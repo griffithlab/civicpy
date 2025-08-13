@@ -24,6 +24,7 @@ from ga4gh.va_spec.aac_2017 import (
 from ga4gh.va_spec.base import (
     Agent,
     Contribution,
+    ConditionSet,
     DiagnosticPredicate,
     Direction,
     Document,
@@ -50,6 +51,7 @@ from civicpy.civic import (
     Disease,
     Gene,
     Organization,
+    Phenotype,
     Source,
     Therapy,
     GeneVariant,
@@ -384,6 +386,45 @@ class CivicGksDisease(MappableConcept):
         return mappings
 
 
+class CivicGksPhenotype(MappableConcept):
+    """Class for representing CIViC Phenotype as MappableConcept
+
+    :param phenotype: CIViC phenotype record
+    """
+
+    def __init__(self, phenotype: Phenotype) -> None:
+        """Initialize CivicGksPhenotype class
+
+        :param phenotype: CIViC phenotype record
+        """
+
+        super().__init__(
+            id=f"civic.{phenotype.type}:{phenotype.id}",
+            conceptType=phenotype.type.capitalize(),
+            name=phenotype.name,
+            mappings=self.get_mappings(phenotype),
+        )
+
+    @staticmethod
+    def get_mappings(phenotype: Phenotype) -> list[ConceptMapping]:
+        """Get mappings for CIViC phenotype
+
+        :param phenotype: phenotype disease record
+        :return: List of mappings containing HPO ID for CIViC phenotype
+        """
+        _delimiter = "/"
+        _system = phenotype.phenotype_url.rpartition(_delimiter)[0]
+        return [
+            ConceptMapping(
+                coding=Coding(
+                    code=phenotype.hpo_id,
+                    system=f"{_system}{_delimiter}",
+                ),
+                relation=Relation.EXACT_MATCH,
+            )
+        ]
+
+
 class CivicGksTherapy(MappableConcept):
     """Class for representing CIViC Therapy as MappableConcept
 
@@ -589,8 +630,28 @@ class _CivicGksEvidenceAssertionMixin:
             else:
                 proposition = VariantDiagnosticProposition
 
-        params[condition_key] = CivicGksDisease(record.disease)
+        gks_disease = CivicGksDisease(record.disease)
 
+        if record.phenotypes:
+            conditions = [gks_disease]
+            if len(record.phenotypes) > 1:
+                conditions.append(
+                    ConditionSet(
+                        membershipOperator=MembershipOperator.OR,
+                        conditions=[
+                            CivicGksPhenotype(phenotype)
+                            for phenotype in record.phenotypes
+                        ],
+                    )
+                )
+            else:
+                conditions.append(CivicGksPhenotype(record.phenotypes[0]))
+
+            params[condition_key] = ConditionSet(
+                membershipOperator=MembershipOperator.AND, conditions=conditions
+            )
+        else:
+            params[condition_key] = gks_disease
         return proposition(**params)
 
 
