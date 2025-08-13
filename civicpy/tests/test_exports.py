@@ -1,7 +1,7 @@
 from unittest.mock import patch
 import pytest
 from deepdiff import DeepDiff
-from ga4gh.va_spec.base import Statement, EvidenceLine, TherapyGroup
+from ga4gh.va_spec.base import Statement, TherapyGroup
 from ga4gh.va_spec.aac_2017 import (
     VariantTherapeuticResponseStudyStatement,
     VariantDiagnosticStudyStatement,
@@ -130,13 +130,19 @@ def gks_method():
         "id": "civic.method:2019",
         "name": "CIViC Curation SOP (2019)",
         "reportedIn": {
+            "id": "pmid:31779674",
             "name": "Danos et al., 2019, Genome Med.",
             "title": "Standard operating procedure for curation and clinical interpretation of variants in cancer",
             "doi": "10.1186/s13073-019-0687-x",
             "pmid": "31779674",
+            "urls": [
+                "https://doi.org/10.1186/s13073-019-0687-x",
+                "https://pubmed.ncbi.nlm.nih.gov/31779674/",
+            ],
+            "aliases": ["CIViC curation SOP"],
             "type": "Document",
         },
-        "methodType": "variant curation standard operating procedure",
+        "methodType": "curation",
         "type": "Method",
     }
 
@@ -240,7 +246,6 @@ def gks_did8():
         "mappings": [
             {
                 "coding": {
-                    "id": "DOID:3908",
                     "code": "DOID:3908",
                     "system": "https://disease-ontology.org/?id=",
                 },
@@ -290,6 +295,10 @@ def gks_source592():
         "title": "Afatinib: first global approval.",
         "pmid": "23982599",
         "type": "Document",
+        "urls": [
+            "https://civicdb.org/links/source/1725",
+            "http://www.ncbi.nlm.nih.gov/pubmed/23982599",
+        ],
     }
 
 
@@ -314,18 +323,31 @@ def gks_eid2997(
                 "system": "https://civic.readthedocs.io/en/latest/model/evidence/level.html",
                 "code": "A",
             },
+            "mappings": [
+                {
+                    "coding": {
+                        "code": "e000001",
+                        "name": "authoritative evidence",
+                        "system": "https://go.osu.edu/evidence-codes",
+                    },
+                    "relation": "exactMatch",
+                }
+            ],
         },
         "proposition": {
             "type": "VariantTherapeuticResponseProposition",
             "predicate": "predictsSensitivityTo",
             "objectTherapeutic": gks_tid146,
             "conditionQualifier": gks_did8,
-            "alleleOriginQualifier": {"name": "SOMATIC"},
+            "alleleOriginQualifier": {
+                "name": "somatic",
+                "extensions": [{"name": "civic_variant_origin", "value": "SOMATIC"}],
+            },
             "geneContextQualifier": gks_gid19,
             "subjectVariant": gks_mpid33,
         },
         "specifiedBy": gks_method,
-        "reportedIn": [gks_source592],
+        "reportedIn": [gks_source592, "https://civicdb.org/links/evidence/2997"],
     }
     return Statement(**params)
 
@@ -351,7 +373,10 @@ def gks_aid6(
             "type": "VariantTherapeuticResponseProposition",
             "subjectVariant": gks_mpid33,
             "geneContextQualifier": gks_gid19,
-            "alleleOriginQualifier": {"name": "SOMATIC"},
+            "alleleOriginQualifier": {
+                "name": "somatic",
+                "extensions": [{"name": "civic_variant_origin", "value": "SOMATIC"}],
+            },
             "predicate": "predictsSensitivityTo",
             "objectTherapeutic": gks_tid146,
             "conditionQualifier": gks_did8,
@@ -362,16 +387,6 @@ def gks_aid6(
                 "system": "AMP/ASCO/CAP (AAC) Guidelines, 2017",
                 "code": "Level A",
             },
-            "mappings": [
-                {
-                    "coding": {
-                        "system": "https://civic.readthedocs.io/en/latest/model/evidence/level.html",
-                        "code": "A",
-                        "name": "Validated association",
-                    },
-                    "relation": "exactMatch",
-                }
-            ],
         },
         "classification": {
             "primaryCoding": {
@@ -384,8 +399,15 @@ def gks_aid6(
                 "type": "EvidenceLine",
                 "hasEvidenceItems": [gks_eid2997],
                 "directionOfEvidenceProvided": "supports",
+                "strengthOfEvidenceProvided": {
+                    "primaryCoding": {
+                        "code": "Level A",
+                        "system": "AMP/ASCO/CAP (AAC) Guidelines, 2017",
+                    },
+                },
             }
         ],
+        "reportedIn": ["https://civicdb.org/links/assertion/6"],
     }
     return VariantTherapeuticResponseStudyStatement(**params)
 
@@ -509,19 +531,18 @@ class TestCivicGksPredictiveAssertion(object):
         """Test that single therapy works as expected"""
         record = CivicGksPredictiveAssertion(aid6, endorsement=endorsement4)
         assert isinstance(record, VariantTherapeuticResponseStudyStatement)
-        assert len(record.hasEvidenceLines) > 1
+        assert len(record.hasEvidenceLines) == 1
 
         # Don't need to test ALL has evidence lines
+        check_evs = []
+        el = record.hasEvidenceLines[0]
+        assert len(el.hasEvidenceItems) == 6
+        for ev in el.hasEvidenceItems:
+            if ev.id == "civic.eid:2997":
+                check_evs.append(ev)
+
         record_copy = record.model_copy(deep=True)
-        check_els = []
-        for el in record_copy.hasEvidenceLines:
-            assert isinstance(el, EvidenceLine)
-            assert len(el.hasEvidenceItems) == 1
-
-            if el.hasEvidenceItems[0].id == "civic.eid:2997":
-                check_els.append(el)
-
-        record_copy.hasEvidenceLines = check_els
+        record_copy.hasEvidenceLines[0].hasEvidenceItems = check_evs
         record_copy = record_copy.model_dump(exclude_none=True)
         diff = DeepDiff(
             record_copy, gks_aid6.model_dump(exclude_none=True), ignore_order=True
@@ -532,7 +553,8 @@ class TestCivicGksPredictiveAssertion(object):
         """Test that combination therapy works as expected"""
         record = CivicGksPredictiveAssertion(aid7)
         assert isinstance(record, VariantTherapeuticResponseStudyStatement)
-        assert len(record.hasEvidenceLines) > 1
+        assert len(record.hasEvidenceLines) == 1
+        assert len(record.hasEvidenceLines[0].hasEvidenceItems) == 4
         therapy = record.proposition.objectTherapeutic.root
         assert isinstance(therapy, TherapyGroup)
         assert therapy.membershipOperator == "AND"
@@ -584,7 +606,8 @@ class TestCivicGksPrognosticAssertion(object):
         """Test that valid assertion works as expected"""
         record = CivicGksPrognosticAssertion(aid20)
         assert isinstance(record, VariantPrognosticStudyStatement)
-        assert len(record.hasEvidenceLines) > 1
+        assert len(record.hasEvidenceLines) == 1
+        assert len(record.hasEvidenceLines[0].hasEvidenceItems) == 6
         assert record.proposition.predicate == "associatedWithWorseOutcomeFor"
         assert record.strength.primaryCoding.code.root == "Level A"
         assert record.classification.primaryCoding.code.root == "Tier I"
@@ -597,7 +620,8 @@ class TestCivicGksDiagnosticAssertion(object):
         """Test that valid assertion works as expected"""
         record = CivicGksDiagnosticAssertion(aid9)
         assert isinstance(record, VariantDiagnosticStudyStatement)
-        assert len(record.hasEvidenceLines) > 1
+        assert len(record.hasEvidenceLines) == 1
+        assert len(record.hasEvidenceLines[0].hasEvidenceItems) == 2
         assert record.proposition.predicate == "isDiagnosticInclusionCriterionFor"
         assert record.strength.primaryCoding.code.root == "Level C"
         assert record.classification.primaryCoding.code.root == "Tier II"
@@ -609,5 +633,8 @@ class TestCivicGksRecord(object):
     def test_invalid(self, aid117):
         """Test that unsupported assertion types raise NotImplementedError"""
 
-        with pytest.raises(NotImplementedError, match=r"Assertion type ONCOGENIC is not currently supported"):
+        with pytest.raises(
+            NotImplementedError,
+            match=r"Assertion type ONCOGENIC is not currently supported",
+        ):
             create_gks_record_from_assertion(aid117)
