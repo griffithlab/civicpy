@@ -764,7 +764,7 @@ class TestCivicGksPredictiveAssertion(object):
     def test_valid_substitution_therapy(
         self,
         test_coordinates,
-        teset_clinvar_entries,
+        test_clinvar_entries,
         test_allele_registry_id,
         test_hgvs_expressions,
         test_evidence_items,
