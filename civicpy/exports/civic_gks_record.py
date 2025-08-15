@@ -267,8 +267,82 @@ class CivicGksMolecularProfile(CategoricalVariant):
         :param molecular_profile: CIViC molecular profile record
         :return: A tuple containing aliases and dbSNP mappings for a molecular profile.
         """
+
+        def _get_variant_concept_mapping(variant: GeneVariant) -> ConceptMapping:
+            """Get concept mapping for variant
+
+            :param variant: CIViC variant record
+            :return: Concept mapping for CIViC variant record, containing variant
+                subtype and variant types.
+            """
+            extensions = [Extension(name="subtype", value=variant.subtype)]
+
+            variant_types = [
+                ConceptMapping(
+                    coding=Coding(
+                        id=f"civic.variant_type:{vt.id}",
+                        code=vt.so_id,
+                        name=vt.name,
+                        system=f"{vt.url.rsplit('/', 1)[0]}/",
+                    ),
+                    relation=Relation.EXACT_MATCH,
+                )
+                for vt in variant.variant_types if vt.url is not None
+            ]
+
+            if variant_types:
+                extensions.append(Extension(name="variant_types", value=variant_types))
+
+            return ConceptMapping(
+                coding=Coding(
+                    id=f"civic.vid:{variant.id}",
+                    code=str(variant.id),
+                    name=variant.name,
+                    system=f"{LINKS_URL}/variant/",
+                    extensions=extensions,
+                ),
+                relation=Relation.EXACT_MATCH,
+            )
+
         aliases = []
-        mappings = []
+        variant: GeneVariant = molecular_profile.variants[0]
+        variant_concept_mapping = _get_variant_concept_mapping(variant)
+        mappings = [
+            ConceptMapping(
+                coding=Coding(
+                    id=f"civic.mpid:{molecular_profile.id}",
+                    code=str(molecular_profile.id),
+                    system=f"{LINKS_URL}/molecular_profile/",
+                ),
+                relation=Relation.EXACT_MATCH,
+            ),
+            variant_concept_mapping,
+        ]
+
+        allele_registry_id = variant.allele_registry_id
+        if allele_registry_id:
+            mappings.append(
+                ConceptMapping(
+                    coding=Coding(
+                        system="https://reg.clinicalgenome.org/redmine/projects/registry/genboree_registry/by_canonicalid?canonicalid=",
+                        code=allele_registry_id,
+                    ),
+                    relation=Relation.RELATED_MATCH,
+                )
+            )
+
+        clinvar_ids = variant.clinvar_entries
+        if clinvar_ids:
+            mappings.extend(
+                ConceptMapping(
+                    coding=Coding(
+                        system="https://www.ncbi.nlm.nih.gov/clinvar/variation/",
+                        code=clinvar_id,
+                    ),
+                    relation=Relation.RELATED_MATCH,
+                )
+                for clinvar_id in clinvar_ids
+            )
 
         for a in molecular_profile.aliases:
             if _SNP_RE.match(a):
