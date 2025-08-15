@@ -773,7 +773,7 @@ class TestCivicGksPredictiveAssertion(object):
     ):
         """Test that substitution therapy works as expected"""
         test_coordinates.return_value = None
-        teset_clinvar_entries.return_value = []
+        test_clinvar_entries.return_value = []
         test_allele_registry_id.return_value = None
         test_is_valid_for_gks_json.return_value = True
         test_evidence_items.return_value = []
