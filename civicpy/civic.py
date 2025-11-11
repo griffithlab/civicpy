@@ -31,7 +31,7 @@ FRESH_DELTA = timedelta(days=CACHE_TIMEOUT_DAYS)
 
 MODULE = importlib.import_module("civicpy.civic")
 
-API_URL = "https://staging.civicdb.org/api/graphql"
+API_URL = "https://civicdb.org/api/graphql"
 
 LINKS_URL = "https://civicdb.org/links"
 
