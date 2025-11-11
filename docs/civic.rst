@@ -659,34 +659,33 @@ Organization
       A description of the organization.
 
 
-Endorsement
+Approval
 ^^^^^^^^^^^
 
-.. autoclass:: Endorsement
+.. autoclass:: Approval
    :members:
 
    .. attribute:: assertion_id
 
-      The :attr:`CivicRecord.id` of the :class:`Assertion` record that this endorsement pertains to.
+      The :attr:`CivicRecord.id` of the :class:`Assertion` record that this approval pertains to.
 
    .. attribute:: last_reviewed
 
-      Timestamp reflecting the last time the endorsement was reviewed and put
+      Timestamp reflecting the last time the approval was reviewed and put
       into active status.
 
    .. attribute:: organization_id
 
-      The :attr:`CivicRecord.id` of the :class:`Organziation` record that endorsed the assertion.
+      The :attr:`CivicRecord.id` of the :class:`Organziation` record that approved the assertion.
 
    .. attribute:: ready_for_clinvar_submission
 
-      Boolean, reflecting whether the endorsement meets all criteria for
+      Boolean, reflecting whether the approval meets all criteria for
       submission of the assertion to ClinVar.
 
    .. attribute:: status
 
-      The status of the endorsement. One of ``ACTIVE``, ``REQUIRES_REVIEW``,
-      or ``REVOKED ``.
+      The status of the approval. One of ``ACTIVE``, ``REQUIRES_REVIEW``, or ``REVOKED``.
 
 
 CIViC Attributes

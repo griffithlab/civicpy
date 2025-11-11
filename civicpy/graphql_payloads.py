@@ -165,7 +165,6 @@ def _construct_get_molecular_profile_payload():
         }"""
 
 
-
 def _construct_get_all_molecular_profiles_payload():
     return """
         query molecularProfiles($after: String) {
@@ -458,6 +457,7 @@ def _construct_get_all_variants_payload():
             }
         }"""
 
+
 def _construct_get_evidence_payload():
     return """
         query evidenceItem($id: Int!) {
@@ -493,7 +493,6 @@ def _construct_get_evidence_payload():
                 rating: evidenceRating
             }
         }"""
-
 
 
 def _construct_get_all_evidence_payload():
@@ -540,7 +539,6 @@ def _construct_get_all_evidence_payload():
         }"""
 
 
-
 def _construct_get_assertion_payload():
     return """
         query assertion($id: Int!) {
@@ -579,7 +577,7 @@ def _construct_get_assertion_payload():
                 disease {
                   id
                 }
-                endorsements {
+                approvals {
                   nodes {
                     id
                   }
@@ -641,7 +639,7 @@ def _construct_get_all_assertions_payload():
                     disease {
                       id
                     }
-                    endorsements {
+                    approvals {
                       nodes {
                         id
                       }
@@ -869,6 +867,7 @@ def _construct_get_all_phenotypes_payload():
         }
     """
 
+
 def _construct_get_organization_payload():
     return """
         query organization($id: Int!) {
@@ -900,10 +899,11 @@ def _construct_get_all_organizations_payload():
         }
     """
 
-def _construct_get_endorsement_payload():
+
+def _construct_get_approval_payload():
     return """
-        query endorsement($id: Int!) {
-            endorsement(id: $id) {
+        query approval($id: Int!) {
+            approval(id: $id) {
                 id
                 assertion {
                   id
@@ -918,10 +918,10 @@ def _construct_get_endorsement_payload():
         }"""
 
 
-def _construct_get_all_endorsements_payload():
+def _construct_get_all_approvals_payload():
     return """
-        query endorsements($after: String) {
-            endorsements(after: $after) {
+        query approvals($after: String) {
+            approvals(after: $after) {
               totalCount
               pageInfo {
                 hasNextPage
