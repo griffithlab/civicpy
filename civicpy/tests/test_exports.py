@@ -113,9 +113,9 @@ def aid117():
 
 
 @pytest.fixture(scope="module")
-def endorsement4():
-    """Create test fixture for active endorsement"""
-    return civic.get_endorsement_by_id(4)
+def approval4():
+    """Create test fixture for active approval"""
+    return civic.get_approval_by_id(4)
 
 
 @pytest.fixture(scope="module")
@@ -129,7 +129,7 @@ def gks_contributions():
                 "name": "The McDonnell Genome Institute",
                 "description": "The McDonnell Genome Institute (MGI) is a world leader in the fast-paced, constantly changing field of genomics. A truly unique institution, we are pushing the limits of academic research by creating, testing, and implementing new approaches to the study of biology with the goal of understanding human health and disease, as well as evolution and the biology of other organisms.",
             },
-            "activityType": "endorsement.last_reviewed",
+            "activityType": "approval.last_reviewed",
             "date": "2025-05-27",
         }
     ]
@@ -710,9 +710,9 @@ class TestCivicGksEvidence(object):
 class TestCivicGksPredictiveAssertion(object):
     """Test that CivicGksPredictiveAssertion works as expected"""
 
-    def test_valid_single_therapy(self, aid6, endorsement4, gks_aid6):
+    def test_valid_single_therapy(self, aid6, approval4, gks_aid6):
         """Test that single therapy works as expected"""
-        record = CivicGksPredictiveAssertion(aid6, endorsement=endorsement4)
+        record = CivicGksPredictiveAssertion(aid6, approval=approval4)
         assert isinstance(record, VariantTherapeuticResponseStudyStatement)
         assert len(record.hasEvidenceLines) == 1
 

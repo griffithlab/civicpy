@@ -46,7 +46,7 @@ from civicpy.civic import (
     LINKS_URL,
     Assertion,
     Coordinate,
-    Endorsement,
+    Approval,
     Evidence,
     Disease,
     Gene,
@@ -287,7 +287,8 @@ class CivicGksMolecularProfile(CategoricalVariant):
                     ),
                     relation=Relation.EXACT_MATCH,
                 )
-                for vt in variant.variant_types if vt.url is not None
+                for vt in variant.variant_types
+                if vt.url is not None
             ]
 
             if variant_types:
@@ -826,12 +827,12 @@ class _CivicGksAssertionRecord(_CivicGksEvidenceAssertionMixin, ABC):
     def __init__(
         self,
         assertion: Assertion,
-        endorsement: Endorsement | None = None,
+        approval: Approval | None = None,
     ) -> None:
         """Initialize _CivicGksAssertionRecord class
 
         :param assertion: CIViC assertion record
-        :param endorsement: CIViC endorsement for the assertion, defaults to None
+        :param approval: CIViC approval for the assertion, defaults to None
         :raises CivicGksRecordError: If CIViC assertion is not able to be represented as
             GKS object
         """
@@ -842,7 +843,7 @@ class _CivicGksAssertionRecord(_CivicGksEvidenceAssertionMixin, ABC):
         classification, strength = self.get_classification_and_strength(
             assertion.amp_level
         )
-        contributions = self.get_contributions(endorsement) if endorsement else None
+        contributions = self.get_contributions(approval) if approval else None
 
         super().__init__(
             id=f"civic.aid:{assertion.id}",
@@ -858,17 +859,17 @@ class _CivicGksAssertionRecord(_CivicGksEvidenceAssertionMixin, ABC):
         )
 
     @staticmethod
-    def get_contributions(endorsement: Endorsement) -> list[Contribution]:
-        """Get contributions for an endorsement
+    def get_contributions(approval: Approval) -> list[Contribution]:
+        """Get contributions for an approval
 
-        :param endorsement: Endorsement for assertion
-        :return: List of contributions containing when the endorsement was last reviewed
+        :param approval: Approval for assertion
+        :return: List of contributions containing when the approval was last reviewed
         """
-        organization: Organization = endorsement.organization
+        organization: Organization = approval.organization
         return [
             Contribution(
-                activityType=f"{endorsement.type}.last_reviewed",
-                date=endorsement.last_reviewed.split("T", 1)[0],
+                activityType=f"{approval.type}.last_reviewed",
+                date=approval.last_reviewed.split("T", 1)[0],
                 contributor=Agent(
                     id=f"civic.{organization.type}:{organization.id}",
                     name=organization.name,
@@ -955,7 +956,7 @@ class CivicGksPrognosticAssertion(
 
 
 def create_gks_record_from_assertion(
-    assertion: Assertion, endorsement: Endorsement | None = None
+    assertion: Assertion, approval: Approval | None = None
 ) -> (
     CivicGksDiagnosticAssertion
     | CivicGksPredictiveAssertion
@@ -964,20 +965,20 @@ def create_gks_record_from_assertion(
     """Create GKS Record from CIViC Assertion
 
     :param assertion: CIViC assertion record
-    :param endorsement: CIViC endorsement for the assertion, defaults to None
+    :param approval: CIViC approval for the assertion, defaults to None
     :raises NotImplementedError: If GKS Record translation is not yet supported.
         Currently, only the following assertion types are supported: DIAGNOSTIC,
         PREDICTIVE, and PROGNOSTIC.
     :return: GKS Assertion Record object
     """
     if assertion.assertion_type == "DIAGNOSTIC":
-        return CivicGksDiagnosticAssertion(assertion, endorsement=endorsement)
+        return CivicGksDiagnosticAssertion(assertion, approval=approval)
 
     if assertion.assertion_type == "PREDICTIVE":
-        return CivicGksPredictiveAssertion(assertion, endorsement=endorsement)
+        return CivicGksPredictiveAssertion(assertion, approval=approval)
 
     if assertion.assertion_type == "PROGNOSTIC":
-        return CivicGksPrognosticAssertion(assertion, endorsement=endorsement)
+        return CivicGksPrognosticAssertion(assertion, approval=approval)
 
     err_msg = f"Assertion type {assertion.assertion_type} is not currently supported"
     raise NotImplementedError(err_msg)

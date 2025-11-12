@@ -74,11 +74,10 @@ Organizations
 
 .. autofunction:: get_all_organizations
 
-Endorsements
-~~~~~~~~~~~~
+Approvals
 
-.. autofunction:: get_all_endorsements
-.. autofunction:: get_all_endorsements_ready_for_clinvar_submission_for_org
+.. autofunction:: get_all_approvals
+.. autofunction:: get_all_approvals_ready_for_clinvar_submission_for_org
 
 By ID
 -----
@@ -160,11 +159,11 @@ Organizations
 .. autofunction:: get_organization_by_id
 .. autofunction:: get_organizations_by_ids
 
-Endorsements
-~~~~~~~~~~~~
+Approvals
+~~~~~~~~~
 
-.. autofunction:: get_endorsement_by_id
-.. autofunction:: get_endorsements_by_ids
+.. autofunction:: get_approval_by_id
+.. autofunction:: get_approvals_by_ids
 
 
 By Coordinates
@@ -240,8 +239,8 @@ Phenotypes
 .. autofunction:: get_phenotype_by_hpo_id
 .. autofunction:: get_phenotype_by_name
 
-Endorsements
-~~~~~~~~~~~~
+Approvals
+~~~~~~~~~
 
-.. autofunction:: search_endorsements_by_organization_id
-.. autofunction:: search_endorsements_by_assertion_id
+.. autofunction:: search_approvals_by_organization_id
+.. autofunction:: search_approvals_by_assertion_id
