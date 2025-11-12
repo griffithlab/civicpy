@@ -305,7 +305,7 @@ def update_cache(
         for a in assertions:
             a.evidence_items = [e for e in evidence if e.id in a.evidence_ids]
             a.therapies = [t for t in therapies if t.id in a.therapy_ids]
-            a.approvals = [e for e in approvals if e.id in a.approval_ids]
+            a.approvals = [ap for ap in approvals if ap.id in a.approval_ids]
             a._partial = False
             CACHE[hash(a)] = a
         for vg in variant_groups:
@@ -361,7 +361,7 @@ def update_cache(
             p._partial = False
             CACHE[hash(p)] = p
         for o in organizations:
-            o.approvals = [e for e in approvals if e.organization_id == o.id]
+            o.approvals = [a for a in approvals if a.organization_id == o.id]
             o._partial = False
             CACHE[hash(o)] = o
         for e in approvals:
@@ -3698,7 +3698,7 @@ def search_approvals_by_organization_id(organization_id):
     :returns: A list of :class:`Approval` objects.
     """
     approvals = _get_elements_by_ids("approval", get_all=True)
-    matching_approvals = [e for e in approvals if e.organization_id == organization_id]
+    matching_approvals = [a for a in approvals if a.organization_id == organization_id]
     return matching_approvals
 
 
@@ -3708,7 +3708,7 @@ def search_approvals_by_assertion_id(assertion_id):
     :returns: A list of :class:`Approval` objects.
     """
     approvals = _get_elements_by_ids("approval", get_all=True)
-    matching_approvals = [e for e in approvals if e.assertion_id == assertion_id]
+    matching_approvals = [a for a in approvals if a.assertion_id == assertion_id]
     return matching_approvals
 
 
@@ -3723,4 +3723,4 @@ def get_all_approvals_ready_for_clinvar_submission_for_org(
         that are ready for submission to ClinVar.
     """
     approvals = search_approvals_by_organization_id(organization_id)
-    return [e for e in approvals if e.ready_for_clinvar_submission]
+    return [a for a in approvals if a.ready_for_clinvar_submission]

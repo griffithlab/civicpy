@@ -704,14 +704,14 @@ class TestApproval(object):
         assert len(approvals) >= 4
 
     def test_get_by_id(self):
-        e = civic.get_approval_by_id(1)
-        assert e.id == 1
-        assert e.type == "approval"
+        a = civic.get_approval_by_id(1)
+        assert a.id == 1
+        assert a.type == "approval"
 
     def test_attributes(self):
-        e = civic.get_approval_by_id(1)
-        assert e.organization_id == 14
-        assert e.assertion_id == 101
+        a = civic.get_approval_by_id(1)
+        assert a.organization_id == 14
+        assert a.assertion_id == 101
 
     def test_search_approvals_by_organization_id(self):
         approvals = civic.search_approvals_by_organization_id(1)

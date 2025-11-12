@@ -74,8 +74,7 @@ Organizations
 
 .. autofunction:: get_all_organizations
 
-approvals
-~~~~~~~~~~~~
+Approvals
 
 .. autofunction:: get_all_approvals
 .. autofunction:: get_all_approvals_ready_for_clinvar_submission_for_org

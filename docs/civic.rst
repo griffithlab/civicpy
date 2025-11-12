@@ -660,7 +660,7 @@ Organization
 
 
 Approval
-^^^^^^^^^^^
+^^^^^^^^
 
 .. autoclass:: Approval
    :members:
