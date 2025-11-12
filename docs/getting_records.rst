@@ -240,7 +240,7 @@ Phenotypes
 .. autofunction:: get_phenotype_by_name
 
 Approvals
-~~~~~~~~~~~~
+~~~~~~~~~
 
 .. autofunction:: search_approvals_by_organization_id
 .. autofunction:: search_approvals_by_assertion_id
