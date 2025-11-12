@@ -36,7 +36,7 @@ setup(
         "networkx",
         "pandas",
         "Click",
-        "vcfpy=0.13.8",
+        "vcfpy~=0.13.8",
         "pysam",
         "backports-datetime-fromisoformat",
         "deprecation",
