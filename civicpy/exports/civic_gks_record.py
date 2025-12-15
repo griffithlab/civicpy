@@ -1,4 +1,4 @@
-u s"""Module for representing CIViC assertion record as GKS AAC 2017 Study Statement"""
+"""Module for representing CIViC assertion record as GKS AAC 2017 Study Statement"""
 
 from abc import ABC
 from enum import Enum
