@@ -1,4 +1,4 @@
-"""Module for representing CIViC assertion record as GKS AAC 2017 Study Statement"""
+u s"""Module for representing CIViC assertion record as GKS AAC 2017 Study Statement"""
 
 from abc import ABC
 from enum import Enum
@@ -874,6 +874,7 @@ class _CivicGksAssertionRecord(_CivicGksEvidenceAssertionMixin, ABC):
                     id=f"civic.{organization.type}:{organization.id}",
                     name=organization.name,
                     description=organization.description,
+                    extensions=[Extension(name="isApprovedVcep", value=organization.isApprovedVcep)],
                 ),
             )
         ]
