@@ -692,7 +692,7 @@ class TestOrganization(object):
         org = civic.get_organization_by_id(1)
         assert org.name == "The McDonnell Genome Institute"
         assert org.url == "http://genome.wustl.edu/"
-        assert org.isApprovedVcep == False
+        assert org.is_approved_vcep == False
 
     def test_properties(self):
         org = civic.get_organization_by_id(14)
