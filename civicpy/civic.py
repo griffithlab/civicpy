@@ -1526,7 +1526,7 @@ class Organization(CivicRecord):
             "name",
             "url",
             "description",
-            "isApprovedVcep",
+            "is_approved_vcep",
         }
     )
 
