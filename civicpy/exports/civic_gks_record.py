@@ -874,6 +874,7 @@ class _CivicGksAssertionRecord(_CivicGksEvidenceAssertionMixin, ABC):
                     id=f"civic.{organization.type}:{organization.id}",
                     name=organization.name,
                     description=organization.description,
+                    extensions=[Extension(name="is_approved_vcep", value=organization.is_approved_vcep)],
                 ),
             )
         ]

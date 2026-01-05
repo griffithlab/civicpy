@@ -128,6 +128,7 @@ def gks_contributions():
                 "type": "Agent",
                 "name": "The McDonnell Genome Institute",
                 "description": "The McDonnell Genome Institute (MGI) is a world leader in the fast-paced, constantly changing field of genomics. A truly unique institution, we are pushing the limits of academic research by creating, testing, and implementing new approaches to the study of biology with the goal of understanding human health and disease, as well as evolution and the biology of other organisms.",
+                "extensions": [{"name": "is_approved_vcep", "value": False}],
             },
             "activityType": "approval.last_reviewed",
             "date": "2025-05-27",
