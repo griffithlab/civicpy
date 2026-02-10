@@ -136,6 +136,27 @@ Fusion
 .. _HGNC Gene Symbol: https://www.genenames.org/
 
 
+Region
+^^^^^^
+
+.. autoclass:: Region
+   :show-inheritance:
+   :members:
+
+   .. attribute:: aliases
+
+      A list of alternate names by which this region is referenced.
+
+   .. attribute:: description
+
+      A curated summary of the clinical significance of this region.
+
+   .. attribute:: name
+
+      The name of the region. Either a chromosome, a chromosome arm, or
+      a cytoband.
+
+
 Variant
 ^^^^^^^
 
@@ -145,8 +166,8 @@ Variant
 
    .. attribute:: feature_id
 
-      The :attr:`CivicRecord.id` of the :class:`Gene`, :class:`Factor`, or
-      :class:`Fusion` the variant belongs to.
+      The :attr:`CivicRecord.id` of the :class:`Gene`, :class:`Factor`,
+      :class:`Fusion`, or :class:`Region` the variant belongs to.
 
    .. attribute:: name
 
@@ -255,6 +276,20 @@ FusionVariant
 .. _CIViC coordinates: https://docs.civicdb.org/en/latest/model/variants/coordinates.html
 
 .. _VICC fusion specification: https://fusions.cancervariants.org/en/latest/nomenclature.html
+
+
+RegionVariant
+"""""""""""""
+
+.. autoclass:: RegionVariant
+   :show-inheritance:
+   :members:
+
+   .. attribute:: iscn_name
+
+      The `International System for Human Cytogenomic Nomenclature Name`_ representing the region variant.
+
+.. _International System for Human Cytogenomic Nomenclature Name: https://iscn.karger.com/
 
 
 MolecularProfile

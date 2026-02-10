@@ -176,6 +176,7 @@ class TestGeneVariants(object):
         variant = civic.get_variant_by_id(11)
         assert variant.id == 11
         assert variant.type == "variant"
+        assert variant.subtype == "gene_variant"
 
     def test_attributes(self):
         variant = civic.get_variant_by_id(11)
@@ -202,6 +203,7 @@ class TestFusionVariants(object):
         variant = civic.get_variant_by_id(1)
         assert variant.id == 1
         assert variant.type == "variant"
+        assert variant.subtype == "fusion_variant"
 
     def test_attributes(self):
         variant = civic.get_variant_by_id(1)
@@ -291,6 +293,7 @@ class TestFactorVariants(object):
         variant = civic.get_variant_by_id(4985)
         assert variant.id == 4985
         assert variant.type == "variant"
+        assert variant.subtype == "factor_variant"
 
     def test_attributes(self):
         variant = civic.get_variant_by_id(4985)
@@ -300,6 +303,29 @@ class TestFactorVariants(object):
         variant = civic.get_variant_by_id(4985)
         assert variant.factor.id == 61746
         assert variant.factor == variant.feature
+
+
+class TestRegionVariants(object):
+    def test_get_all(self):
+        variants = civic.get_all_region_variants()
+        assert len(variants) >= 3
+        for variant in variants:
+            assert variant.subtype == "region_variant"
+
+    def test_get_by_id(self):
+        variant = civic.get_variant_by_id(5078)
+        assert variant.id == 5078
+        assert variant.type == "variant"
+        assert variant.subtype == "region_variant"
+
+    def test_attributes(self):
+        variant = civic.get_variant_by_id(5078)
+        assert variant.iscn_name == "amp(17p)"
+
+    def test_properties(self):
+        variant = civic.get_variant_by_id(5078)
+        assert variant.region.id == 62048
+        assert variant.region == variant.feature
 
 
 class TestMolecularProfiles(object):
@@ -559,6 +585,39 @@ class TestFusions(object):
     def test_search_fusions_by_partner_gene_id(self):
         fusions = civic.search_fusions_by_partner_gene_id(573)
         assert len(fusions) >= 5
+
+
+class TestRegions(object):
+    def test_get_all(self):
+        regions = civic.get_all_regions()
+        assert len(regions) >= 2
+
+    def test_get_non_rejected(self):
+        regions = civic.get_all_regions(include_status=["accepted", "submitted"])
+        assert len(regions) >= 2
+
+    def test_get_accepted_only(self):
+        regions = civic.get_all_regions(include_status=["accepted"])
+        assert len(regions) >= 1
+
+    def test_get_by_id(self):
+        region = civic.get_region_by_id(62048)
+        assert region.type == "region"
+        assert region.id == 62048
+
+    def test_get_by_name(self):
+        region = civic.get_region_by_name("17p")
+        assert region.type == "region"
+        assert region.name == "17p"
+
+    def test_attributes(self):
+        region = civic.get_region_by_id(62048)
+        assert region.name == "17p"
+
+    def test_properties(self):
+        region = civic.get_region_by_id(62048)
+        assert len(region.variants) == 2
+        assert len(region.sources) == 0
 
 
 class TestDiseases(object):

@@ -34,7 +34,7 @@ setup(
         "requests",
         "obonet",
         "networkx",
-        "pandas",
+        "pandas<=2.3.3",
         "Click",
         "vcfpy~=0.13.8",
         "pysam",

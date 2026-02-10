@@ -129,6 +129,41 @@ def _construct_get_all_fusions_payload():
             }
         }"""
 
+def _construct_get_region_payload():
+    return """
+        query region($id: Int!) {
+            region(id: $id) {
+                name
+                description
+                aliases: featureAliases
+                sources {
+                    id
+                }
+            }
+        }"""
+
+
+def _construct_get_all_regions_payload():
+    return """
+        query regions($after: String) {
+            regions(after: $after, evidenceStatusFilter: ALL) {
+              totalCount
+              pageInfo {
+                hasNextPage
+                endCursor
+              }
+              nodes {
+                id
+                name
+                description
+                aliases: featureAliases
+                sources {
+                    id
+                }
+              }
+            }
+        }"""
+
 
 def _construct_get_molecular_profile_payload():
     return """
@@ -307,6 +342,9 @@ def _construct_get_variant_payload():
                 ... on FactorVariant {
                     ncit_id: ncitId
                 }
+                ... on RegionVariant {
+                    iscn_name: iscnName
+                }
                 feature {
                     id
                     name
@@ -359,6 +397,9 @@ def _construct_get_all_variants_payload():
                     }
                     ... on FactorVariant {
                         ncit_id: ncitId
+                    }
+                    ... on RegionVariant {
+                        iscn_name: iscnName
                     }
                     ... on FusionVariant {
                         vicc_compliant_name: viccCompliantName
