@@ -3011,7 +3011,7 @@ def get_all_regions(
     """
     Queries CIViC for all region features.
 
-    :param list include_status: A list of statuses. Only factors and their associated entities matching the given statuses will be returned. Use **None** to include regions without any associated entities.
+    :param list include_status: A list of statuses. Only regions and their associated entities matching the given statuses will be returned. Use **None** to include regions without any associated entities.
     :param bool allow_cached: Indicates whether or not object retrieval from CACHE is allowed. If **False** it will query the CIViC database directly.
     :returns: A list of :class:`Region` objects.
     """
