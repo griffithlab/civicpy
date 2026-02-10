@@ -9,6 +9,7 @@ from pathlib import Path
 from collections import defaultdict, namedtuple
 from datetime import datetime, timedelta
 from backports.datetime_fromisoformat import MonkeyPatch
+import time
 
 MonkeyPatch.patch_fromisoformat()
 import re
@@ -2244,7 +2245,7 @@ def _request_all(element):
     payload = payload_method()
 
     after_cursor = None
-    variables = {"after": after_cursor}
+    variables = {"after": after_cursor, "page_size": 50}
     resp = requests.post(
         API_URL, json={"query": payload, "variables": variables}, timeout=(10, 200)
     )
@@ -2256,6 +2257,7 @@ def _request_all(element):
 
     while has_next_page:
         variables = {"after": after_cursor}
+        time.sleep(0.1)
         resp = requests.post(
             API_URL, json={"query": payload, "variables": variables}, timeout=(10, 200)
         )
