@@ -687,6 +687,19 @@ class TestCivicGksMolecularProfile(object):
             )
             assert expressions is None
 
+    def test_na_clinvar_mapping(self, v600e_mp):
+        """Test that get_aliases_and_mappings method works as expected when no clinvar entry found"""
+        variant = v600e_mp.variants[0]
+
+        with patch.object(variant, "clinvar_entries", new=["N/A"]):
+            gks_mp = CivicGksMolecularProfile(v600e_mp)
+            _, mappings = gks_mp.get_aliases_and_mappings(v600e_mp)
+            assert mappings
+            assert not any(
+                m.coding.system == "https://www.ncbi.nlm.nih.gov/clinvar/variation/"
+                for m in mappings
+            )
+
 
 class TestCivicGksTherapyGroup(object):
     """Test that CivicGksTherapyGroup works as expected"""
