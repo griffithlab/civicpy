@@ -1,4 +1,3 @@
-from civicpy import civic
 import datetime
 from civicpy.__version__ import __version__
 import vcfpy

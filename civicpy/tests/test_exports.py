@@ -1,11 +1,10 @@
+from copy import deepcopy
 from unittest.mock import PropertyMock, patch
 import pytest
 from deepdiff import DeepDiff
 from ga4gh.va_spec.base import Condition, ConditionSet, Statement, TherapyGroup
 from ga4gh.va_spec.aac_2017 import (
-    VariantTherapeuticResponseStudyStatement,
-    VariantDiagnosticStudyStatement,
-    VariantPrognosticStudyStatement,
+    VariantClinicalSignificanceStatement,
 )
 
 
@@ -15,11 +14,8 @@ from civicpy.exports.civic_gks_record import (
     CivicGksEvidence,
     CivicGksMolecularProfile,
     CivicGksRecordError,
-    CivicGksPredictiveAssertion,
-    CivicGksDiagnosticAssertion,
-    CivicGksPrognosticAssertion,
+    CivicGksAssertion,
     CivicGksTherapyGroup,
-    create_gks_record_from_assertion,
 )
 
 
@@ -361,6 +357,23 @@ def gks_tid146():
 
 
 @pytest.fixture(scope="module")
+def gks_therapeutic_proposition(gks_mpid33, gks_gid19, gks_tid146, gks_did8):
+    """Create test fixture for GKS therapeutic proposition"""
+    return {
+        "type": "VariantTherapeuticResponseProposition",
+        "subjectVariant": gks_mpid33,
+        "geneContextQualifier": gks_gid19,
+        "alleleOriginQualifier": {
+            "name": "somatic",
+            "extensions": [{"name": "civic_variant_origin", "value": "SOMATIC"}],
+        },
+        "predicate": "predictsSensitivityTo",
+        "objectTherapeutic": gks_tid146,
+        "conditionQualifier": gks_did8,
+    }
+
+
+@pytest.fixture(scope="module")
 def gks_source592():
     """Create fixture for source 592 GKS representation"""
     return {
@@ -378,10 +391,7 @@ def gks_source592():
 
 @pytest.fixture(scope="module")
 def gks_eid2997(
-    gks_mpid33,
-    gks_tid146,
-    gks_did8,
-    gks_gid19,
+    gks_therapeutic_proposition,
     gks_method,
     gks_source592,
 ):
@@ -408,18 +418,7 @@ def gks_eid2997(
                 }
             ],
         },
-        "proposition": {
-            "type": "VariantTherapeuticResponseProposition",
-            "predicate": "predictsSensitivityTo",
-            "objectTherapeutic": gks_tid146,
-            "conditionQualifier": gks_did8,
-            "alleleOriginQualifier": {
-                "name": "somatic",
-                "extensions": [{"name": "civic_variant_origin", "value": "SOMATIC"}],
-            },
-            "geneContextQualifier": gks_gid19,
-            "subjectVariant": gks_mpid33,
-        },
+        "proposition": gks_therapeutic_proposition,
         "specifiedBy": gks_method,
         "reportedIn": [gks_source592, "https://civicdb.org/links/evidence/2997"],
     }
@@ -430,42 +429,35 @@ def gks_eid2997(
 def gks_aid6(
     gks_contributions,
     gks_method,
-    gks_mpid33,
-    gks_gid19,
-    gks_tid146,
-    gks_did8,
+    gks_therapeutic_proposition,
     gks_eid2997,
 ):
     """Create CIVIC AID6 GKS representation."""
+    clin_sig_prop = deepcopy(gks_therapeutic_proposition)
+    clin_sig_prop["predicate"] = "hasClinicalSignificanceFor"
+    clin_sig_prop["type"] = "VariantClinicalSignificanceProposition"
+    clin_sig_prop.pop("objectTherapeutic")
+    clin_sig_prop["objectCondition"] = clin_sig_prop.pop("conditionQualifier")
+
     params = {
         "id": "civic.aid:6",
         "contributions": gks_contributions,
         "description": "L858R is among the most common sensitizing EGFR mutations in NSCLC, and is assessed via DNA mutational analysis, including Sanger sequencing and next generation sequencing methods. Tyrosine kinase inhibitor afatinib is FDA approved as a first line systemic therapy in NSCLC with sensitizing EGFR mutation (civic.EID:2997).",
         "type": "Statement",
         "specifiedBy": gks_method,
-        "proposition": {
-            "type": "VariantTherapeuticResponseProposition",
-            "subjectVariant": gks_mpid33,
-            "geneContextQualifier": gks_gid19,
-            "alleleOriginQualifier": {
-                "name": "somatic",
-                "extensions": [{"name": "civic_variant_origin", "value": "SOMATIC"}],
-            },
-            "predicate": "predictsSensitivityTo",
-            "objectTherapeutic": gks_tid146,
-            "conditionQualifier": gks_did8,
-        },
+        "proposition": clin_sig_prop,
         "direction": "supports",
         "strength": {
             "primaryCoding": {
-                "system": "AMP/ASCO/CAP (AAC) Guidelines, 2017",
-                "code": "Level A",
+                "system": "AMP/ASCO/CAP Guidelines, 2017",
+                "code": "strong",
             },
         },
         "classification": {
+            "name": "Tier I",
             "primaryCoding": {
-                "system": "AMP/ASCO/CAP (AAC) Guidelines, 2017",
-                "code": "Tier I",
+                "system": "AMP/ASCO/CAP Guidelines, 2017",
+                "code": "tier i",
             },
         },
         "hasEvidenceLines": [
@@ -473,17 +465,18 @@ def gks_aid6(
                 "type": "EvidenceLine",
                 "hasEvidenceItems": [gks_eid2997],
                 "directionOfEvidenceProvided": "supports",
+                "targetProposition": gks_therapeutic_proposition,
                 "strengthOfEvidenceProvided": {
                     "primaryCoding": {
-                        "code": "Level A",
-                        "system": "AMP/ASCO/CAP (AAC) Guidelines, 2017",
+                        "code": "A",
+                        "system": "AMP/ASCO/CAP Guidelines, 2017",
                     },
                 },
             }
         ],
         "reportedIn": ["https://civicdb.org/links/assertion/6"],
     }
-    return VariantTherapeuticResponseStudyStatement(**params)
+    return VariantClinicalSignificanceStatement(**params)
 
 
 @pytest.fixture(scope="module")
@@ -707,13 +700,13 @@ class TestCivicGksEvidence(object):
             CivicGksEvidence(eid9285)
 
 
-class TestCivicGksPredictiveAssertion(object):
-    """Test that CivicGksPredictiveAssertion works as expected"""
+class TestCivicGksAssertion(object):
+    """Test that CivicGksAssertion works as expected"""
 
     def test_valid_single_therapy(self, aid6, approval4, gks_aid6):
         """Test that single therapy works as expected"""
-        record = CivicGksPredictiveAssertion(aid6, approval=approval4)
-        assert isinstance(record, VariantTherapeuticResponseStudyStatement)
+        record = CivicGksAssertion(aid6, approval=approval4)
+        assert isinstance(record, VariantClinicalSignificanceStatement)
         assert len(record.hasEvidenceLines) == 1
 
         # Don't need to test ALL has evidence lines
@@ -734,11 +727,11 @@ class TestCivicGksPredictiveAssertion(object):
 
     def test_valid_combination_therapy(self, aid7):
         """Test that combination therapy works as expected"""
-        record = CivicGksPredictiveAssertion(aid7)
-        assert isinstance(record, VariantTherapeuticResponseStudyStatement)
+        record = CivicGksAssertion(aid7)
+        assert isinstance(record, VariantClinicalSignificanceStatement)
         assert len(record.hasEvidenceLines) == 1
         assert len(record.hasEvidenceLines[0].hasEvidenceItems) == 4
-        therapy = record.proposition.objectTherapeutic.root
+        therapy = record.hasEvidenceLines[0].targetProposition.objectTherapeutic.root
         assert isinstance(therapy, TherapyGroup)
         assert therapy.membershipOperator == "AND"
         assert len(therapy.therapies) == 2
@@ -778,41 +771,30 @@ class TestCivicGksPredictiveAssertion(object):
         test_is_valid_for_gks_json.return_value = True
         test_evidence_items.return_value = []
         test_hgvs_expressions.return_value = None
-        record = CivicGksPredictiveAssertion(aid19)
-        assert isinstance(record, VariantTherapeuticResponseStudyStatement)
-        therapy = record.proposition.objectTherapeutic.root
+        record = CivicGksAssertion(aid19)
+        assert isinstance(record, VariantClinicalSignificanceStatement)
+        assert len(record.hasEvidenceLines) == 1
+        therapy = record.hasEvidenceLines[0].targetProposition.objectTherapeutic.root
         assert isinstance(therapy, TherapyGroup)
         assert therapy.membershipOperator == "OR"
         assert len(therapy.therapies) == 2
         therapy_ids = {t.id for t in therapy.therapies}
         assert therapy_ids == {"civic.tid:5", "civic.tid:20"}
 
-    def test_invalid(self, aid117):
-        """Test that invalid assertions raises custom exception"""
-        with pytest.raises(
-            CivicGksRecordError, match=r"Assertion is not valid for GKS."
-        ):
-            CivicGksPredictiveAssertion(aid117)
-
-
-class TestCivicGksPrognosticAssertion(object):
-    """Test that CivicGksPrognosticAssertion works as expected"""
-
-    def test_valid(self, aid20):
-        """Test that valid assertion works as expected"""
-        record = CivicGksPrognosticAssertion(aid20)
-        assert isinstance(record, VariantPrognosticStudyStatement)
+    def test_valid_prognostic(self, aid20):
+        """Test that valid prognostic assertion works as expected"""
+        record = CivicGksAssertion(aid20)
+        assert isinstance(record, VariantClinicalSignificanceStatement)
         assert len(record.hasEvidenceLines) == 1
         assert len(record.hasEvidenceLines[0].hasEvidenceItems) == 6
-        assert record.proposition.predicate == "associatedWithWorseOutcomeFor"
-        assert record.strength.primaryCoding.code.root == "Level A"
-        assert record.classification.primaryCoding.code.root == "Tier I"
+        assert (
+            record.hasEvidenceLines[0].targetProposition.predicate
+            == "associatedWithWorseOutcomeFor"
+        )
+        assert record.strength.primaryCoding.code.root == "strong"
+        assert record.classification.primaryCoding.code.root == "tier i"
 
-
-class TestCivicGksDiagnosticAssertion(object):
-    """Test that CivicGksDiagnosticAssertion works as expected"""
-
-    def test_valid(
+    def test_valid_diagnostic(
         self,
         aid9,
         aid93,
@@ -820,18 +802,27 @@ class TestCivicGksDiagnosticAssertion(object):
         aid115,
         gks_aid115_object_condition,
     ):
-        """Test that valid assertion works as expected"""
-        record = CivicGksDiagnosticAssertion(aid9)
-        assert isinstance(record, VariantDiagnosticStudyStatement)
+        """Test that validdiagnostic assertion works as expected"""
+        record = CivicGksAssertion(aid9)
+        assert isinstance(record, VariantClinicalSignificanceStatement)
         assert len(record.hasEvidenceLines) == 1
         assert len(record.hasEvidenceLines[0].hasEvidenceItems) == 2
-        assert record.proposition.predicate == "isDiagnosticInclusionCriterionFor"
-        assert record.strength.primaryCoding.code.root == "Level C"
-        assert record.classification.primaryCoding.code.root == "Tier II"
+        assert (
+            record.hasEvidenceLines[0].targetProposition.predicate
+            == "isDiagnosticInclusionCriterionFor"
+        )
+        assert record.strength.primaryCoding.code.root == "potential"
+        assert record.classification.primaryCoding.code.root == "tier ii"
+        assert (
+            record.hasEvidenceLines[
+                0
+            ].strengthOfEvidenceProvided.primaryCoding.code.root
+            == "C"
+        )
 
         # Single phenotype (complex condition set)
-        record = CivicGksDiagnosticAssertion(aid93)
-        assert isinstance(record, VariantDiagnosticStudyStatement)
+        record = CivicGksAssertion(aid93)
+        assert isinstance(record, VariantClinicalSignificanceStatement)
         record_object_condition = record.proposition.objectCondition
         assert isinstance(record_object_condition, Condition)
         assert isinstance(record_object_condition.root, ConditionSet)
@@ -843,8 +834,8 @@ class TestCivicGksDiagnosticAssertion(object):
         assert diff == {}
 
         # Phenotypes (complex condition set)
-        record = CivicGksDiagnosticAssertion(aid115)
-        assert isinstance(record, VariantDiagnosticStudyStatement)
+        record = CivicGksAssertion(aid115)
+        assert isinstance(record, VariantClinicalSignificanceStatement)
         record_object_condition = record.proposition.objectCondition
         assert isinstance(record_object_condition, Condition)
         assert isinstance(record_object_condition.root, ConditionSet)
@@ -855,15 +846,10 @@ class TestCivicGksDiagnosticAssertion(object):
         )
         assert diff == {}
 
-
-class TestCivicGksRecord(object):
-    """Test that GKS Record helper methods work correctly"""
-
     def test_invalid(self, aid117):
-        """Test that unsupported assertion types raise NotImplementedError"""
+        """Test that unsupported assertion types raise exceptions"""
 
         with pytest.raises(
-            NotImplementedError,
-            match=r"Assertion type ONCOGENIC is not currently supported",
+            CivicGksRecordError, match=r"Assertion is not valid for GKS."
         ):
-            create_gks_record_from_assertion(aid117)
+            CivicGksAssertion(aid117)

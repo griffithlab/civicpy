@@ -42,7 +42,7 @@ setup(
         "deprecation",
         "ga4gh.vrs",
         "ga4gh.cat_vrs",
-        "ga4gh.va_spec~=0.4.1",
+        "ga4gh.va_spec @ git+https://github.com/ga4gh/va-spec-python.git@0c24598a22b0e093f14326297d418e1caf49af38",
     ],
     extras_require={
         "test": [

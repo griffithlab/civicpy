@@ -8,11 +8,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-from civicpy.exports.civic_gks_record import (
-    CivicGksPredictiveAssertion,
-    CivicGksDiagnosticAssertion,
-    CivicGksPrognosticAssertion,
-)
+from civicpy.exports.civic_gks_record import CivicGksAssertion
 
 
 def get_pkg_version(name: str) -> str:
@@ -47,11 +43,7 @@ class GksAssertionError(BaseModel):
 class GksOutput(BaseModel):
     """Define model for representing GKS JSON output"""
 
-    gks_records: list[
-        CivicGksPredictiveAssertion
-        | CivicGksPrognosticAssertion
-        | CivicGksDiagnosticAssertion
-    ]
+    gks_records: list[CivicGksAssertion]
     metadata: GksOutputMetadata
     failed_assertion_ids: list[int] = []
     errors: list[GksAssertionError] = []
@@ -68,18 +60,14 @@ class CivicGksWriter:
     def __init__(
         self,
         filepath: Path,
-        gks_records: list[
-            CivicGksPredictiveAssertion
-            | CivicGksPrognosticAssertion
-            | CivicGksDiagnosticAssertion
-        ],
-        errors: list[GksAssertionError] | None = None
+        gks_records: list[CivicGksAssertion],
+        errors: list[GksAssertionError] | None = None,
     ):
         """Initialize CivicGksWriter class
 
         :param filepath: The output file path to write the JSON file to
-        :raises ValueError: If ``filepath`` does not have `.json` suffix
         :param gks_records: List CIViC assertions represented as GKS objects
+        :raises ValueError: If ``filepath`` does not have `.json` suffix
         """
 
         def _default(obj: Any) -> str:
@@ -100,7 +88,9 @@ class CivicGksWriter:
             raise ValueError(err_msg)
 
         metadata = GksOutputMetadata(
-            created_at=str(datetime.datetime.now(tz=datetime.timezone.utc).strftime("%Y-%m-%d"))
+            created_at=str(
+                datetime.datetime.now(tz=datetime.timezone.utc).strftime("%Y-%m-%d")
+            )
         )
 
         if errors:
@@ -113,7 +103,7 @@ class CivicGksWriter:
             gks_records=gks_records,
             metadata=metadata,
             failed_assertion_ids=failed_assertion_ids,
-            errors=errors
+            errors=errors,
         )
 
         with filepath.open("w+") as wf:

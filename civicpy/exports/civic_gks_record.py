@@ -1,6 +1,5 @@
 """Module for representing CIViC assertion record as GKS AAC 2017 Study Statement"""
 
-from abc import ABC
 from enum import Enum
 import re
 from types import MappingProxyType
@@ -15,11 +14,13 @@ from ga4gh.core.models import (
     Relation,
 )
 from ga4gh.va_spec.aac_2017 import (
-    Classification,
-    Strength,
-    VariantDiagnosticStudyStatement,
-    VariantPrognosticStudyStatement,
-    VariantTherapeuticResponseStudyStatement,
+    AmpAscoCapClassificationCode,
+    AmpAscoCapEvidenceLineStrength,
+    VariantClinicalSignificanceStatement,
+    AMP_ASCO_CAP_CLASSIFICATION_MAP,
+    DiagnosticEvidenceLine,
+    PrognosticEvidenceLine,
+    TherapeuticEvidenceLine,
 )
 from ga4gh.va_spec.base import (
     Agent,
@@ -28,7 +29,6 @@ from ga4gh.va_spec.base import (
     DiagnosticPredicate,
     Direction,
     Document,
-    EvidenceLine,
     MembershipOperator,
     Method,
     PrognosticPredicate,
@@ -36,6 +36,7 @@ from ga4gh.va_spec.base import (
     System,
     TherapeuticResponsePredicate,
     TherapyGroup,
+    VariantClinicalSignificanceProposition,
     VariantDiagnosticProposition,
     VariantPrognosticProposition,
     VariantTherapeuticResponseProposition,
@@ -659,17 +660,20 @@ class _CivicGksEvidenceAssertionMixin:
             ],
         )
 
-    def get_proposition(
-        self, record: Evidence | Assertion
-    ) -> (
-        VariantTherapeuticResponseProposition
-        | VariantDiagnosticProposition
-        | VariantPrognosticProposition
-    ):
-        """Get GKS proposition
+    def _get_proposition_params(
+        self,
+        record: Evidence | Assertion,
+        record_type: CivicEvidenceAssertionType,
+        is_clinical_significance_prop: bool = False,
+    ) -> dict:
+        """Get proposition parameters shared between propositions
 
         :param record: CIViC assertion or evidence item
-        :return: GKS proposition
+        :param record_type: The type of ``record``
+        :param is_clinical_significance_prop: Whether to generate parameters for
+            VariantClinicalSignificanceProposition
+        :return: Dictionary containing proposition parameters shared between
+            propositions
         """
         variant: GeneVariant = record.molecular_profile.variants[0]
 
@@ -677,33 +681,18 @@ class _CivicGksEvidenceAssertionMixin:
             "subjectVariant": CivicGksMolecularProfile(record.molecular_profile),
             "geneContextQualifier": CivicGksGene(variant.gene),
             "alleleOriginQualifier": self.get_allele_origin_qualifier(record),
-            "predicate": self.get_predicate(record),
+            "predicate": self.get_predicate(record)
+            if not is_clinical_significance_prop
+            else "hasClinicalSignificanceFor",
         }
 
-        record_type = (
-            record.assertion_type
-            if isinstance(record, Assertion)
-            else record.evidence_type
-        )
-
-        if record_type == CivicEvidenceAssertionType.PREDICTIVE:
-            condition_key = "conditionQualifier"
-            if len(record.therapies) == 1:
-                therapeutic = CivicGksTherapy(record.therapies[0])
-            else:
-                therapeutic = CivicGksTherapyGroup(
-                    record.therapies, record.therapy_interaction_type
-                )
-
-            params["objectTherapeutic"] = therapeutic
-            proposition = VariantTherapeuticResponseProposition
-        else:
+        if (
+            is_clinical_significance_prop
+            or record_type != CivicEvidenceAssertionType.PREDICTIVE
+        ):
             condition_key = "objectCondition"
-
-            if record_type == CivicEvidenceAssertionType.PROGNOSTIC:
-                proposition = VariantPrognosticProposition
-            else:
-                proposition = VariantDiagnosticProposition
+        else:
+            condition_key = "conditionQualifier"
 
         gks_disease = CivicGksDisease(record.disease)
 
@@ -727,6 +716,42 @@ class _CivicGksEvidenceAssertionMixin:
             )
         else:
             params[condition_key] = gks_disease
+        return params
+
+    def get_target_proposition(
+        self, record: Evidence | Assertion
+    ) -> (
+        VariantTherapeuticResponseProposition
+        | VariantDiagnosticProposition
+        | VariantPrognosticProposition
+    ):
+        """Get GKS proposition
+
+        :param record: CIViC assertion or evidence item
+        :return: GKS proposition
+        """
+        record_type = (
+            record.assertion_type
+            if isinstance(record, Assertion)
+            else record.evidence_type
+        )
+        params: dict = self._get_proposition_params(record, record_type)
+
+        if record_type == CivicEvidenceAssertionType.PREDICTIVE:
+            if len(record.therapies) == 1:
+                therapeutic = CivicGksTherapy(record.therapies[0])
+            else:
+                therapeutic = CivicGksTherapyGroup(
+                    record.therapies, record.therapy_interaction_type
+                )
+
+            params["objectTherapeutic"] = therapeutic
+            proposition = VariantTherapeuticResponseProposition
+        else:
+            if record_type == CivicEvidenceAssertionType.PROGNOSTIC:
+                proposition = VariantPrognosticProposition
+            else:
+                proposition = VariantDiagnosticProposition
         return proposition(**params)
 
 
@@ -762,24 +787,26 @@ class ViccConceptVocab(BaseModel):
     name: str
 
 
-VICC_CONCEPT_MAPPING: dict[CivicEvidenceLevel, ViccConceptVocab] = MappingProxyType(
-    {
-        CivicEvidenceLevel.A: ViccConceptVocab(
-            code="e000001", name="authoritative evidence"
-        ),
-        CivicEvidenceLevel.B: ViccConceptVocab(
-            code="e000005", name="clinical cohort evidence"
-        ),
-        CivicEvidenceLevel.C: ViccConceptVocab(
-            code="e000008", name="clinical case study evidence"
-        ),
-        CivicEvidenceLevel.D: ViccConceptVocab(
-            code="e000009", name="preclinical evidence"
-        ),
-        CivicEvidenceLevel.E: ViccConceptVocab(
-            code="e000010", name="inferential evidence"
-        ),
-    }
+VICC_CONCEPT_MAPPING: MappingProxyType[CivicEvidenceLevel, ViccConceptVocab] = (
+    MappingProxyType(
+        {
+            CivicEvidenceLevel.A: ViccConceptVocab(
+                code="e000001", name="authoritative evidence"
+            ),
+            CivicEvidenceLevel.B: ViccConceptVocab(
+                code="e000005", name="clinical cohort evidence"
+            ),
+            CivicEvidenceLevel.C: ViccConceptVocab(
+                code="e000008", name="clinical case study evidence"
+            ),
+            CivicEvidenceLevel.D: ViccConceptVocab(
+                code="e000009", name="preclinical evidence"
+            ),
+            CivicEvidenceLevel.E: ViccConceptVocab(
+                code="e000010", name="inferential evidence"
+            ),
+        }
+    )
 )
 
 
@@ -804,7 +831,7 @@ class CivicGksEvidence(Statement, _CivicGksEvidenceAssertionMixin):
             id=f"civic.eid:{evidence_item.id}",
             description=evidence_item.description,
             specifiedBy=CivicGksSop(),
-            proposition=self.get_proposition(evidence_item),
+            proposition=self.get_target_proposition(evidence_item),
             direction=self.get_direction(evidence_item.evidence_direction),
             strength=self.get_evidence_strength(
                 CivicEvidenceLevel(evidence_item.evidence_level)
@@ -816,8 +843,10 @@ class CivicGksEvidence(Statement, _CivicGksEvidenceAssertionMixin):
         )
 
 
-class _CivicGksAssertionRecord(_CivicGksEvidenceAssertionMixin, ABC):
-    """Abstract class for CIViC assertion record represented as GKS
+class CivicGksAssertion(
+    VariantClinicalSignificanceStatement, _CivicGksEvidenceAssertionMixin
+):
+    """Class for CIViC assertion record represented as GKS
 
     :param assertion: CIViC assertion record
     :raises CivicGksRecordError: If CIViC assertion is not able to be represented as
@@ -840,7 +869,7 @@ class _CivicGksAssertionRecord(_CivicGksEvidenceAssertionMixin, ABC):
             err_msg = "Assertion is not valid for GKS."
             raise CivicGksRecordError(err_msg)
 
-        classification, strength = self.get_classification_and_strength(
+        classification, strength, level = self.get_classification_strength_level(
             assertion.amp_level
         )
         contributions = self.get_contributions(approval) if approval else None
@@ -854,7 +883,7 @@ class _CivicGksAssertionRecord(_CivicGksEvidenceAssertionMixin, ABC):
             direction=self.get_direction(assertion.assertion_direction),
             classification=classification,
             strength=strength,
-            hasEvidenceLines=self.get_evidence_lines(assertion, strength),
+            hasEvidenceLines=self.get_evidence_lines(assertion, level),
             reportedIn=[iriReference(f"{LINKS_URL}/assertion/{assertion.id}")],
         )
 
@@ -878,44 +907,56 @@ class _CivicGksAssertionRecord(_CivicGksEvidenceAssertionMixin, ABC):
             )
         ]
 
-    def get_classification_and_strength(
+    def get_classification_strength_level(
         self,
         amp_level: str,
-    ) -> tuple[MappableConcept | None, MappableConcept | None]:
-        """Get classification and strength
+    ) -> tuple[
+        MappableConcept | None,
+        MappableConcept | None,
+        AmpAscoCapEvidenceLineStrength | None,
+    ]:
+        """Get classification, strength, and level
 
         :param amp_level: AMP/ASCO/CAP level
-        :return: Classification and strength, if found
+        :return: Classification, strength, and level, if found
         """
         classification = None
         strength = None
         system = System.AMP_ASCO_CAP
+        level = None
 
         if amp_level != "NA":
             pattern = re.compile(r"TIER_(?P<tier>[IV]+)(?:_LEVEL_(?P<level>[A-D]))?")
             match = pattern.match(amp_level).groupdict()
+
+            tier = AmpAscoCapClassificationCode(f"tier {match['tier'].lower()}")
+            amp_asco_cap_config = AMP_ASCO_CAP_CLASSIFICATION_MAP[tier]
+
             classification = MappableConcept(
-                primaryCoding=Coding(
-                    code=Classification(f"Tier {match['tier']}"), system=system
-                ),
+                name=amp_asco_cap_config.name,
+                primaryCoding=Coding(code=tier, system=system),
             )
 
-            level = match["level"]
             strength = MappableConcept(
-                primaryCoding=Coding(code=Strength(f"Level {level}"), system=system)
+                primaryCoding=Coding(code=amp_asco_cap_config.strength, system=system)
             )
+            level = AmpAscoCapEvidenceLineStrength(match["level"])
 
-        return classification, strength
+        return classification, strength, level
 
     def get_evidence_lines(
-        self, assertion: Assertion, strength: MappableConcept
-    ) -> list[EvidenceLine]:
+        self, assertion: Assertion, level: AmpAscoCapEvidenceLineStrength
+    ) -> (
+        list[DiagnosticEvidenceLine]
+        | list[PrognosticEvidenceLine]
+        | list[TherapeuticEvidenceLine]
+    ):
         """Get evidence lines for a CIViC assertion
 
         Only the CIViC evidence items that are supported for GKS will be included
 
         :param assertion: CIViC assertion
-        :param strength: The CIViC Assertion's strength
+        :param level: The CIViC Assertion's AMP/ASCO/CAP category level
         :return: List of CIViC evidence lines
         """
         direction = (
@@ -928,57 +969,31 @@ class _CivicGksAssertionRecord(_CivicGksEvidenceAssertionMixin, ABC):
             for evidence_item in assertion.evidence_items
         ]
 
+        if assertion.assertion_type == CivicEvidenceAssertionType.PREDICTIVE:
+            evidence_line_cls = TherapeuticEvidenceLine
+        elif assertion.assertion_type == CivicEvidenceAssertionType.DIAGNOSTIC:
+            evidence_line_cls = DiagnosticEvidenceLine
+        elif assertion.assertion_type == CivicEvidenceAssertionType.PROGNOSTIC:
+            evidence_line_cls = PrognosticEvidenceLine
+        else:
+            msg = f"Evidence line type for assertion type is not supported: {assertion.assertion_type}"
+            raise NotImplementedError(msg)
+
         return [
-            EvidenceLine(
+            evidence_line_cls(
+                targetProposition=self.get_target_proposition(assertion),
                 hasEvidenceItems=evidence_items,
                 directionOfEvidenceProvided=direction,
-                strengthOfEvidenceProvided=strength,
+                strengthOfEvidenceProvided=MappableConcept(
+                    primaryCoding=(Coding(code=level, system=System.AMP_ASCO_CAP))
+                ),
             )
         ]
 
-
-class CivicGksPredictiveAssertion(
-    _CivicGksAssertionRecord, VariantTherapeuticResponseStudyStatement
-):
-    """Class for representing CIViC predictive assertion as GKS VariantTherapeuticResponseStudyStatement"""
-
-
-class CivicGksDiagnosticAssertion(
-    _CivicGksAssertionRecord, VariantDiagnosticStudyStatement
-):
-    """Class for representing CIViC diagnostic assertion as GKS VariantDiagnosticStudyStatement"""
-
-
-class CivicGksPrognosticAssertion(
-    _CivicGksAssertionRecord, VariantPrognosticStudyStatement
-):
-    """Class for representing CIViC prognostic assertion as GKS VariantPrognosticStudyStatement"""
-
-
-def create_gks_record_from_assertion(
-    assertion: Assertion, approval: Approval | None = None
-) -> (
-    CivicGksDiagnosticAssertion
-    | CivicGksPredictiveAssertion
-    | CivicGksPrognosticAssertion
-):
-    """Create GKS Record from CIViC Assertion
-
-    :param assertion: CIViC assertion record
-    :param approval: CIViC approval for the assertion, defaults to None
-    :raises NotImplementedError: If GKS Record translation is not yet supported.
-        Currently, only the following assertion types are supported: DIAGNOSTIC,
-        PREDICTIVE, and PROGNOSTIC.
-    :return: GKS Assertion Record object
-    """
-    if assertion.assertion_type == "DIAGNOSTIC":
-        return CivicGksDiagnosticAssertion(assertion, approval=approval)
-
-    if assertion.assertion_type == "PREDICTIVE":
-        return CivicGksPredictiveAssertion(assertion, approval=approval)
-
-    if assertion.assertion_type == "PROGNOSTIC":
-        return CivicGksPrognosticAssertion(assertion, approval=approval)
-
-    err_msg = f"Assertion type {assertion.assertion_type} is not currently supported"
-    raise NotImplementedError(err_msg)
+    def get_proposition(
+        self, assertion: Assertion
+    ) -> VariantClinicalSignificanceProposition:
+        params = self._get_proposition_params(
+            assertion, assertion.assertion_type, is_clinical_significance_prop=True
+        )
+        return VariantClinicalSignificanceProposition(**params)
