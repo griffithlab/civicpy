@@ -1,4 +1,5 @@
 import pytest
+from types import SimpleNamespace
 from civicpy import civic
 from civicpy.civic import CoordinateQuery
 import logging
@@ -128,6 +129,25 @@ class TestVariants(object):
     def test_get_accepted_only(self):
         variants = civic.get_all_variants(include_status=["accepted"])
         assert len(variants) >= 1333
+
+    def test_molecular_profiles_excludes_text_segment_profiles(self):
+        variant = civic.Variant(partial=True, id=1, type="variant")
+
+        regular_profile = civic.MolecularProfile(
+            partial=True, id=100, type="molecular_profile", parsed_name=[]
+        )
+        regular_profile.evidence_items = [SimpleNamespace(status="accepted")]
+
+        negated_profile = civic.MolecularProfile(
+            partial=True, id=101, type="molecular_profile", parsed_name=["NOT"]
+        )
+        negated_profile.evidence_items = [SimpleNamespace(status="accepted")]
+
+        variant.molecular_profiles = [regular_profile, negated_profile]
+        result_profiles = variant.molecular_profiles
+
+        assert regular_profile in result_profiles
+        assert negated_profile not in result_profiles
 
     def test_get_by_id(self):
         variant = civic.get_variant_by_id(12)

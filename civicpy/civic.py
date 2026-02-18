@@ -298,7 +298,9 @@ def update_cache(
         for v in variants:
             v.variant_groups = [vg for vg in variant_groups if v.id in vg.variant_ids]
             v.molecular_profiles = [
-                mp for mp in molecular_profiles if v.id in mp.variant_ids
+                mp
+                for mp in molecular_profiles
+                if v.id in mp.variant_ids and not _has_molecular_profile_text_segment(mp)
             ]
             v._partial = False
             CACHE[hash(v)] = v
@@ -472,6 +474,27 @@ def _is_valid_for_gks_json(cls, emit_warnings: bool = False) -> bool:
         warnings.append(f"{prefix} has no variants. Skipping")
 
     return _is_valid(warnings, emit_warnings)
+
+
+def _has_molecular_profile_text_segment(molecular_profile) -> bool:
+    """Return whether a molecular profile parsed name contains text segments.
+
+    CIViC complex molecular profiles can include parsed-name text segments
+    (for example, ``NOT`` or ``OR``). These profiles should be excluded from
+    variant-level molecular profile filtering to avoid false-positive matches.
+
+    :param molecular_profile: A `MolecularProfile` instance.
+    :return: ``True`` if any parsed-name item is a text segment, else ``False``.
+    """
+    for parsed_name_item in getattr(molecular_profile, "parsed_name", []):
+        parsed_name_item_type = getattr(parsed_name_item, "type", None)
+        if parsed_name_item_type in ("Feature", "Variant"):
+            continue
+        if isinstance(parsed_name_item, str):
+            return True
+        if parsed_name_item_type is not None:
+            return True
+    return False
 
 
 class CivicRecord:
@@ -812,7 +835,12 @@ class Variant(CivicRecord):
         """
         for mp in self._molecular_profiles:
             mp._include_status = self._include_status
-        return [m for m in self._molecular_profiles if m.evidence_items or m.assertions]
+        return [
+            m
+            for m in self._molecular_profiles
+            if (m.evidence_items or m.assertions)
+            and not _has_molecular_profile_text_segment(m)
+        ]
 
     @molecular_profiles.setter
     def molecular_profiles(self, value):
