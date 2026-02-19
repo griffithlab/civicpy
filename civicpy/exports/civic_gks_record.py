@@ -343,6 +343,7 @@ class CivicGksMolecularProfile(CategoricalVariant):
                     relation=Relation.RELATED_MATCH,
                 )
                 for clinvar_id in clinvar_ids
+                if clinvar_id and clinvar_id != "N/A"
             )
 
         for a in molecular_profile.aliases:
