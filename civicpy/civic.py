@@ -18,6 +18,8 @@ from civicpy import REMOTE_CACHE_URL, LOCAL_CACHE_PATH, CACHE_TIMEOUT_DAYS
 from civicpy import graphql_payloads
 from civicpy import utils
 
+_logger = logging.getLogger(__name__)
+
 
 CACHE = dict()
 
@@ -98,7 +100,7 @@ def download_remote_cache(
 
     :return:                    Returns True on success.
     """
-    logging.warning("Downloading remote cache from {}.".format(remote_cache_url))
+    _logger.warning("Downloading remote cache from {}.".format(remote_cache_url))
     _make_local_cache_path_if_missing(local_cache_path)
     r = requests.get(remote_cache_url)
     r.raise_for_status()
@@ -199,7 +201,7 @@ def load_cache(local_cache_path=LOCAL_CACHE_PATH, on_stale="auto"):
     ) or on_stale == "update":
         MODULE.CACHE = old_cache
         if downloaded_remote:
-            logging.error(
+            _logger.error(
                 "Remote cache at {} is stale. Consider running `update_cache(from_remote_cache=False)` "
                 "to create cache from API query (slow), or `load_cache(on_stale='ignore')` "
                 "to load stale local cache (if present). "
@@ -208,7 +210,7 @@ def load_cache(local_cache_path=LOCAL_CACHE_PATH, on_stale="auto"):
             )
             raise SystemError
         else:
-            logging.warning(
+            _logger.warning(
                 "Local cache at {} is stale, updating from remote.".format(
                     local_cache_path
                 )
@@ -217,7 +219,7 @@ def load_cache(local_cache_path=LOCAL_CACHE_PATH, on_stale="auto"):
             return True
     elif on_stale == "reject" or on_stale == "auto":
         MODULE.CACHE = old_cache
-        logging.warning(
+        _logger.warning(
             "Local cache at {} is stale and was not loaded. To load anyway, re-run "
             "`load_cache` with `on_stale` parameter set to desired behavior.".format(
                 local_cache_path
@@ -444,7 +446,7 @@ def _is_valid(warnings: list[str], emit_warnings: bool = False) -> bool:
 
     if emit_warnings:
         for warning in warnings:
-            logging.warning(warning)
+            _logger.warning(warning)
     return False
 
 
@@ -624,7 +626,7 @@ class CivicRecord:
                 v = getattr(cached, field)
                 setattr(self, field, v)
             self._partial = False
-            logging.info("Loading {} from cache".format(str(self)))
+            _logger.info("Loading {} from cache".format(str(self)))
             return True
         resp_dict = element_lookup_by_id(self.type, self.id)
         self.__init__(partial=False, **resp_dict)
@@ -2047,19 +2049,19 @@ def _get_elements_by_ids(element, id_list=[], allow_cached=True, get_all=False):
         if not get_all:
             cached = [get_cached(element, element_id) for element_id in id_list]
             if all(cached):
-                logging.info("Loading {} from cache".format(utils.pluralize(element)))
+                _logger.info("Loading {} from cache".format(utils.pluralize(element)))
                 return cached
         else:
             cached = [
                 get_cached(element, element_id)
                 for element_id in CACHE["{}_all_ids".format(utils.pluralize(element))]
             ]
-            logging.info("Loading {} from cache".format(utils.pluralize(element)))
+            _logger.info("Loading {} from cache".format(utils.pluralize(element)))
             return cached
     if id_list and get_all:
         raise ValueError("Please pass list of ids or use the get_all flag, not both.")
     if get_all:
-        logging.warning(
+        _logger.warning(
             "Getting all {}. This may take a couple of minutes...".format(
                 utils.pluralize(element)
             )
@@ -2282,9 +2284,9 @@ def get_evidence_by_ids(evidence_id_list):
     :param list evidence_id_list: A list of CIViC evidence item IDs to query against to cache and (as needed) CIViC.
     :returns: A list of :class:`EvidenceItem` objects.
     """
-    logging.info("Getting evidence...")
+    _logger.info("Getting evidence...")
     evidence = _get_elements_by_ids("evidence", evidence_id_list)
-    logging.info("Caching evidence details...")
+    _logger.info("Caching evidence details...")
     for e in evidence:
         e._include_status = ["accepted", "submitted", "rejected"]
     mp_ids = [
@@ -2312,11 +2314,11 @@ def get_molecular_profiles_by_ids(mp_id_list):
     :param list mp_id_list: A list of CIViC molecular profile IDs to query against to cache and (as needed) CIViC.
     :returns: A list of :class:`MolecularProfile` objects.
     """
-    logging.info("Getting molecular profiles...")
+    _logger.info("Getting molecular profiles...")
     mps = _get_elements_by_ids("molecular_profile", mp_id_list)
     for mp in mps:
         mp._include_status = ["accepted", "submitted", "rejected"]
-    # logging.info('Caching molecular profile details...')
+    # _logger.info('Caching molecular profile details...')
     return mps
 
 
@@ -2336,11 +2338,11 @@ def get_assertions_by_ids(assertion_id_list):
     :param list assertion_id_list: A list of CIViC assertion IDs to query against to cache and (as needed) CIViC.
     :returns: A list of :class:`Assertion` objects.
     """
-    logging.info("Getting assertions...")
+    _logger.info("Getting assertions...")
     assertions = _get_elements_by_ids("assertion", assertion_id_list)
     for a in assertions:
         a._include_status = ["accepted", "submitted", "rejected"]
-    logging.info("Caching variant details...")
+    _logger.info("Caching variant details...")
     mp_ids = [
         x.molecular_profile.id for x in assertions
     ]  # Add molecular profile to cache
@@ -2366,7 +2368,7 @@ def get_variants_by_ids(variant_id_list):
     :param list variant_id_list: A list of CIViC variant IDs to query against to cache and (as needed) CIViC.
     :returns: A list of :class:`Variant` objects.
     """
-    logging.info("Getting variants...")
+    _logger.info("Getting variants...")
     variants = _get_elements_by_ids("variant", variant_id_list)
     gene_ids = set()
     factor_ids = set()
@@ -2383,13 +2385,13 @@ def get_variants_by_ids(variant_id_list):
             region_ids.add(variant.feature_id)
         variant._include_status = ["accepted", "submitted", "rejected"]
     if gene_ids:
-        logging.info("Caching gene details...")
+        _logger.info("Caching gene details...")
         _get_elements_by_ids("gene", gene_ids)
     if factor_ids:
-        logging.info("Caching factor details...")
+        _logger.info("Caching factor details...")
         _get_elements_by_ids("factor", factor_ids)
     if fusion_ids:
-        logging.info("Caching fusion details...")
+        _logger.info("Caching fusion details...")
         _get_elements_by_ids("fusion", fusion_ids)
     if region_ids:
         logging.info("Caching region details...")
@@ -2413,7 +2415,7 @@ def get_variant_groups_by_ids(variant_group_id_list):
     :param list variant_group_id_list: A list of CIViC variant group IDs to query against to cache and (as needed) CIViC.
     :returns: A list of :class:`VariantGroup` objects.
     """
-    logging.info("Getting variant groups...")
+    _logger.info("Getting variant groups...")
     vgs = _get_elements_by_ids("variant_group", variant_group_id_list)
     for vg in vgs:
         vg._include_status = ["accepted", "submitted", "rejected"]
@@ -2436,7 +2438,7 @@ def get_features_by_ids(feature_id_list):
     :param list feature_id_list: A list of CIViC feature IDs to query against to cache and (as needed) CIViC.
     :returns: A list of :class:`Gene`, `Fusion`, and/or `Factor` objects.
     """
-    logging.info("Getting features...")
+    _logger.info("Getting features...")
     features = []
     for feature_id in feature_id_list:
         feature = None
@@ -2466,7 +2468,7 @@ def get_features_by_ids(feature_id_list):
         for variant in feature.variants:
             variant_ids.add(variant.id)
     if variant_ids:
-        logging.info("Caching variant details...")
+        _logger.info("Caching variant details...")
         _get_elements_by_ids("variant", variant_ids)
     for feature in features:
         for variant in feature.variants:
@@ -2487,7 +2489,7 @@ def get_genes_by_ids(gene_id_list):
     :param list gene_id_list: A list of CIViC gene feature IDs to query against to cache and (as needed) CIViC.
     :returns: A list of :class:`Gene` objects.
     """
-    logging.info("Getting genes...")
+    _logger.info("Getting genes...")
     genes = _get_elements_by_ids("gene", gene_id_list)
     variant_ids = set()
     for gene in genes:
@@ -2495,7 +2497,7 @@ def get_genes_by_ids(gene_id_list):
         for variant in gene.variants:
             variant_ids.add(variant.id)
     if variant_ids:
-        logging.info("Caching variant details...")
+        _logger.info("Caching variant details...")
         _get_elements_by_ids("variant", variant_ids)
     for gene in genes:
         for variant in gene.variants:
@@ -2516,7 +2518,7 @@ def get_fusions_by_ids(fusion_id_list):
     :param list fusion_id_list: A list of CIViC fusion feature IDs to query against to cache and (as needed) CIViC.
     :returns: A list of :class:`Fusion` objects.
     """
-    logging.info("Getting fusions...")
+    _logger.info("Getting fusions...")
     fusions = _get_elements_by_ids("fusion", fusion_id_list)
     variant_ids = set()
     for fusion in fusions:
@@ -2524,7 +2526,7 @@ def get_fusions_by_ids(fusion_id_list):
         for variant in fusion.variants:
             variant_ids.add(variant.id)
     if variant_ids:
-        logging.info("Caching variant details...")
+        _logger.info("Caching variant details...")
         _get_elements_by_ids("variant", variant_ids)
     for fusion in fusions:
         for variant in fusion.variants:
@@ -2545,7 +2547,7 @@ def get_factors_by_ids(factor_id_list):
     :param list factor_id_list: A list of CIViC factor feature IDs to query against to cache and (as needed) CIViC.
     :returns: A list of :class:`Factor` objects.
     """
-    logging.info("Getting factors...")
+    _logger.info("Getting factors...")
     factors = _get_elements_by_ids("factor", factor_id_list)
     variant_ids = set()
     for factor in factors:
@@ -2553,7 +2555,7 @@ def get_factors_by_ids(factor_id_list):
         for variant in factor.variants:
             variant_ids.add(variant.id)
     if variant_ids:
-        logging.info("Caching variant details...")
+        _logger.info("Caching variant details...")
         _get_elements_by_ids("variant", variant_ids)
     for factor in factors:
         for variant in factor.variants:
@@ -2606,7 +2608,7 @@ def get_sources_by_ids(source_id_list):
     :param list source_id_list: A list of CIViC source IDs to query against to cache and (as needed) CIViC.
     :returns: A list of :class:`Source` objects.
     """
-    logging.info("Getting sources...")
+    _logger.info("Getting sources...")
     sources = _get_elements_by_ids("source", source_id_list)
     return sources
 
@@ -2627,7 +2629,7 @@ def get_diseases_by_ids(disease_id_list):
     :param list disease_id_list: A list of CIViC disease IDs to query against to cache and (as needed) CIViC.
     :returns: A list of :class:`Disease` objects.
     """
-    logging.info("Getting diseases...")
+    _logger.info("Getting diseases...")
     diseases = _get_elements_by_ids("disease", disease_id_list)
     return diseases
 
@@ -2648,7 +2650,7 @@ def get_therapies_by_ids(therapy_id_list):
     :param list therapy_id_list: A list of CIViC therapy IDs to query against to cache and (as needed) CIViC.
     :returns: A list of :class:`Therapy` objects.
     """
-    logging.info("Getting therapies...")
+    _logger.info("Getting therapies...")
     therapies = _get_elements_by_ids("therapy", therapy_id_list)
     return therapies
 
@@ -2669,7 +2671,7 @@ def get_phenotypes_by_ids(phenotype_id_list):
     :param list phenotype_id_list: A list of CIViC phenotype IDs to query against to cache and (as needed) CIViC.
     :returns: A list of :class:`Phenotype` objects.
     """
-    logging.info("Getting phenotypes...")
+    _logger.info("Getting phenotypes...")
     phenotypes = _get_elements_by_ids("phenotype", phenotype_id_list)
     return phenotypes
 
@@ -2690,7 +2692,7 @@ def get_organizations_by_ids(organization_id_list):
     :param list organization_id_list: A list of CIViC organization IDs to query against to cache and (as needed) CIViC.
     :returns: A list of :class:`Organization` objects.
     """
-    logging.info("Getting organizations...")
+    _logger.info("Getting organizations...")
     organizations = _get_elements_by_ids("organization", organization_id_list)
     return organizations
 
@@ -2711,7 +2713,7 @@ def get_approvals_by_ids(approval_id_list):
     :param list approval_id_list: A list of CIViC Approval IDs to query against to cache and (as needed) CIViC.
     :returns: A list of :class:`Approval` objects.
     """
-    logging.info("Getting approvals...")
+    _logger.info("Getting approvals...")
     approvals = _get_elements_by_ids("approval", approval_id_list)
     return approvals
 
