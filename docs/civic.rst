@@ -189,7 +189,7 @@ Variant
 
    .. attribute:: variant_types
 
-      A list of :class:`CivicAttribute` objects describing `variant types`_ from the
+      A list of :class:`VariantType` objects describing `variant types`_ from the
       `Sequence Ontology`_.
 
 .. _variant types: https://docs.civicdb.org/en/latest/model/variants/types.html
@@ -214,7 +214,7 @@ GeneVariant
 
    .. attribute:: coordinates
 
-      A :class:`CivicAttribute` object describing `CIViC coordinates`_.
+      A :class:`Coordinate` object describing `CIViC coordinates`_.
 
    .. attribute:: entrez_id
 
@@ -260,12 +260,12 @@ FusionVariant
 
    .. attribute:: five_prime_coordinates
 
-      A :class:`CivicAttribute` object describing `CIViC coordinates`_ of the
+      A :class:`ExonCoordinate` object describing `CIViC coordinates`_ of the
       5' fusion partner, if that partner is ``KNOWN``.
 
    .. attribute:: three_prime_coordinates
 
-      A :class:`CivicAttribute` object describing `CIViC coordinates`_ of the
+      A :class:`ExonCoordinate` object describing `CIViC coordinates`_ of the
       3' fusion partner, if that partner is ``KNOWN``.
 
    .. attribute:: vicc_compliant_name
@@ -422,7 +422,7 @@ Assertion
 
    .. attribute:: acmg_codes
 
-      Evidence codes used in the assessment of germline variant pathogenicity under the `ACMG/AMP`_ classification guidelines.
+      A list of :class:`AcmgCode` objects describing the evidence codes used in the assessment of germline variant pathogenicity under the `ACMG/AMP`_ classification guidelines.
 
    .. attribute:: amp_level
 
@@ -439,7 +439,7 @@ Assertion
 
    .. attribute:: clingen_codes
 
-      Classification of somatic variant oncogenicity under the `ClinGen/CGC/VICC`_ classification guidelines.
+      A list of :class:`ClingenCode` objects describing the classification of somatic variant oncogenicity under the `ClinGen/CGC/VICC`_ classification guidelines.
 
    .. attribute:: description
 
@@ -568,7 +568,7 @@ Source
 
    .. attribute:: clinical_trials
 
-      A list of `Clinical Trial`_ IDs described in the source.
+      A list of :class:`ClinicalTrial` objects of `Clinical Trials`_ described in the source.
 
    .. attribute:: full_journal_title
 
@@ -599,7 +599,7 @@ Source
 
       The title of the source.
 
-.. _Clinical Trial: https://clinicaltrials.gov/
+.. _Clinical Trials: https://clinicaltrials.gov/
 
 .. _PubMed Central: https://pmc.ncbi.nlm.nih.gov/
 
@@ -711,7 +711,7 @@ Approval
 
    .. attribute:: organization_id
 
-      The :attr:`CivicRecord.id` of the :class:`Organziation` record that approved the assertion.
+      The :attr:`CivicRecord.id` of the :class:`Organization` record that approved the assertion.
 
    .. attribute:: ready_for_clinvar_submission
 
@@ -731,5 +731,83 @@ class for additional complex records beyond those mentioned above (e.g. diseases
 except as attached objects to non-:class:`CivicAttribute` :class:`CivicRecord` objects, and cannot be retrieved
 independently.
 
-.. autoclass:: CivicAttribute
+Some complex records are:
 
+.. autoclass:: Coordinate
+
+   .. attribute:: chromosome
+
+   .. attribute:: start
+
+   .. attribute:: stop
+
+   .. attribute:: reference_bases
+
+   .. attribute:: variant_bases
+
+   .. attribute:: ensembl_version
+
+   .. attribute:: representative_transcript
+
+   .. attribute:: reference_build
+
+
+.. autoclass:: ExonCoordinate
+
+   .. attribute:: chromosome
+
+   .. attribute:: ensembl_id
+
+   .. attribute:: ensembl_version
+
+   .. attribute:: exon
+
+   .. attribute:: exon_offset
+
+   .. attribute:: exon_offset_direction
+
+   .. attribute:: reference_build
+
+   .. attribute:: representative_transcript
+
+   .. attribute:: start
+
+   .. attribute:: stop
+
+   .. attribute:: strand
+
+
+.. autoclass:: ClingenCode
+
+   .. attribute:: code
+
+   .. attribute:: description
+
+
+.. autoclass:: AcmgCode
+
+   .. attribute:: code
+
+   .. attribute:: description
+
+
+.. autoclass:: ClinicalTrial
+
+   .. attribute:: name
+
+   .. attribute:: description
+
+   .. attribute:: nct_id
+
+   .. attribute:: url
+
+
+.. autoclass:: VariantType
+
+   .. attribute:: name
+
+   .. attribute:: so_id
+
+   .. attribute:: description
+
+   .. attribute:: url
