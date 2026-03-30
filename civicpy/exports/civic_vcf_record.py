@@ -171,6 +171,7 @@ class CivicVcfRecord(vcfpy.Record):
                         "",
                         "",
                         "",
+                        "",
                     ]))
                 for assertion in mp.assertions:
                     if include_status is not None and assertion.status not in include_status:
@@ -212,6 +213,7 @@ class CivicVcfRecord(vcfpy.Record):
                         "",
                         "&".join([acmg_code.code for acmg_code in assertion.acmg_codes]),
                         str(assertion.amp_level or ''),
+                        "&".join([clingen_code.code for clingen_code in assertion.clingen_codes]),
                         assertion.format_nccn_guideline(),
                         str(assertion.fda_regulatory_approval or ''),
                         str(assertion.fda_companion_test or ''),
