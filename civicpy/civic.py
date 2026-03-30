@@ -2226,6 +2226,19 @@ def _postprocess_response_element(e, element):
         elif e["__typename"] == "FactorVariant":
             e["subtype"] = "factor_variant"
         elif e["__typename"] == "FusionVariant":
+            for c in [
+                e["five_prime_coordinates"],
+                e["three_prime_coordinates"],
+                e["five_prime_start_exon_coordinates"],
+                e["five_prime_end_exon_coordinates"],
+                e["three_prime_start_exon_coordinates"],
+                e["three_prime_end_exon_coordinates"]
+            ]:
+                if c:
+                    if c["reference_build"] == "GRCH37":
+                        c["reference_build"] = "GRCh37"
+                    elif c["reference_build"] == "GRCH38":
+                        c["reference_build"] = "GRCh38"
             if (
                 e["five_prime_start_exon_coordinates"]
                 and e["five_prime_start_exon_coordinates"]["exon_offset"] is None
