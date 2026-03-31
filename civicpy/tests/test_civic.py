@@ -178,11 +178,33 @@ class TestGeneVariants(object):
         assert variant.type == "variant"
         assert variant.subtype == "gene_variant"
 
-    def test_attributes(self):
+    def test_simple_attributes(self):
         variant = civic.get_variant_by_id(11)
-        assert variant.coordinates.ensembl_version == 75
         assert variant.entrez_name == "BRAF"
         assert variant.entrez_id == 673
+
+    def test_complex_attributes(self):
+        variant = civic.get_variant_by_id(12)
+
+        #variant types
+        variant_type = variant.variant_types[0]
+        assert variant_type.__class__.__name__ == 'VariantType'
+        assert variant_type.name == 'Missense Variant'
+        assert variant_type.so_id == 'SO:0001583'
+        assert variant_type.description == 'A sequence variant, that changes one or more bases, resulting in a different amino acid sequence but where the length is preserved.'
+        assert variant_type.url == 'http://www.sequenceontology.org/browser/current_svn/term/SO:0001583'
+
+        #coordinates
+        coordinates = variant.coordinates
+        assert coordinates.__class__.__name__ == 'Coordinate'
+        assert coordinates.chromosome == '7'
+        assert coordinates.start == 140453136
+        assert coordinates.stop == 140453136
+        assert coordinates.reference_bases == 'A'
+        assert coordinates.variant_bases == 'T'
+        assert coordinates.ensembl_version == 75
+        assert coordinates.representative_transcript == 'ENST00000288602.6'
+        assert coordinates.reference_build == 'GRCh37'
 
     def test_properties(self):
         variant = civic.get_variant_by_id(11)
@@ -205,70 +227,104 @@ class TestFusionVariants(object):
         assert variant.type == "variant"
         assert variant.subtype == "fusion_variant"
 
-    def test_attributes(self):
+    def test_simple_attributes(self):
         variant = civic.get_variant_by_id(1)
         assert variant.vicc_compliant_name == "BCR(entrez:613)::ABL1(entrez:25)"
-        assert variant.five_prime_start_exon_coordinates.chromosome == "22"
-        assert variant.five_prime_start_exon_coordinates.reference_build == "GRCH37"
-        assert variant.five_prime_start_exon_coordinates.ensembl_id == "ENSE00001897802"
-        assert variant.five_prime_start_exon_coordinates.ensembl_version == 75
-        assert (
-            variant.five_prime_start_exon_coordinates.representative_transcript
-            == "ENST00000305877.8"
-        )
-        assert variant.five_prime_start_exon_coordinates.strand == "POSITIVE"
-        assert variant.five_prime_start_exon_coordinates.exon == 1
-        assert variant.five_prime_start_exon_coordinates.exon_offset == 0
-        assert variant.five_prime_start_exon_coordinates.exon_offset_direction is None
-        assert variant.five_prime_start_exon_coordinates.start == 23522397
-        assert variant.five_prime_start_exon_coordinates.stop == 23524426
 
-        assert variant.five_prime_end_exon_coordinates.chromosome == "22"
-        assert variant.five_prime_end_exon_coordinates.reference_build == "GRCH37"
-        assert variant.five_prime_end_exon_coordinates.ensembl_id == "ENSE00001781765"
-        assert variant.five_prime_end_exon_coordinates.ensembl_version == 75
-        assert (
-            variant.five_prime_end_exon_coordinates.representative_transcript
-            == "ENST00000305877.8"
-        )
-        assert variant.five_prime_end_exon_coordinates.strand == "POSITIVE"
-        assert variant.five_prime_end_exon_coordinates.exon == 14
-        assert variant.five_prime_end_exon_coordinates.exon_offset == 0
-        assert variant.five_prime_end_exon_coordinates.exon_offset_direction is None
-        assert variant.five_prime_end_exon_coordinates.start == 23632526
-        assert variant.five_prime_end_exon_coordinates.stop == 23632600
+    def test_complex_attributes(self):
+        variant = civic.get_variant_by_id(1)
 
-        assert variant.three_prime_start_exon_coordinates.chromosome == "9"
-        assert variant.three_prime_start_exon_coordinates.reference_build == "GRCH37"
-        assert (
-            variant.three_prime_start_exon_coordinates.ensembl_id == "ENSE00000984287"
-        )
-        assert variant.three_prime_start_exon_coordinates.ensembl_version == 75
-        assert (
-            variant.three_prime_start_exon_coordinates.representative_transcript
-            == "ENST00000318560.5"
-        )
-        assert variant.three_prime_start_exon_coordinates.strand == "POSITIVE"
-        assert variant.three_prime_start_exon_coordinates.exon == 2
-        assert variant.three_prime_start_exon_coordinates.exon_offset == 0
-        assert variant.three_prime_start_exon_coordinates.exon_offset_direction is None
-        assert variant.three_prime_start_exon_coordinates.start == 133729451
-        assert variant.three_prime_start_exon_coordinates.stop == 133729624
+        #variant types
+        variant_type = variant.variant_types[0]
+        assert variant_type.__class__.__name__ == 'VariantType'
+        assert variant_type.name == 'Transcript Fusion'
+        assert variant_type.so_id == 'SO:0001886'
+        assert variant_type.description == 'A feature fusion where the deletion brings together transcript regions.'
+        assert variant_type.url == 'http://www.sequenceontology.org/browser/current_svn/term/SO:0001886'
 
-        assert variant.three_prime_end_exon_coordinates.chromosome == "9"
-        assert variant.three_prime_end_exon_coordinates.reference_build == "GRCH37"
-        assert variant.three_prime_end_exon_coordinates.ensembl_id == "ENSE00001457584"
-        assert variant.three_prime_end_exon_coordinates.ensembl_version == 75
-        assert (
-            variant.three_prime_end_exon_coordinates.representative_transcript
-            == "ENST00000318560.5"
-        )
-        assert variant.three_prime_end_exon_coordinates.strand == "POSITIVE"
-        assert variant.three_prime_end_exon_coordinates.exon == 11
-        assert variant.three_prime_end_exon_coordinates.exon_offset == 0
-        assert variant.three_prime_end_exon_coordinates.exon_offset_direction is None
-        assert variant.three_prime_end_exon_coordinates.start == 133759356
-        assert variant.three_prime_end_exon_coordinates.stop == 133763062
+        #5' coordinates
+        coordinates = variant.five_prime_coordinates
+        assert coordinates.__class__.__name__ == 'Coordinate'
+        assert coordinates.chromosome == '22'
+        assert coordinates.start == 23522397
+        assert coordinates.stop == 23632600
+        assert coordinates.reference_bases == None
+        assert coordinates.variant_bases == None
+        assert coordinates.ensembl_version == 75
+        assert coordinates.representative_transcript == 'ENST00000305877.8'
+        assert coordinates.reference_build == 'GRCh37'
+
+        #3' coordinates
+        coordinates = variant.three_prime_coordinates
+        assert coordinates.__class__.__name__ == 'Coordinate'
+        assert coordinates.chromosome == '9'
+        assert coordinates.start == 133729451
+        assert coordinates.stop == 133763062
+        assert coordinates.reference_bases == None
+        assert coordinates.variant_bases == None
+        assert coordinates.ensembl_version == 75
+        assert coordinates.representative_transcript == 'ENST00000318560.5'
+        assert coordinates.reference_build == 'GRCh37'
+
+        #5' start exon
+        five_p_start_exon = variant.five_prime_start_exon_coordinates
+        assert five_p_start_exon.__class__.__name__ == 'ExonCoordinate'
+        assert five_p_start_exon.chromosome == "22"
+        assert five_p_start_exon.reference_build == "GRCh37"
+        assert five_p_start_exon.ensembl_id == "ENSE00001897802"
+        assert five_p_start_exon.ensembl_version == 75
+        assert five_p_start_exon.representative_transcript == "ENST00000305877.8"
+        assert five_p_start_exon.strand == "POSITIVE"
+        assert five_p_start_exon.exon == 1
+        assert five_p_start_exon.exon_offset == 0
+        assert five_p_start_exon.exon_offset_direction is None
+        assert five_p_start_exon.start == 23522397
+        assert five_p_start_exon.stop == 23524426
+
+        #5' end exon
+        five_p_end_exon = variant.five_prime_end_exon_coordinates
+        assert five_p_end_exon.__class__.__name__ == 'ExonCoordinate'
+        assert five_p_end_exon.chromosome == "22"
+        assert five_p_end_exon.reference_build == "GRCh37"
+        assert five_p_end_exon.ensembl_id == "ENSE00001781765"
+        assert five_p_end_exon.ensembl_version == 75
+        assert five_p_end_exon.representative_transcript == "ENST00000305877.8"
+        assert five_p_end_exon.strand == "POSITIVE"
+        assert five_p_end_exon.exon == 14
+        assert five_p_end_exon.exon_offset == 0
+        assert five_p_end_exon.exon_offset_direction is None
+        assert five_p_end_exon.start == 23632526
+        assert five_p_end_exon.stop == 23632600
+
+        #3' start exon
+        three_p_start_exon = variant.three_prime_start_exon_coordinates
+        assert three_p_start_exon.__class__.__name__ == 'ExonCoordinate'
+        assert three_p_start_exon.chromosome == "9"
+        assert three_p_start_exon.reference_build == "GRCh37"
+        assert three_p_start_exon.ensembl_id == "ENSE00000984287"
+        assert three_p_start_exon.ensembl_version == 75
+        assert three_p_start_exon.representative_transcript == "ENST00000318560.5"
+        assert three_p_start_exon.strand == "POSITIVE"
+        assert three_p_start_exon.exon == 2
+        assert three_p_start_exon.exon_offset == 0
+        assert three_p_start_exon.exon_offset_direction is None
+        assert three_p_start_exon.start == 133729451
+        assert three_p_start_exon.stop == 133729624
+
+        #3' end exon
+        three_p_end_exon = variant.three_prime_end_exon_coordinates
+        assert three_p_end_exon.__class__.__name__ == 'ExonCoordinate'
+        assert three_p_end_exon.chromosome == "9"
+        assert three_p_end_exon.reference_build == "GRCh37"
+        assert three_p_end_exon.ensembl_id == "ENSE00001457584"
+        assert three_p_end_exon.ensembl_version == 75
+        assert three_p_end_exon.representative_transcript == "ENST00000318560.5"
+        assert three_p_end_exon.strand == "POSITIVE"
+        assert three_p_end_exon.exon == 11
+        assert three_p_end_exon.exon_offset == 0
+        assert three_p_end_exon.exon_offset_direction is None
+        assert three_p_end_exon.start == 133759356
+        assert three_p_end_exon.stop == 133763062
 
     def test_nullable_fields(self):
         variant = civic.get_variant_by_id(5041)
@@ -415,28 +471,34 @@ class TestAssertions(object):
         assert v600e_assertion.fda_companion_test is True
         assert v600e_assertion.fda_regulatory_approval is True
 
+    def test_complex_attributes(self):
+        #Acmg Codes
+        assertion = civic.get_assertion_by_id(18)
+        assert assertion.acmg_codes
+        for acmg_code in assertion.acmg_codes:
+            assert acmg_code.__class__.__name__ == 'AcmgCode'
+            assert acmg_code.id
+            assert acmg_code.code
+            assert acmg_code.description
+
+        #Clingen Codes
+        assertion = civic.get_assertion_by_id(53)
+        assert assertion.clingen_codes
+        for clingen_code in assertion.clingen_codes:
+            assert clingen_code.__class__.__name__ == 'ClingenCode'
+            assert clingen_code.id
+            assert clingen_code.code
+            assert clingen_code.description
+
     def test_properties(self):
         assertion = civic.get_assertion_by_id(18)
         assert assertion.evidence == assertion.evidence_items
         assert assertion.hpo_ids == [p.hpo_id for p in assertion.phenotypes if p.hpo_id]
-        assert assertion.acmg_codes
-        for acmg_code in assertion.acmg_codes:
-            assert acmg_code.id
-            assert acmg_code.code
-            assert acmg_code.description
         assert assertion.disease.name == "Von Hippel-Lindau Disease"
         assert len(assertion.therapies) == 0
         assert len(assertion.phenotypes) == 3
         assert len(assertion.approvals) == 0
         assert assertion.molecular_profile.id == 1686
-
-        # Test assertion with clingen_codes
-        assertion = civic.get_assertion_by_id(53)
-        assert assertion.clingen_codes
-        for clingen_code in assertion.clingen_codes:
-            assert clingen_code.id
-            assert clingen_code.code
-            assert clingen_code.description
 
 
 class TestFeatures(object):
@@ -705,7 +767,7 @@ class TestSource(object):
         assert s.id == 1
         assert s.type == "source"
 
-    def test_attributes(self):
+    def test_simple_attributes(self):
         s = civic.get_source_by_id(947)
         assert s.citation == "McArthur et al., 2014"
         assert s.citation_id == "24508103"
@@ -718,7 +780,16 @@ class TestSource(object):
         assert s.publication_date == "2014-3"
         assert s.source_url == "http://www.ncbi.nlm.nih.gov/pubmed/24508103"
         assert s.title.startswith("Safety and efficacy of vemurafenib")
+
+    def test_complex_attributes(self):
+        s = civic.get_source_by_id(947)
         assert len(s.clinical_trials) == 1
+        t = s.clinical_trials[0]
+        assert t.__class__.__name__ == 'ClinicalTrial'
+        assert t.name.startswith('A Study of Vemurafenib (RO5185426) in Comparison With Dacarbazine')
+        assert t.description.startswith('This randomized, open-label study evaluated the efficacy, safety and tolerability of vemurafenib (RO5185426)')
+        assert t.nct_id == 'NCT01006980'
+        assert t.url == 'https://clinicaltrials.gov/study/NCT01006980'
 
     def test_get_pubmed_source_by_id(self):
         s = civic.get_pubmed_source_by_id("24889366")
