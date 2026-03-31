@@ -1987,6 +1987,76 @@ class ExonCoordinate(CivicAttribute):
 class Country(CivicAttribute):
     _SIMPLE_FIELDS = CivicRecord._SIMPLE_FIELDS.union({"iso", "name"})
 
+    def __repr__(self):
+        return "<CIViC Country>"
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+
+class ClingenCode(CivicAttribute):
+    _SIMPLE_FIELDS = CivicRecord._SIMPLE_FIELDS.union(
+        {
+            "code",
+            "description"
+        }
+    )
+
+    def __repr__(self):
+        return "<CIViC ClingenCode>"
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+
+class AcmgCode(CivicAttribute):
+    _SIMPLE_FIELDS = CivicRecord._SIMPLE_FIELDS.union(
+        {
+            "code",
+            "description"
+        }
+    )
+
+    def __repr__(self):
+        return "<CIViC AcmgCode>"
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+
+class ClinicalTrial(CivicAttribute):
+    _SIMPLE_FIELDS = CivicRecord._SIMPLE_FIELDS.union(
+        {
+            "name",
+            "description",
+            "nct_id",
+            "url"
+        }
+    )
+
+    def __repr__(self):
+        return "<CIViC ClinicalTrial>"
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+
+class VariantType(CivicAttribute):
+    _SIMPLE_FIELDS = CivicRecord._SIMPLE_FIELDS.union(
+        {
+            "name",
+            "so_id",
+            "description",
+            "url"
+        }
+    )
+
+    def __repr__(self):
+        return "<CIViC VariantType>"
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
 
 class LifecycleAction(CivicAttribute):
     _OPTIONAL_FIELDS = CivicAttribute._OPTIONAL_FIELDS.union(
@@ -2156,6 +2226,19 @@ def _postprocess_response_element(e, element):
         elif e["__typename"] == "FactorVariant":
             e["subtype"] = "factor_variant"
         elif e["__typename"] == "FusionVariant":
+            for c in [
+                e["five_prime_coordinates"],
+                e["three_prime_coordinates"],
+                e["five_prime_start_exon_coordinates"],
+                e["five_prime_end_exon_coordinates"],
+                e["three_prime_start_exon_coordinates"],
+                e["three_prime_end_exon_coordinates"]
+            ]:
+                if c:
+                    if c["reference_build"] == "GRCH37":
+                        c["reference_build"] = "GRCh37"
+                    elif c["reference_build"] == "GRCH38":
+                        c["reference_build"] = "GRCh38"
             if (
                 e["five_prime_start_exon_coordinates"]
                 and e["five_prime_start_exon_coordinates"]["exon_offset"] is None

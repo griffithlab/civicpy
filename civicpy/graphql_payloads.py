@@ -766,7 +766,7 @@ def _construct_get_source_payload():
                     id
                     name
                     description
-                    nctId
+                    nct_id: nctId
                     url
                 }
             }
@@ -801,7 +801,7 @@ def _construct_get_all_sources_payload():
                     id
                     name
                     description
-                    nctId
+                    nct_id: nctId
                     url
                 }
               }
