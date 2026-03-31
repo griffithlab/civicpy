@@ -48,6 +48,7 @@ class CivicVcfWriter():
         'CIViC Evidence Rating',
         'CIViC Assertion ACMG Codes',
         'CIViC Assertion AMP Category',
+        'CIViC Assertion ClinGen Codes',
         'CIViC Assertion NCCN Guideline',
         'CIViC Assertion Regulatory Approval',
         'CIViC Assertion FDA Companion Test',
