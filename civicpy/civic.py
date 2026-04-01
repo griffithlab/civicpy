@@ -3258,6 +3258,22 @@ def get_all_organizations(allow_cached=True):
     return organizations
 
 
+def get_organization_by_name(name, allow_cached=True):
+    """
+    :param str name: A CIViC organization name.
+    :param bool allow_cached: Indicates whether object retrieval from CACHE is allowed.
+        If **False** it will query the CIViC database directly.
+    :returns: An :class:`Organization` object.
+    """
+    organizations = _get_elements_by_ids(
+        "organization", get_all=True, allow_cached=allow_cached
+    )
+    match = next((o for o in organizations if o.name == name), None)
+    if match is None:
+        raise ValueError("No organization with name: {}".format(name))
+    return match
+
+
 # Approval
 
 
