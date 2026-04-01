@@ -38,7 +38,7 @@ setup(
         "Click",
         "vcfpy~=0.13.8",
         "pysam",
-        "backports-datetime-fromisoformat",
+        "python-dateutil",
         "deprecation",
         "ga4gh.vrs",
         "ga4gh.cat_vrs",
