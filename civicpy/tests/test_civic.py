@@ -824,6 +824,14 @@ class TestOrganization(object):
         assert org.url == "http://genome.wustl.edu/"
         assert org.is_approved_vcep is False
 
+    def test_get_by_name(self):
+        org = civic.get_organization_by_name("The McDonnell Genome Institute")
+        assert org.id == 1
+
+    def test_get_by_name_not_found(self):
+        with pytest.raises(ValueError, match="No organization with name"):
+            civic.get_organization_by_name("Nonexistent Organization")
+
     def test_properties(self):
         org = civic.get_organization_by_id(14)
         assert len(org.approvals) >= 1
