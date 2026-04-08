@@ -8,10 +8,9 @@ import os
 from pathlib import Path
 from collections import defaultdict, namedtuple
 from datetime import datetime, timedelta
-from backports.datetime_fromisoformat import MonkeyPatch
+from dateutil.parser import isoparse
 import time
 
-MonkeyPatch.patch_fromisoformat()
 import re
 
 from civicpy import REMOTE_CACHE_URL, LOCAL_CACHE_PATH, CACHE_TIMEOUT_DAYS
@@ -1590,8 +1589,7 @@ class User(CivicRecord):
 
     @property
     def created_at(self):
-        assert self._created_at[-1] == "Z"
-        return datetime.fromisoformat(self._created_at[:-1])
+        return isoparse(self._created_at)
 
     @created_at.setter
     def created_at(self, value):
@@ -2075,8 +2073,7 @@ class BaseLifecycleAction(CivicAttribute):
 
     @property
     def timestamp(self):
-        assert self._timestamp[-1] == "Z"
-        return datetime.fromisoformat(self._timestamp[:-1])
+        return isoparse(self._timestamp)
 
     @timestamp.setter
     def timestamp(self, value):
