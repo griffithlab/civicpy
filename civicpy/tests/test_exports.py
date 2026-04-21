@@ -126,8 +126,8 @@ def gks_contributions():
             "contributor": {
                 "id": "civic.organization:1",
                 "type": "Agent",
-                "name": "The McDonnell Genome Institute",
-                "description": "The McDonnell Genome Institute (MGI) is a world leader in the fast-paced, constantly changing field of genomics. A truly unique institution, we are pushing the limits of academic research by creating, testing, and implementing new approaches to the study of biology with the goal of understanding human health and disease, as well as evolution and the biology of other organisms.",
+                "name": "CIViC",
+                "description": "The CIViC Organization (formerly “The McDonnell Genome Institute” CIViC organization) comprises the founders, developers, editors, curators, and administrators who build and maintain the knowledgebase, based at Washington University in St. Louis. This group is dedicated to ensuring that high-quality cancer variant interpretations are broadly accessible for precision oncology. One of their main roles is evaluating and synthesizing crowdsourced community contributions into formal clinical Assertions. Once these Assertions meet the strict criteria of the CIViC standard operating procedure, core approval members approve them for 1-star submission to the ClinVar CIViC organization.",
                 "extensions": [{"name": "is_approved_vcep", "value": False}],
             },
             "activityType": "approval.last_reviewed",
@@ -480,6 +480,14 @@ def gks_aid6(
                         "system": "AMP/ASCO/CAP (AAC) Guidelines, 2017",
                     },
                 },
+                "reportedIn": [
+                    "https://civicdb.org/links/evidence/2997",
+                    "https://civicdb.org/links/evidence/879",
+                    "https://civicdb.org/links/evidence/982",
+                    "https://civicdb.org/links/evidence/883",
+                    "https://civicdb.org/links/evidence/968",
+                    "https://civicdb.org/links/evidence/2629"
+                ]
             }
         ],
         "reportedIn": ["https://civicdb.org/links/assertion/6"],
