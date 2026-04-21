@@ -877,7 +877,11 @@ class _CivicGksAssertionRecord(_CivicGksEvidenceAssertionMixin, ABC):
                     id=f"civic.{organization.type}:{organization.id}",
                     name=organization.name,
                     description=organization.description,
-                    extensions=[Extension(name="is_approved_vcep", value=organization.is_approved_vcep)],
+                    extensions=[
+                        Extension(
+                            name="is_approved_vcep", value=organization.is_approved_vcep
+                        )
+                    ],
                 ),
             )
         ]
@@ -929,7 +933,7 @@ class _CivicGksAssertionRecord(_CivicGksEvidenceAssertionMixin, ABC):
         )
 
         evidence_items: list[CivicGksEvidence] = []
-        reported_in: list[iriReference] = []
+        eid_links: list[str] = []
         for evidence_item in assertion.evidence_items:
             try:
                 evidence_items.append(CivicGksEvidence(evidence_item))
@@ -947,14 +951,14 @@ class _CivicGksAssertionRecord(_CivicGksEvidenceAssertionMixin, ABC):
                 )
             finally:
                 # Retain all EID references
-                reported_in.append(f"{LINKS_URL}/evidence/{evidence_item.id}")
+                eid_links.append(f"{LINKS_URL}/evidence/{evidence_item.id}")
 
         return [
             EvidenceLine(
                 hasEvidenceItems=evidence_items,
                 directionOfEvidenceProvided=direction,
                 strengthOfEvidenceProvided=strength,
-                reportedIn=reported_in
+                extensions=[Extension(name="citations", value=eid_links)]
             )
         ]
 

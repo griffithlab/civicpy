@@ -480,13 +480,19 @@ def gks_aid6(
                         "system": "AMP/ASCO/CAP (AAC) Guidelines, 2017",
                     },
                 },
-                "reportedIn": [
-                    "https://civicdb.org/links/evidence/2997",
-                    "https://civicdb.org/links/evidence/879",
-                    "https://civicdb.org/links/evidence/982",
-                    "https://civicdb.org/links/evidence/883",
-                    "https://civicdb.org/links/evidence/968",
-                    "https://civicdb.org/links/evidence/2629"
+                "extensions": [
+                    {
+                        "name": "citations",
+                        "value": [
+                            "https://civicdb.org/links/evidence/2997",
+                            "https://civicdb.org/links/evidence/879",
+                            "https://civicdb.org/links/evidence/982",
+                            "https://civicdb.org/links/evidence/883",
+                            "https://civicdb.org/links/evidence/968",
+                            "https://civicdb.org/links/evidence/2629"
+                        ]
+                    }
+
                 ]
             }
         ],
