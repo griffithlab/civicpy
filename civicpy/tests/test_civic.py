@@ -497,7 +497,7 @@ class TestAssertions(object):
         assert assertion.disease.name == "Von Hippel-Lindau Disease"
         assert len(assertion.therapies) == 0
         assert len(assertion.phenotypes) == 3
-        assert len(assertion.approvals) == 0
+        assert len(assertion.approvals) == 1
         assert assertion.molecular_profile.id == 1686
 
 
@@ -820,8 +820,8 @@ class TestOrganization(object):
 
     def test_attributes(self):
         org = civic.get_organization_by_id(1)
-        assert org.name == "The McDonnell Genome Institute"
-        assert org.url == "http://genome.wustl.edu/"
+        assert org.name == "CIViC"
+        assert org.url == "https://civicdb.org"
         assert org.is_approved_vcep is False
 
     def test_properties(self):
