@@ -955,7 +955,7 @@ class _CivicGksAssertionRecord(_CivicGksEvidenceAssertionMixin, ABC):
 
         return [
             EvidenceLine(
-                hasEvidenceItems=evidence_items,
+                hasEvidenceItems=evidence_items or None,
                 directionOfEvidenceProvided=direction,
                 strengthOfEvidenceProvided=strength,
                 extensions=[Extension(name="citations", value=eid_links)]
