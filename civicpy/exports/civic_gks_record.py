@@ -2,6 +2,7 @@
 
 from abc import ABC
 from enum import Enum
+import logging
 import re
 from types import MappingProxyType
 
@@ -58,6 +59,7 @@ from civicpy.civic import (
     MolecularProfile,
 )
 
+_logger = logging.getLogger(__name__)
 
 PUBMED_URL = "https://pubmed.ncbi.nlm.nih.gov"
 
@@ -875,7 +877,11 @@ class _CivicGksAssertionRecord(_CivicGksEvidenceAssertionMixin, ABC):
                     id=f"civic.{organization.type}:{organization.id}",
                     name=organization.name,
                     description=organization.description,
-                    extensions=[Extension(name="is_approved_vcep", value=organization.is_approved_vcep)],
+                    extensions=[
+                        Extension(
+                            name="is_approved_vcep", value=organization.is_approved_vcep
+                        )
+                    ],
                 ),
             )
         ]
@@ -925,16 +931,34 @@ class _CivicGksAssertionRecord(_CivicGksEvidenceAssertionMixin, ABC):
             if assertion.assertion_direction == "SUPPORTS"
             else Direction.DISPUTES
         )
-        evidence_items = [
-            CivicGksEvidence(evidence_item)
-            for evidence_item in assertion.evidence_items
-        ]
+
+        evidence_items: list[CivicGksEvidence] = []
+        eid_links: list[str] = []
+        for evidence_item in assertion.evidence_items:
+            try:
+                evidence_items.append(CivicGksEvidence(evidence_item))
+            except CivicGksRecordError as e:
+                _logger.exception(
+                    "Error translating %s to CivicGksEvidence: %s",
+                    evidence_item.name,
+                    str(e),
+                )
+            except Exception as e:
+                _logger.exception(
+                    "Unhandled error translating %s to CivicGksEvidence: %s",
+                    evidence_item.name,
+                    str(e),
+                )
+            finally:
+                # Retain all EID references
+                eid_links.append(f"{LINKS_URL}/evidence/{evidence_item.id}")
 
         return [
             EvidenceLine(
-                hasEvidenceItems=evidence_items,
+                hasEvidenceItems=evidence_items or None,
                 directionOfEvidenceProvided=direction,
                 strengthOfEvidenceProvided=strength,
+                extensions=[Extension(name="citations", value=eid_links)]
             )
         ]
 
