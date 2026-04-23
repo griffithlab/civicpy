@@ -825,7 +825,7 @@ class TestOrganization(object):
         assert org.is_approved_vcep is False
 
     def test_get_by_name(self):
-        org = civic.get_organization_by_name("The McDonnell Genome Institute")
+        org = civic.get_organization_by_name("CIViC")
         assert org.id == 1
 
     def test_get_by_name_not_found(self):
