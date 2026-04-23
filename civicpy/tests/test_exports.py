@@ -480,6 +480,20 @@ def gks_aid6(
                         "system": "AMP/ASCO/CAP (AAC) Guidelines, 2017",
                     },
                 },
+                "extensions": [
+                    {
+                        "name": "citations",
+                        "value": [
+                            "https://civicdb.org/links/evidence/2997",
+                            "https://civicdb.org/links/evidence/879",
+                            "https://civicdb.org/links/evidence/982",
+                            "https://civicdb.org/links/evidence/883",
+                            "https://civicdb.org/links/evidence/968",
+                            "https://civicdb.org/links/evidence/2629"
+                        ]
+                    }
+
+                ]
             }
         ],
         "reportedIn": ["https://civicdb.org/links/assertion/6"],
@@ -821,6 +835,22 @@ class TestCivicGksPrognosticAssertion(object):
         assert record.proposition.predicate == "associatedWithWorseOutcomeFor"
         assert record.strength.primaryCoding.code.root == "Level A"
         assert record.classification.primaryCoding.code.root == "Tier I"
+
+    @patch.object(civic.Assertion, "evidence_items", new_callable=PropertyMock)
+    @patch.object(civic.Evidence, "is_valid_for_gks_json")
+    def test_citations(self, test_is_valid_for_gks_json,test_evidence_items, aid20):
+        """Test that citations extension is working correctly for EIDs that are not valid for GKS"""
+        test_evidence_items.return_value = [civic.get_evidence_by_id(11881)]
+        test_is_valid_for_gks_json.return_value = False
+
+        record = CivicGksPrognosticAssertion(aid20)
+        assert len(record.hasEvidenceLines) == 1
+        assert record.hasEvidenceLines[0].hasEvidenceItems is None
+        assert len(record.hasEvidenceLines[0].extensions) == 1
+        assert record.hasEvidenceLines[0].extensions[0].model_dump(exclude_none=True) == {
+            "name": "citations",
+            "value": ["https://civicdb.org/links/evidence/11881"]
+        }
 
 
 class TestCivicGksDiagnosticAssertion(object):
