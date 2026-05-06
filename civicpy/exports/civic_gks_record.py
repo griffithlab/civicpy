@@ -686,7 +686,7 @@ class _CivicGksEvidenceAssertionMixin:
             "alleleOriginQualifier": self.get_allele_origin_qualifier(record),
             "predicate": self.get_predicate(record)
             if not is_clinical_significance_prop
-            else "hasClinicalSignificanceFor",
+            else VariantClinicalSignificanceProposition.model_fields["predicate"].default,
         }
 
         if (
@@ -728,10 +728,10 @@ class _CivicGksEvidenceAssertionMixin:
         | VariantDiagnosticProposition
         | VariantPrognosticProposition
     ):
-        """Get GKS proposition
+        """Get GKS target proposition
 
         :param record: CIViC assertion or evidence item
-        :return: GKS proposition
+        :return: GKS target proposition
         """
         record_type = (
             record.assertion_type
@@ -749,13 +749,13 @@ class _CivicGksEvidenceAssertionMixin:
                 )
 
             params["objectTherapeutic"] = therapeutic
-            proposition = VariantTherapeuticResponseProposition
+            proposition_cls = VariantTherapeuticResponseProposition
         else:
             if record_type == CivicEvidenceAssertionType.PROGNOSTIC:
-                proposition = VariantPrognosticProposition
+                proposition_cls = VariantPrognosticProposition
             else:
-                proposition = VariantDiagnosticProposition
-        return proposition(**params)
+                proposition_cls = VariantDiagnosticProposition
+        return proposition_cls(**params)
 
 
 class CivicGksSource(Document):
@@ -966,6 +966,7 @@ class CivicGksAssertion(
         :param assertion: CIViC assertion
         :param level: The CIViC Assertion's AMP/ASCO/CAP category level
         :return: List of CIViC evidence lines
+        :raise NotImplementedError: If evidence line type not supported
         """
         direction = (
             Direction.SUPPORTS
@@ -1019,6 +1020,11 @@ class CivicGksAssertion(
     def get_proposition(
         self, assertion: Assertion
     ) -> VariantClinicalSignificanceProposition:
+        """Get GKS proposition
+
+        :param assertion: CIViC assertion record
+        :return: GKS proposition
+        """
         params = self._get_proposition_params(
             assertion, assertion.assertion_type, is_clinical_significance_prop=True
         )
