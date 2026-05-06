@@ -19,6 +19,7 @@ Features
 .. autofunction:: get_all_genes
 .. autofunction:: get_all_factors
 .. autofunction:: get_all_fusions
+.. autofunction:: get_all_regions
 
 Variants
 ~~~~~~~~
@@ -27,6 +28,7 @@ Variants
 .. autofunction:: get_all_gene_variants
 .. autofunction:: get_all_factor_variants
 .. autofunction:: get_all_fusion_variants
+.. autofunction:: get_all_region_variants
 
 Molecular Profiles
 ~~~~~~~~~~~~~~~~~~
@@ -98,6 +100,9 @@ Features
 
 .. autofunction:: get_fusion_by_id
 .. autofunction:: get_fusions_by_ids
+
+.. autofunction:: get_region_by_id
+.. autofunction:: get_regions_by_ids
 
 Variants
 ~~~~~~~~
@@ -206,6 +211,11 @@ Fusions
 
 .. autofunction:: get_fusion_by_name
 .. autofunction:: search_fusions_by_partner_gene_id
+
+Regions
+~~~~~~~
+
+.. autofunction:: get_region_by_name
 
 Variants
 ~~~~~~~~

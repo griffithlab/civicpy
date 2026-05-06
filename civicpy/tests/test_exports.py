@@ -122,11 +122,12 @@ def gks_contributions():
             "contributor": {
                 "id": "civic.organization:1",
                 "type": "Agent",
-                "name": "The McDonnell Genome Institute",
-                "description": "The McDonnell Genome Institute (MGI) is a world leader in the fast-paced, constantly changing field of genomics. A truly unique institution, we are pushing the limits of academic research by creating, testing, and implementing new approaches to the study of biology with the goal of understanding human health and disease, as well as evolution and the biology of other organisms.",
+                "name": "CIViC",
+                "description": "The CIViC Organization (formerly “The McDonnell Genome Institute” CIViC organization) comprises the founders, developers, editors, curators, and administrators who build and maintain the knowledgebase, based at Washington University in St. Louis. This group is dedicated to ensuring that high-quality cancer variant interpretations are broadly accessible for precision oncology. One of their main roles is evaluating and synthesizing crowdsourced community contributions into formal clinical Assertions. Once these Assertions meet the strict criteria of the CIViC standard operating procedure, core approval members approve them for 1-star submission to the ClinVar CIViC organization.",
+                "extensions": [{"name": "is_approved_vcep", "value": False}],
             },
             "activityType": "approval.last_reviewed",
-            "date": "2025-05-27",
+            "date": "2026-04-24",
         }
     ]
 
@@ -298,6 +299,7 @@ def gks_gid19():
                     "ERRP",
                     "HER1",
                     "NISBD2",
+                    "NNCIS",
                     "PIG61",
                     "mENA",
                 ],
@@ -472,6 +474,20 @@ def gks_aid6(
                         "system": "AMP/ASCO/CAP Guidelines, 2017",
                     },
                 },
+                "extensions": [
+                    {
+                        "name": "citations",
+                        "value": [
+                            "https://civicdb.org/links/evidence/2997",
+                            "https://civicdb.org/links/evidence/879",
+                            "https://civicdb.org/links/evidence/982",
+                            "https://civicdb.org/links/evidence/883",
+                            "https://civicdb.org/links/evidence/968",
+                            "https://civicdb.org/links/evidence/2629"
+                        ]
+                    }
+
+                ]
             }
         ],
         "reportedIn": ["https://civicdb.org/links/assertion/6"],
@@ -679,6 +695,19 @@ class TestCivicGksMolecularProfile(object):
             )
             assert expressions is None
 
+    def test_na_clinvar_mapping(self, v600e_mp):
+        """Test that get_aliases_and_mappings method works as expected when no clinvar entry found"""
+        variant = v600e_mp.variants[0]
+
+        with patch.object(variant, "clinvar_entries", new=["N/A"]):
+            gks_mp = CivicGksMolecularProfile(v600e_mp)
+            _, mappings = gks_mp.get_aliases_and_mappings(v600e_mp)
+            assert mappings
+            assert not any(
+                m.coding.system == "https://www.ncbi.nlm.nih.gov/clinvar/variation/"
+                for m in mappings
+            )
+
 
 class TestCivicGksTherapyGroup(object):
     """Test that CivicGksTherapyGroup works as expected"""
@@ -794,7 +823,27 @@ class TestCivicGksAssertion(object):
         assert record.strength.primaryCoding.code.root == "strong"
         assert record.classification.primaryCoding.code.root == "tier i"
 
-    def test_valid_diagnostic(
+    @patch.object(civic.Assertion, "evidence_items", new_callable=PropertyMock)
+    @patch.object(civic.Evidence, "is_valid_for_gks_json")
+    def test_citations(self, test_is_valid_for_gks_json,test_evidence_items, aid20):
+        """Test that citations extension is working correctly for EIDs that are not valid for GKS"""
+        test_evidence_items.return_value = [civic.get_evidence_by_id(11881)]
+        test_is_valid_for_gks_json.return_value = False
+
+        record = CivicGksAssertion(aid20)
+        assert len(record.hasEvidenceLines) == 1
+        assert record.hasEvidenceLines[0].hasEvidenceItems is None
+        assert len(record.hasEvidenceLines[0].extensions) == 1
+        assert record.hasEvidenceLines[0].extensions[0].model_dump(exclude_none=True) == {
+            "name": "citations",
+            "value": ["https://civicdb.org/links/evidence/11881"]
+        }
+
+
+class TestCivicGksDiagnosticAssertion(object):
+    """Test that CivicGksDiagnosticAssertion works as expected"""
+
+    def test_valid(
         self,
         aid9,
         aid93,
@@ -802,7 +851,7 @@ class TestCivicGksAssertion(object):
         aid115,
         gks_aid115_object_condition,
     ):
-        """Test that validdiagnostic assertion works as expected"""
+        """Test that valid diagnostic assertion works as expected"""
         record = CivicGksAssertion(aid9)
         assert isinstance(record, VariantClinicalSignificanceStatement)
         assert len(record.hasEvidenceLines) == 1

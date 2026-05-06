@@ -8,14 +8,16 @@ import os
 from pathlib import Path
 from collections import defaultdict, namedtuple
 from datetime import datetime, timedelta
-from backports.datetime_fromisoformat import MonkeyPatch
+from dateutil.parser import isoparse
+import time
 
-MonkeyPatch.patch_fromisoformat()
 import re
 
 from civicpy import REMOTE_CACHE_URL, LOCAL_CACHE_PATH, CACHE_TIMEOUT_DAYS
 from civicpy import graphql_payloads
 from civicpy import utils
+
+_logger = logging.getLogger(__name__)
 
 
 CACHE = dict()
@@ -97,7 +99,7 @@ def download_remote_cache(
 
     :return:                    Returns True on success.
     """
-    logging.warning("Downloading remote cache from {}.".format(remote_cache_url))
+    _logger.warning("Downloading remote cache from {}.".format(remote_cache_url))
     _make_local_cache_path_if_missing(local_cache_path)
     r = requests.get(remote_cache_url)
     r.raise_for_status()
@@ -198,7 +200,7 @@ def load_cache(local_cache_path=LOCAL_CACHE_PATH, on_stale="auto"):
     ) or on_stale == "update":
         MODULE.CACHE = old_cache
         if downloaded_remote:
-            logging.error(
+            _logger.error(
                 "Remote cache at {} is stale. Consider running `update_cache(from_remote_cache=False)` "
                 "to create cache from API query (slow), or `load_cache(on_stale='ignore')` "
                 "to load stale local cache (if present). "
@@ -207,7 +209,7 @@ def load_cache(local_cache_path=LOCAL_CACHE_PATH, on_stale="auto"):
             )
             raise SystemError
         else:
-            logging.warning(
+            _logger.warning(
                 "Local cache at {} is stale, updating from remote.".format(
                     local_cache_path
                 )
@@ -216,7 +218,7 @@ def load_cache(local_cache_path=LOCAL_CACHE_PATH, on_stale="auto"):
             return True
     elif on_stale == "reject" or on_stale == "auto":
         MODULE.CACHE = old_cache
-        logging.warning(
+        _logger.warning(
             "Local cache at {} is stale and was not loaded. To load anyway, re-run "
             "`load_cache` with `on_stale` parameter set to desired behavior.".format(
                 local_cache_path
@@ -261,6 +263,7 @@ def update_cache(
         genes = _get_elements_by_ids("gene", allow_cached=False, get_all=True)
         factors = _get_elements_by_ids("factor", allow_cached=False, get_all=True)
         fusions = _get_elements_by_ids("fusion", allow_cached=False, get_all=True)
+        regions = _get_elements_by_ids("region", allow_cached=False, get_all=True)
         variants = _get_elements_by_ids("variant", allow_cached=False, get_all=True)
         evidence = _get_elements_by_ids("evidence", allow_cached=False, get_all=True)
         assertions = _get_elements_by_ids("assertion", allow_cached=False, get_all=True)
@@ -295,6 +298,11 @@ def update_cache(
             f.variants = [v for v in variants if v.feature_id == f.id]
             f._partial = False
             CACHE[hash(f)] = f
+        for r in regions:
+            r.sources = [s for s in sources if s.id in r.source_ids]
+            r.variants = [v for v in variants if v.feature_id == r.id]
+            r._partial = False
+            CACHE[hash(r)] = r
         for v in variants:
             v.variant_groups = [vg for vg in variant_groups if v.id in vg.variant_ids]
             v.molecular_profiles = [
@@ -327,6 +335,8 @@ def update_cache(
                         pn = [f for f in factors if f.id == pn.id][0]
                     elif pn.featureType == "FUSION":
                         pn = [f for f in fusions if f.id == pn.id][0]
+                    elif pn.featureType == "REGION":
+                        pn = [r for r in regions if r.id == pn.id][0]
                 elif pn.type == "Variant":
                     pn = [v for v in variants if v.id == pn.id][0]
                 else:
@@ -340,6 +350,7 @@ def update_cache(
             s.genes = [g for g in genes if s.id in g.source_ids]
             s.factors = [f for f in factors if s.id in f.source_ids]
             s.fusions = [f for f in fusions if s.id in f.source_ids]
+            s.regions = [r for r in regions if s.id in r.source_ids]
             s.molecular_profiles = [
                 m for m in molecular_profiles if s.id in m.source_ids
             ]
@@ -434,7 +445,7 @@ def _is_valid(warnings: list[str], emit_warnings: bool = False) -> bool:
 
     if emit_warnings:
         for warning in warnings:
-            logging.warning(warning)
+            _logger.warning(warning)
     return False
 
 
@@ -614,7 +625,7 @@ class CivicRecord:
                 v = getattr(cached, field)
                 setattr(self, field, v)
             self._partial = False
-            logging.info("Loading {} from cache".format(str(self)))
+            _logger.info("Loading {} from cache".format(str(self)))
             return True
         resp_dict = element_lookup_by_id(self.type, self.id)
         self.__init__(partial=False, **resp_dict)
@@ -1010,6 +1021,27 @@ class FusionVariant(Variant):
         """
         return self.fusion
 
+class RegionVariant(Variant):
+    _SIMPLE_FIELDS = Variant._SIMPLE_FIELDS.union(
+        {
+            "iscn_name",
+        }
+    )
+
+    @property
+    def region(self):
+        """
+        The :class:`Region` record this variant belongs to.
+        """
+        return _get_element_by_id("region", self.feature_id)
+
+    @property
+    def feature(self):
+        """
+        The :class:`Region` feature this variant belongs to.
+        """
+        return self.region
+
 
 class VariantGroup(CivicRecord):
     _SIMPLE_FIELDS = CivicRecord._SIMPLE_FIELDS.union(
@@ -1210,6 +1242,51 @@ class Fusion(CivicRecord):
             return get_gene_by_id(self.three_prime_gene_id)
         else:
             return None
+
+
+class Region(CivicRecord):
+    _SIMPLE_FIELDS = CivicRecord._SIMPLE_FIELDS.union(
+        {"description", "name", "source_ids"}
+    )
+    _COMPLEX_FIELDS = CivicRecord._COMPLEX_FIELDS.union(
+        {
+            "aliases",
+            # 'errors',                 # TODO: Add support for these fields in advanced search endpoint
+            # /'lifecycle_actions',
+            # 'provisional_values',
+            "sources",
+            "variants",
+        }
+    )
+
+    def __init__(self, **kwargs):
+        self._variants = []
+        self._sources = []
+        super().__init__(**kwargs)
+
+    @property
+    def variants(self):
+        """
+        A list of :class:`Variant` records associated with this region.
+        """
+        for variant in self._variants:
+            variant._include_status = self._include_status
+        return [v for v in self._variants if v.molecular_profiles]
+
+    @variants.setter
+    def variants(self, value):
+        self._variants = value
+
+    @property
+    def sources(self):
+        """
+        A list of :class:`Source` records associated with the region description.
+        """
+        return self._sources
+
+    @sources.setter
+    def sources(self, value):
+        self._sources = value
 
 
 class Evidence(CivicRecord):
@@ -1512,8 +1589,7 @@ class User(CivicRecord):
 
     @property
     def created_at(self):
-        assert self._created_at[-1] == "Z"
-        return datetime.fromisoformat(self._created_at[:-1])
+        return isoparse(self._created_at)
 
     @created_at.setter
     def created_at(self, value):
@@ -1526,6 +1602,7 @@ class Organization(CivicRecord):
             "name",
             "url",
             "description",
+            "is_approved_vcep",
         }
     )
 
@@ -1711,6 +1788,7 @@ class Source(CivicRecord):
         self._genes = []
         self._factors = []
         self._fusions = []
+        self._regions = []
         self._molecular_profiles = []
         super().__init__(**kwargs)
 
@@ -1767,6 +1845,17 @@ class Source(CivicRecord):
     @factors.setter
     def factors(self, value):
         self._factors = value
+
+    @property
+    def regions(self):
+        """
+        A list of :class:`Region` records supported by this source.
+        """
+        return self._regions
+
+    @regions.setter
+    def regions(self, value):
+        self._regions = value
 
     @property
     def molecular_profiles(self):
@@ -1896,6 +1985,76 @@ class ExonCoordinate(CivicAttribute):
 class Country(CivicAttribute):
     _SIMPLE_FIELDS = CivicRecord._SIMPLE_FIELDS.union({"iso", "name"})
 
+    def __repr__(self):
+        return "<CIViC Country>"
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+
+class ClingenCode(CivicAttribute):
+    _SIMPLE_FIELDS = CivicRecord._SIMPLE_FIELDS.union(
+        {
+            "code",
+            "description"
+        }
+    )
+
+    def __repr__(self):
+        return "<CIViC ClingenCode>"
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+
+class AcmgCode(CivicAttribute):
+    _SIMPLE_FIELDS = CivicRecord._SIMPLE_FIELDS.union(
+        {
+            "code",
+            "description"
+        }
+    )
+
+    def __repr__(self):
+        return "<CIViC AcmgCode>"
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+
+class ClinicalTrial(CivicAttribute):
+    _SIMPLE_FIELDS = CivicRecord._SIMPLE_FIELDS.union(
+        {
+            "name",
+            "description",
+            "nct_id",
+            "url"
+        }
+    )
+
+    def __repr__(self):
+        return "<CIViC ClinicalTrial>"
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+
+class VariantType(CivicAttribute):
+    _SIMPLE_FIELDS = CivicRecord._SIMPLE_FIELDS.union(
+        {
+            "name",
+            "so_id",
+            "description",
+            "url"
+        }
+    )
+
+    def __repr__(self):
+        return "<CIViC VariantType>"
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
 
 class LifecycleAction(CivicAttribute):
     _OPTIONAL_FIELDS = CivicAttribute._OPTIONAL_FIELDS.union(
@@ -1914,8 +2073,7 @@ class BaseLifecycleAction(CivicAttribute):
 
     @property
     def timestamp(self):
-        assert self._timestamp[-1] == "Z"
-        return datetime.fromisoformat(self._timestamp[:-1])
+        return isoparse(self._timestamp)
 
     @timestamp.setter
     def timestamp(self, value):
@@ -1958,19 +2116,19 @@ def _get_elements_by_ids(element, id_list=[], allow_cached=True, get_all=False):
         if not get_all:
             cached = [get_cached(element, element_id) for element_id in id_list]
             if all(cached):
-                logging.info("Loading {} from cache".format(utils.pluralize(element)))
+                _logger.info("Loading {} from cache".format(utils.pluralize(element)))
                 return cached
         else:
             cached = [
                 get_cached(element, element_id)
                 for element_id in CACHE["{}_all_ids".format(utils.pluralize(element))]
             ]
-            logging.info("Loading {} from cache".format(utils.pluralize(element)))
+            _logger.info("Loading {} from cache".format(utils.pluralize(element)))
             return cached
     if id_list and get_all:
         raise ValueError("Please pass list of ids or use the get_all flag, not both.")
     if get_all:
-        logging.warning(
+        _logger.warning(
             "Getting all {}. This may take a couple of minutes...".format(
                 utils.pluralize(element)
             )
@@ -2035,6 +2193,9 @@ def _postprocess_response_element(e, element):
             e["five_prime_gene_id"] = e["fivePrimeGene"]["id"]
         else:
             e["five_prime_gene_id"] = None
+    elif element == "region":
+        e["source_ids"] = [v["id"] for v in e["sources"]]
+        del e["sources"]
     elif element == "gene":
         e["source_ids"] = [v["id"] for v in e["sources"]]
         del e["sources"]
@@ -2062,6 +2223,19 @@ def _postprocess_response_element(e, element):
         elif e["__typename"] == "FactorVariant":
             e["subtype"] = "factor_variant"
         elif e["__typename"] == "FusionVariant":
+            for c in [
+                e["five_prime_coordinates"],
+                e["three_prime_coordinates"],
+                e["five_prime_start_exon_coordinates"],
+                e["five_prime_end_exon_coordinates"],
+                e["three_prime_start_exon_coordinates"],
+                e["three_prime_end_exon_coordinates"]
+            ]:
+                if c:
+                    if c["reference_build"] == "GRCH37":
+                        c["reference_build"] = "GRCh37"
+                    elif c["reference_build"] == "GRCH38":
+                        c["reference_build"] = "GRCh38"
             if (
                 e["five_prime_start_exon_coordinates"]
                 and e["five_prime_start_exon_coordinates"]["exon_offset"] is None
@@ -2083,6 +2257,8 @@ def _postprocess_response_element(e, element):
             ):
                 e["three_prime_end_exon_coordinates"]["exon_offset"] = 0
             e["subtype"] = "fusion_variant"
+        elif e["__typename"] == "RegionVariant":
+            e["subtype"] = "region_variant"
         else:
             raise Exception("Variant type {} not supported yet".format(e["__typename"]))
     elif element == "variant_group":
@@ -2103,6 +2279,7 @@ def _request_by_ids(element, ids):
         "gene": graphql_payloads._construct_get_gene_payload,
         "factor": graphql_payloads._construct_get_factor_payload,
         "fusion": graphql_payloads._construct_get_fusion_payload,
+        "region": graphql_payloads._construct_get_region_payload,
         "variant": graphql_payloads._construct_get_variant_payload,
         "assertion": graphql_payloads._construct_get_assertion_payload,
         "variant_group": graphql_payloads._construct_get_variant_group_payload,
@@ -2134,6 +2311,7 @@ def _request_all(element):
         "gene": graphql_payloads._construct_get_all_genes_payload,
         "factor": graphql_payloads._construct_get_all_factors_payload,
         "fusion": graphql_payloads._construct_get_all_fusions_payload,
+        "region": graphql_payloads._construct_get_all_regions_payload,
         "variant": graphql_payloads._construct_get_all_variants_payload,
         "assertion": graphql_payloads._construct_get_all_assertions_payload,
         "variant_group": graphql_payloads._construct_get_all_variant_groups_payload,
@@ -2149,7 +2327,7 @@ def _request_all(element):
     payload = payload_method()
 
     after_cursor = None
-    variables = {"after": after_cursor}
+    variables = {"after": after_cursor, "page_size": 50}
     resp = requests.post(
         API_URL, json={"query": payload, "variables": variables}, timeout=(10, 200)
     )
@@ -2161,6 +2339,7 @@ def _request_all(element):
 
     while has_next_page:
         variables = {"after": after_cursor}
+        time.sleep(0.1)
         resp = requests.post(
             API_URL, json={"query": payload, "variables": variables}, timeout=(10, 200)
         )
@@ -2185,9 +2364,9 @@ def get_evidence_by_ids(evidence_id_list):
     :param list evidence_id_list: A list of CIViC evidence item IDs to query against to cache and (as needed) CIViC.
     :returns: A list of :class:`EvidenceItem` objects.
     """
-    logging.info("Getting evidence...")
+    _logger.info("Getting evidence...")
     evidence = _get_elements_by_ids("evidence", evidence_id_list)
-    logging.info("Caching evidence details...")
+    _logger.info("Caching evidence details...")
     for e in evidence:
         e._include_status = ["accepted", "submitted", "rejected"]
     mp_ids = [
@@ -2215,11 +2394,11 @@ def get_molecular_profiles_by_ids(mp_id_list):
     :param list mp_id_list: A list of CIViC molecular profile IDs to query against to cache and (as needed) CIViC.
     :returns: A list of :class:`MolecularProfile` objects.
     """
-    logging.info("Getting molecular profiles...")
+    _logger.info("Getting molecular profiles...")
     mps = _get_elements_by_ids("molecular_profile", mp_id_list)
     for mp in mps:
         mp._include_status = ["accepted", "submitted", "rejected"]
-    # logging.info('Caching molecular profile details...')
+    # _logger.info('Caching molecular profile details...')
     return mps
 
 
@@ -2239,11 +2418,11 @@ def get_assertions_by_ids(assertion_id_list):
     :param list assertion_id_list: A list of CIViC assertion IDs to query against to cache and (as needed) CIViC.
     :returns: A list of :class:`Assertion` objects.
     """
-    logging.info("Getting assertions...")
+    _logger.info("Getting assertions...")
     assertions = _get_elements_by_ids("assertion", assertion_id_list)
     for a in assertions:
         a._include_status = ["accepted", "submitted", "rejected"]
-    logging.info("Caching variant details...")
+    _logger.info("Caching variant details...")
     mp_ids = [
         x.molecular_profile.id for x in assertions
     ]  # Add molecular profile to cache
@@ -2269,11 +2448,12 @@ def get_variants_by_ids(variant_id_list):
     :param list variant_id_list: A list of CIViC variant IDs to query against to cache and (as needed) CIViC.
     :returns: A list of :class:`Variant` objects.
     """
-    logging.info("Getting variants...")
+    _logger.info("Getting variants...")
     variants = _get_elements_by_ids("variant", variant_id_list)
     gene_ids = set()
     factor_ids = set()
     fusion_ids = set()
+    region_ids = set()
     for variant in variants:
         if isinstance(variant, GeneVariant):
             gene_ids.add(variant.feature_id)
@@ -2281,16 +2461,21 @@ def get_variants_by_ids(variant_id_list):
             factor_ids.add(variant.feature_id)
         elif isinstance(variant, FusionVariant):
             fusion_ids.add(variant.feature_id)
+        elif isinstance(variant, RegionVariant):
+            region_ids.add(variant.feature_id)
         variant._include_status = ["accepted", "submitted", "rejected"]
     if gene_ids:
-        logging.info("Caching gene details...")
+        _logger.info("Caching gene details...")
         _get_elements_by_ids("gene", gene_ids)
     if factor_ids:
-        logging.info("Caching factor details...")
+        _logger.info("Caching factor details...")
         _get_elements_by_ids("factor", factor_ids)
     if fusion_ids:
-        logging.info("Caching fusion details...")
+        _logger.info("Caching fusion details...")
         _get_elements_by_ids("fusion", fusion_ids)
+    if region_ids:
+        logging.info("Caching region details...")
+        _get_elements_by_ids("region", region_ids)
     return variants
 
 
@@ -2310,7 +2495,7 @@ def get_variant_groups_by_ids(variant_group_id_list):
     :param list variant_group_id_list: A list of CIViC variant group IDs to query against to cache and (as needed) CIViC.
     :returns: A list of :class:`VariantGroup` objects.
     """
-    logging.info("Getting variant groups...")
+    _logger.info("Getting variant groups...")
     vgs = _get_elements_by_ids("variant_group", variant_group_id_list)
     for vg in vgs:
         vg._include_status = ["accepted", "submitted", "rejected"]
@@ -2333,7 +2518,7 @@ def get_features_by_ids(feature_id_list):
     :param list feature_id_list: A list of CIViC feature IDs to query against to cache and (as needed) CIViC.
     :returns: A list of :class:`Gene`, `Fusion`, and/or `Factor` objects.
     """
-    logging.info("Getting features...")
+    _logger.info("Getting features...")
     features = []
     for feature_id in feature_id_list:
         feature = None
@@ -2349,6 +2534,10 @@ def get_features_by_ids(feature_id_list):
             feature = _get_element_by_id("factor", feature_id)
         except:
             pass
+        try:
+            feature = _get_element_by_id("region", feature_id)
+        except:
+            pass
         if feature is None:
             raise Exception("Feature {} not found".format(feature_id))
         else:
@@ -2359,7 +2548,7 @@ def get_features_by_ids(feature_id_list):
         for variant in feature.variants:
             variant_ids.add(variant.id)
     if variant_ids:
-        logging.info("Caching variant details...")
+        _logger.info("Caching variant details...")
         _get_elements_by_ids("variant", variant_ids)
     for feature in features:
         for variant in feature.variants:
@@ -2380,7 +2569,7 @@ def get_genes_by_ids(gene_id_list):
     :param list gene_id_list: A list of CIViC gene feature IDs to query against to cache and (as needed) CIViC.
     :returns: A list of :class:`Gene` objects.
     """
-    logging.info("Getting genes...")
+    _logger.info("Getting genes...")
     genes = _get_elements_by_ids("gene", gene_id_list)
     variant_ids = set()
     for gene in genes:
@@ -2388,7 +2577,7 @@ def get_genes_by_ids(gene_id_list):
         for variant in gene.variants:
             variant_ids.add(variant.id)
     if variant_ids:
-        logging.info("Caching variant details...")
+        _logger.info("Caching variant details...")
         _get_elements_by_ids("variant", variant_ids)
     for gene in genes:
         for variant in gene.variants:
@@ -2409,7 +2598,7 @@ def get_fusions_by_ids(fusion_id_list):
     :param list fusion_id_list: A list of CIViC fusion feature IDs to query against to cache and (as needed) CIViC.
     :returns: A list of :class:`Fusion` objects.
     """
-    logging.info("Getting fusions...")
+    _logger.info("Getting fusions...")
     fusions = _get_elements_by_ids("fusion", fusion_id_list)
     variant_ids = set()
     for fusion in fusions:
@@ -2417,7 +2606,7 @@ def get_fusions_by_ids(fusion_id_list):
         for variant in fusion.variants:
             variant_ids.add(variant.id)
     if variant_ids:
-        logging.info("Caching variant details...")
+        _logger.info("Caching variant details...")
         _get_elements_by_ids("variant", variant_ids)
     for fusion in fusions:
         for variant in fusion.variants:
@@ -2438,7 +2627,7 @@ def get_factors_by_ids(factor_id_list):
     :param list factor_id_list: A list of CIViC factor feature IDs to query against to cache and (as needed) CIViC.
     :returns: A list of :class:`Factor` objects.
     """
-    logging.info("Getting factors...")
+    _logger.info("Getting factors...")
     factors = _get_elements_by_ids("factor", factor_id_list)
     variant_ids = set()
     for factor in factors:
@@ -2446,7 +2635,7 @@ def get_factors_by_ids(factor_id_list):
         for variant in factor.variants:
             variant_ids.add(variant.id)
     if variant_ids:
-        logging.info("Caching variant details...")
+        _logger.info("Caching variant details...")
         _get_elements_by_ids("variant", variant_ids)
     for factor in factors:
         for variant in factor.variants:
@@ -2462,6 +2651,35 @@ def get_factor_by_id(factor_id):
     return get_factors_by_ids([factor_id])[0]
 
 
+def get_regions_by_ids(region_id_list):
+    """
+    :param list region_id_list: A list of CIViC region feature IDs to query against to cache and (as needed) CIViC.
+    :returns: A list of :class:`Region` objects.
+    """
+    logging.info("Getting regions...")
+    regions = _get_elements_by_ids("region", region_id_list)
+    variant_ids = set()
+    for region in regions:
+        region._include_status = ["accepted", "submitted", "rejected"]
+        for variant in region.variants:
+            variant_ids.add(variant.id)
+    if variant_ids:
+        logging.info("Caching variant details...")
+        _get_elements_by_ids("variant", variant_ids)
+    for region in regions:
+        for variant in region.variants:
+            variant.update()
+    return regions
+
+
+def get_region_by_id(region_id):
+    """
+    :param int region_id: A single CIViC region feature ID.
+    :returns: A :class:`Region` object.
+    """
+    return get_regions_by_ids([region_id])[0]
+
+
 # Source
 
 
@@ -2470,7 +2688,7 @@ def get_sources_by_ids(source_id_list):
     :param list source_id_list: A list of CIViC source IDs to query against to cache and (as needed) CIViC.
     :returns: A list of :class:`Source` objects.
     """
-    logging.info("Getting sources...")
+    _logger.info("Getting sources...")
     sources = _get_elements_by_ids("source", source_id_list)
     return sources
 
@@ -2491,7 +2709,7 @@ def get_diseases_by_ids(disease_id_list):
     :param list disease_id_list: A list of CIViC disease IDs to query against to cache and (as needed) CIViC.
     :returns: A list of :class:`Disease` objects.
     """
-    logging.info("Getting diseases...")
+    _logger.info("Getting diseases...")
     diseases = _get_elements_by_ids("disease", disease_id_list)
     return diseases
 
@@ -2512,7 +2730,7 @@ def get_therapies_by_ids(therapy_id_list):
     :param list therapy_id_list: A list of CIViC therapy IDs to query against to cache and (as needed) CIViC.
     :returns: A list of :class:`Therapy` objects.
     """
-    logging.info("Getting therapies...")
+    _logger.info("Getting therapies...")
     therapies = _get_elements_by_ids("therapy", therapy_id_list)
     return therapies
 
@@ -2533,7 +2751,7 @@ def get_phenotypes_by_ids(phenotype_id_list):
     :param list phenotype_id_list: A list of CIViC phenotype IDs to query against to cache and (as needed) CIViC.
     :returns: A list of :class:`Phenotype` objects.
     """
-    logging.info("Getting phenotypes...")
+    _logger.info("Getting phenotypes...")
     phenotypes = _get_elements_by_ids("phenotype", phenotype_id_list)
     return phenotypes
 
@@ -2554,7 +2772,7 @@ def get_organizations_by_ids(organization_id_list):
     :param list organization_id_list: A list of CIViC organization IDs to query against to cache and (as needed) CIViC.
     :returns: A list of :class:`Organization` objects.
     """
-    logging.info("Getting organizations...")
+    _logger.info("Getting organizations...")
     organizations = _get_elements_by_ids("organization", organization_id_list)
     return organizations
 
@@ -2575,7 +2793,7 @@ def get_approvals_by_ids(approval_id_list):
     :param list approval_id_list: A list of CIViC Approval IDs to query against to cache and (as needed) CIViC.
     :returns: A list of :class:`Approval` objects.
     """
-    logging.info("Getting approvals...")
+    _logger.info("Getting approvals...")
     approvals = _get_elements_by_ids("approval", approval_id_list)
     return approvals
 
@@ -2734,6 +2952,20 @@ def get_all_factor_variants(
     return [v for v in variants if v.subtype == "factor_variant"]
 
 
+def get_all_region_variants(
+    include_status=["accepted", "submitted", "rejected"], allow_cached=True
+):
+    """
+    Queries CIViC for all region variants.
+
+    :param list include_status: A list of statuses. Only variants and their associated entities matching the given statuses will be returned. Use **None** to include variants without any associated entities.
+    :param bool allow_cached: Indicates whether or not object retrieval from CACHE is allowed. If **False** it will query the CIViC database directly.
+    :returns: A list of :class:`Variant` objects of **subtype** **region_variant**.
+    """
+    variants = get_all_variants(include_status=include_status, allow_cached=True)
+    return [v for v in variants if v.subtype == "region_variant"]
+
+
 # Variant Group
 
 
@@ -2766,10 +2998,12 @@ def get_all_features(
     genes = _get_elements_by_ids("gene", get_all=True, allow_cached=allow_cached)
     fusions = _get_elements_by_ids("fusion", get_all=True, allow_cached=allow_cached)
     factors = _get_elements_by_ids("factor", get_all=True, allow_cached=allow_cached)
+    regions = _get_elements_by_ids("region", get_all=True, allow_cached=allow_cached)
     features = []
     features.extend(genes)
     features.extend(fusions)
     features.extend(factors)
+    features.extend(regions)
     if include_status:
         assert CACHE.get("variants_all_ids", False)
         assert CACHE.get("evidence_items_all_ids", False)
@@ -2853,6 +3087,30 @@ def get_all_factors(
         return resp
     else:
         return factors
+
+
+def get_all_regions(
+    include_status=["accepted", "submitted", "rejected"], allow_cached=True
+):
+    """
+    Queries CIViC for all region features.
+
+    :param list include_status: A list of statuses. Only regions and their associated entities matching the given statuses will be returned. Use **None** to include regions without any associated entities.
+    :param bool allow_cached: Indicates whether or not object retrieval from CACHE is allowed. If **False** it will query the CIViC database directly.
+    :returns: A list of :class:`Region` objects.
+    """
+    regions = _get_elements_by_ids("region", get_all=True, allow_cached=allow_cached)
+    if include_status:
+        assert CACHE.get("variants_all_ids", False)
+        assert CACHE.get("evidence_items_all_ids", False)
+        resp = list()
+        for r in regions:
+            r._include_status = include_status
+            if r.variants:
+                resp.append(r)
+        return resp
+    else:
+        return regions
 
 
 # Evidence
@@ -2995,6 +3253,22 @@ def get_all_organizations(allow_cached=True):
         "organization", get_all=True, allow_cached=allow_cached
     )
     return organizations
+
+
+def get_organization_by_name(name, allow_cached=True):
+    """
+    :param str name: A CIViC organization name.
+    :param bool allow_cached: Indicates whether object retrieval from CACHE is allowed.
+        If **False** it will query the CIViC database directly.
+    :returns: An :class:`Organization` object.
+    """
+    organizations = _get_elements_by_ids(
+        "organization", get_all=True, allow_cached=allow_cached
+    )
+    match = next((o for o in organizations if o.name == name), None)
+    if match is None:
+        raise ValueError("No organization with name: {}".format(name))
+    return match
 
 
 # Approval
@@ -3501,6 +3775,21 @@ def search_fusions_by_partner_gene_id(partner_gene_id):
         or f.three_prime_gene_id == partner_gene_id
     ]
     return matching_fusions
+
+
+# Region
+
+
+def get_region_by_name(name):
+    """
+    :param str name: A region name.
+    :returns: A :class:`Region` object.
+    """
+    regions = _get_elements_by_ids("region", get_all=True)
+    matching_regions = [r for r in regions if r.name == name]
+    if len(matching_regions) == 0:
+        raise Exception("No Region with name: {}".format(name))
+    return matching_regions[0]
 
 
 # Variants

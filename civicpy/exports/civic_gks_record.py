@@ -1,6 +1,7 @@
 """Module for representing CIViC assertion record as GKS AAC 2017 Study Statement"""
 
 from enum import Enum
+import logging
 import re
 from types import MappingProxyType
 
@@ -59,6 +60,7 @@ from civicpy.civic import (
     MolecularProfile,
 )
 
+_logger = logging.getLogger(__name__)
 
 PUBMED_URL = "https://pubmed.ncbi.nlm.nih.gov"
 
@@ -344,6 +346,7 @@ class CivicGksMolecularProfile(CategoricalVariant):
                     relation=Relation.RELATED_MATCH,
                 )
                 for clinvar_id in clinvar_ids
+                if clinvar_id and clinvar_id != "N/A"
             )
 
         for a in molecular_profile.aliases:
@@ -903,6 +906,11 @@ class CivicGksAssertion(
                     id=f"civic.{organization.type}:{organization.id}",
                     name=organization.name,
                     description=organization.description,
+                    extensions=[
+                        Extension(
+                            name="is_approved_vcep", value=organization.is_approved_vcep
+                        )
+                    ],
                 ),
             )
         ]
@@ -964,10 +972,27 @@ class CivicGksAssertion(
             if assertion.assertion_direction == "SUPPORTS"
             else Direction.DISPUTES
         )
-        evidence_items = [
-            CivicGksEvidence(evidence_item)
-            for evidence_item in assertion.evidence_items
-        ]
+
+        evidence_items: list[CivicGksEvidence] = []
+        eid_links: list[str] = []
+        for evidence_item in assertion.evidence_items:
+            try:
+                evidence_items.append(CivicGksEvidence(evidence_item))
+            except CivicGksRecordError as e:
+                _logger.exception(
+                    "Error translating %s to CivicGksEvidence: %s",
+                    evidence_item.name,
+                    str(e),
+                )
+            except Exception as e:
+                _logger.exception(
+                    "Unhandled error translating %s to CivicGksEvidence: %s",
+                    evidence_item.name,
+                    str(e),
+                )
+            finally:
+                # Retain all EID references
+                eid_links.append(f"{LINKS_URL}/evidence/{evidence_item.id}")
 
         if assertion.assertion_type == CivicEvidenceAssertionType.PREDICTIVE:
             evidence_line_cls = TherapeuticEvidenceLine
@@ -982,12 +1007,13 @@ class CivicGksAssertion(
         return [
             evidence_line_cls(
                 targetProposition=self.get_target_proposition(assertion),
-                hasEvidenceItems=evidence_items,
+                hasEvidenceItems=evidence_items or None,
                 directionOfEvidenceProvided=direction,
                 strengthOfEvidenceProvided=MappableConcept(
                     primaryCoding=(Coding(code=level, system=System.AMP_ASCO_CAP))
                 ),
-            )
+                extensions=[Extension(name="citations", value=eid_links)]
+            ).root
         ]
 
     def get_proposition(

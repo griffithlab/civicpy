@@ -11,6 +11,12 @@ To install with pip::
 
 That's it!
 
+It is generally recommended to keep the civicpy package up to date. Otherwise
+you may run into errors when loading in a newer cache or when trying to update
+the cache manually. To update civicpy to the latest version::
+
+    >> pip update civicpy
+
 .. _config-cache:
 
 Configuring Cache Save
@@ -24,3 +30,7 @@ storing the cache. For example::
 
 When loading a cache, it will be updated automatically by CIViCpy if stale (default: after 7 days).
 Cache stale time is configurable when calling `civic.update_cache()` or by setting the CACHE_TIMEOUT_DAYS environment variable.
+
+To force a manual update of the local cache, you may run::
+
+    >> civicpy update --hard
