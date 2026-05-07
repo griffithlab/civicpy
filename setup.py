@@ -40,9 +40,9 @@ setup(
         "pysam",
         "python-dateutil",
         "deprecation",
-        "ga4gh.vrs @ git+https://github.com/ga4gh/vrs-python.git@d940af64126385b098365cc429a0313640a5d7f5",
-        "ga4gh.cat_vrs @ git+https://github.com/ga4gh/cat-vrs-python.git@4c228e51a55b36752bbcc88012c3bb84a2299781",
-        "ga4gh.va_spec @ git+https://github.com/ga4gh/va-spec-python.git@5ab6da0c09b6a9f01ddffa378f485a0d0aeeeb44",
+        "ga4gh.vrs~=2.4.0-a1",
+        "ga4gh.cat_vrs~=0.8.0-a1",
+        "ga4gh.va_spec @ git+https://github.com/ga4gh/va-spec-python.git@4b5f1bb4702d0f5b048a2c3892cb5ba852b719dc",
     ],
     extras_require={
         "test": [
