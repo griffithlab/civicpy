@@ -127,7 +127,7 @@ def gks_contributions():
                 "extensions": [{"name": "is_approved_vcep", "value": False}],
             },
             "activityType": "approval.last_reviewed",
-            "date": "2025-05-27",
+            "date": "2026-04-24",
         }
     ]
 
@@ -301,6 +301,7 @@ def gks_gid19():
                     "NISBD2",
                     "PIG61",
                     "mENA",
+                    "NNCIS"
                 ],
             },
         ],

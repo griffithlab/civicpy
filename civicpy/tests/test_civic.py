@@ -327,14 +327,14 @@ class TestFusionVariants(object):
         assert three_p_end_exon.stop == 133763062
 
     def test_nullable_fields(self):
-        variant = civic.get_variant_by_id(5041)
+        variant = civic.get_variant_by_id(739)
         assert variant.three_prime_coordinates is None
         assert variant.three_prime_start_exon_coordinates is None
         assert variant.three_prime_end_exon_coordinates is None
 
     def test_properties(self):
         variant = civic.get_variant_by_id(1)
-        assert variant.fusion.id == 62007
+        assert variant.fusion.id == 61802
         assert variant.fusion == variant.feature
 
 
@@ -369,18 +369,18 @@ class TestRegionVariants(object):
             assert variant.subtype == "region_variant"
 
     def test_get_by_id(self):
-        variant = civic.get_variant_by_id(5078)
-        assert variant.id == 5078
+        variant = civic.get_variant_by_id(5418)
+        assert variant.id == 5418
         assert variant.type == "variant"
         assert variant.subtype == "region_variant"
 
     def test_attributes(self):
-        variant = civic.get_variant_by_id(5078)
-        assert variant.iscn_name == "amp(17p)"
+        variant = civic.get_variant_by_id(5418)
+        assert variant.iscn_name == "amp(1q21.2)"
 
     def test_properties(self):
-        variant = civic.get_variant_by_id(5078)
-        assert variant.region.id == 62048
+        variant = civic.get_variant_by_id(5418)
+        assert variant.region.id == 62863
         assert variant.region == variant.feature
 
 
@@ -425,9 +425,9 @@ class TestMolecularProfiles(object):
 
     def test_properties(self):
         mp = civic.get_molecular_profile_by_id(4432)
-        assert len(mp.evidence_sources) == 10
+        assert len(mp.evidence_sources) == 11
         assert mp.summary == mp.description
-        assert len(mp.evidence_items) == 11
+        assert len(mp.evidence_items) == 12
         assert len(mp.assertions) == 0
         assert len(mp.variants) == 2
         assert len(mp.sources) == 0
@@ -497,7 +497,7 @@ class TestAssertions(object):
         assert assertion.disease.name == "Von Hippel-Lindau Disease"
         assert len(assertion.therapies) == 0
         assert len(assertion.phenotypes) == 3
-        assert len(assertion.approvals) == 1
+        assert len(assertion.approvals) == 0
         assert assertion.molecular_profile.id == 1686
 
 
@@ -567,7 +567,7 @@ class TestGenes(object):
 
     def test_properties(self):
         gene = civic.get_gene_by_id(58)
-        assert len(gene.variants) == 862
+        assert len(gene.variants) == 844
         assert len(gene.sources) == 4
 
 
@@ -641,7 +641,7 @@ class TestFusions(object):
 
     def test_get_fusion_by_name(self):
         fusion = civic.get_fusion_by_name("BCR::ABL1")
-        assert fusion.id == 62007
+        assert fusion.id == 61802
         assert fusion.name == "BCR::ABL1"
 
     def test_search_fusions_by_partner_gene_id(self):
@@ -660,25 +660,25 @@ class TestRegions(object):
 
     def test_get_accepted_only(self):
         regions = civic.get_all_regions(include_status=["accepted"])
-        assert len(regions) >= 1
+        assert len(regions) == 0
 
     def test_get_by_id(self):
-        region = civic.get_region_by_id(62048)
+        region = civic.get_region_by_id(62863)
         assert region.type == "region"
-        assert region.id == 62048
+        assert region.id == 62863
 
     def test_get_by_name(self):
-        region = civic.get_region_by_name("17p")
+        region = civic.get_region_by_name("1q21.2")
         assert region.type == "region"
-        assert region.name == "17p"
+        assert region.name == "1q21.2"
 
     def test_attributes(self):
-        region = civic.get_region_by_id(62048)
-        assert region.name == "17p"
+        region = civic.get_region_by_id(62863)
+        assert region.name == "1q21.2"
 
     def test_properties(self):
-        region = civic.get_region_by_id(62048)
-        assert len(region.variants) == 2
+        region = civic.get_region_by_id(62863)
+        assert len(region.variants) == 1
         assert len(region.sources) == 0
 
 
@@ -735,11 +735,18 @@ class TestTherapies(object):
         assert trametinib.ncit_id == "C77908"
         assert trametinib.name == "Trametinib"
         assert set(trametinib.aliases) == {
-            "JTP-74057",
+            "GSK 1120212",
+            "GSK 212",
+            "GSK-1120212",
+            "GSK-212",
             "GSK1120212",
+            "GSK212",
+            "JTP 74057",
+            "JTP-74057",
+            "JTP74057",
             "MEK Inhibitor GSK1120212",
             "Mekinist",
-            "N-(3-{3-cyclopropyl-5-[(2-fluoro-4-iodophenyl)amino]-6,8-dimethyl-2,4,7-trioxo-3,4,6,7-tetrahydropyrido[4,3-d]pyrimidin-1(2H)-yl}phenyl)acetamide",
+            "N-(3-{3-cyclopropyl-5-[(2-fluoro-4-iodophenyl)amino]-6,8-dimethyl-2,4,7-trioxo-3,4,6,7-tetrahydropyrido[4,3-d]pyrimidin-1(2H)-yl}phenyl)acetamide"
         }
 
     def test_get_by_name(self):
@@ -857,7 +864,7 @@ class TestApproval(object):
         assert len(approvals) >= 1
 
     def test_search_approvals_by_assertion_id(self):
-        approvals = civic.search_approvals_by_assertion_id(6)
+        approvals = civic.search_approvals_by_assertion_id(130)
         assert len(approvals) >= 1
 
 
