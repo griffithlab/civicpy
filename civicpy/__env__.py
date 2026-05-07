@@ -6,15 +6,22 @@ import subprocess
 from packaging.version import Version
 import logging
 from datetime import datetime
+from importlib.metadata import version
+import urllib.request
+import json
 
 
 #get the currently installed civicpy version and warn if it is out of date
-result = subprocess.run(["pip", "index", "versions", "civicpy"], capture_output=True, text=True)
-latest_version = result.stdout.split("LATEST:")[1].strip()
-if Version(__version__) < Version(latest_version):
+PACKAGE = "civicpy"
+installed_version = version(PACKAGE)
+
+with urllib.request.urlopen(f"https://pypi.org/pypi/{PACKAGE}/json") as r:
+    latest_version = json.load(r)["info"]["version"]
+
+if Version(installed_version) < Version(latest_version):
     logging.warning("The installed civicpy version is out of date.")
     logging.warning(f"Latest version: {latest_version}")
-    logging.warning(f"Installed version: {__version__}")
+    logging.warning(f"Installed version: {installed_version}")
 
 REMOTE_CACHE_URL = os.getenv('CIVICPY_REMOTE_CACHE_URL', False)
 fallback_cache_timeout_days = 7
@@ -31,7 +38,7 @@ else:
         use_versioned_url = True
         last_modified = response.headers.get('Last-Modified')
     else:
-        logging.warning(f"Remote cache URL matching your installed civicpy version not found.")
+        logging.warning("Remote cache URL matching your installed civicpy version not found.")
 
     if use_versioned_url:
         REMOTE_CACHE_URL = versioned_url
@@ -46,7 +53,7 @@ else:
         REMOTE_CACHE_URL = generic_url
         logging.warning(f"Using generic remote cache URL: {generic_url}")
         if Version(__version__) < Version(latest_version):
-            logging.warning(f"This cache might not be compatible with your civicpy version. If loading fails, please update CIViCpy to the latest version and try again.")
+            logging.warning("This cache might not be compatible with your civicpy version. If loading fails, please update CIViCpy to the latest version and try again.")
 
 LOCAL_CACHE_PATH = os.getenv('CIVICPY_CACHE_FILE', False) or \
     str(Path.home() / '.civicpy' / 'cache.pkl')
