@@ -1,4 +1,10 @@
-"""Module for representing CIViC assertion record as GKS AAC 2017 Study Statement"""
+"""Module for representing CIViC assertion record as GKS representations
+
+* CIViC Predictive, Prognostic, and Diagnostic Assertions map to Variant Clinical
+  Significance Statements that follow the AMP/ASCO/CAP 2017 guidelines
+* CIViC Oncogenic Assertions map to Variant Oncogenicity Statements that follow the
+  ClinGen/CGC/VICC Oncogenicity 2022 guidelines
+"""
 
 from enum import Enum
 import logging
@@ -9,6 +15,7 @@ from ga4gh.cat_vrs.models import CategoricalVariant
 from ga4gh.core.models import (
     Coding,
     ConceptMapping,
+    code,
     iriReference,
     Extension,
     MappableConcept,
@@ -25,6 +32,7 @@ from ga4gh.va_spec.aac_2017 import (
 )
 from ga4gh.va_spec.base import (
     Agent,
+    CcvClassification,
     Contribution,
     ConditionSet,
     DiagnosticPredicate,
@@ -34,6 +42,7 @@ from ga4gh.va_spec.base import (
     Method,
     PrognosticPredicate,
     Statement,
+    StrengthCode,
     System,
     TherapeuticResponsePredicate,
     TherapyGroup,
@@ -41,6 +50,12 @@ from ga4gh.va_spec.base import (
     VariantDiagnosticProposition,
     VariantPrognosticProposition,
     VariantTherapeuticResponseProposition,
+    VariantOncogenicityProposition,
+)
+from ga4gh.va_spec.ccv_2022.derived_evidence import derive_onco_evidence_attributes
+from ga4gh.va_spec.ccv_2022 import (
+    VariantOncogenicityStatement,
+    VariantOncogenicityEvidenceLine,
 )
 from ga4gh.vrs.models import Expression, Syntax
 from pydantic import BaseModel
@@ -90,6 +105,7 @@ class CivicEvidenceAssertionType(str, Enum):
     PREDICTIVE = "PREDICTIVE"
     PROGNOSTIC = "PROGNOSTIC"
     DIAGNOSTIC = "DIAGNOSTIC"
+    ONCOGENIC = "ONCOGENIC"
 
 
 class CivicEvidenceLevel(str, Enum):
@@ -133,6 +149,11 @@ CLIN_SIG_TO_PREDICATE = MappingProxyType(
         "BETTER_OUTCOME": PrognosticPredicate.BETTER_OUTCOME,
         "POSITIVE": DiagnosticPredicate.INCLUSIVE,
         "NEGATIVE": DiagnosticPredicate.EXCLUSIVE,
+        "BENIGN": "isOncogenicFor",
+        "LIKELY_BENIGN": "isOncogenicFor",
+        "LIKELY_ONCOGENIC": "isOncogenicFor",
+        "ONCOGENIC": "isOncogenicFor",
+        "UNCERTAIN_SIGNIFICANCE": "isOncogenicFor",
     }
 )
 
@@ -610,7 +631,11 @@ class _CivicGksEvidenceAssertionMixin:
     def get_predicate(
         record: Evidence | Assertion,
     ) -> (
-        PrognosticPredicate | DiagnosticPredicate | TherapeuticResponsePredicate | None
+        PrognosticPredicate
+        | DiagnosticPredicate
+        | TherapeuticResponsePredicate
+        | str
+        | None
     ):
         """Get GKS predicate
 
@@ -686,10 +711,14 @@ class _CivicGksEvidenceAssertionMixin:
             "alleleOriginQualifier": self.get_allele_origin_qualifier(record),
             "predicate": self.get_predicate(record)
             if not is_clinical_significance_prop
-            else VariantClinicalSignificanceProposition.model_fields["predicate"].default,
+            else VariantClinicalSignificanceProposition.model_fields[
+                "predicate"
+            ].default,
         }
 
-        if (
+        if record_type == CivicEvidenceAssertionType.ONCOGENIC:
+            condition_key = "objectTumorType"
+        elif (
             is_clinical_significance_prop
             or record_type != CivicEvidenceAssertionType.PREDICTIVE
         ):
@@ -846,10 +875,38 @@ class CivicGksEvidence(Statement, _CivicGksEvidenceAssertionMixin):
         )
 
 
-class CivicGksAssertion(
+class _CivicGksAssertionMixin:
+    @staticmethod
+    def get_contributions(approval: Approval) -> list[Contribution]:
+        """Get contributions for an approval
+
+        :param approval: Approval for assertion
+        :return: List of contributions containing when the approval was last reviewed
+        """
+        organization: Organization = approval.organization
+        return [
+            Contribution(
+                activityType=f"{approval.type}.last_reviewed",
+                date=approval.last_reviewed.split("T", 1)[0],
+                contributor=Agent(
+                    id=f"civic.{organization.type}:{organization.id}",
+                    name=organization.name,
+                    description=organization.description,
+                    extensions=[
+                        Extension(
+                            name="is_approved_vcep", value=organization.is_approved_vcep
+                        )
+                    ],
+                ),
+            )
+        ]
+
+
+class CivicGksClinSigAssertion(
     VariantClinicalSignificanceStatement, _CivicGksEvidenceAssertionMixin
 ):
-    """Class for CIViC assertion record represented as GKS
+    """Class for CIViC predictive, prognostic, or diagnostic assertion record
+    represented as GKS
 
     :param assertion: CIViC assertion record
     :raises CivicGksRecordError: If CIViC assertion is not able to be represented as
@@ -861,7 +918,7 @@ class CivicGksAssertion(
         assertion: Assertion,
         approval: Approval | None = None,
     ) -> None:
-        """Initialize _CivicGksAssertionRecord class
+        """Initialize CivicGksClinSigAssertion class
 
         :param assertion: CIViC assertion record
         :param approval: CIViC approval for the assertion, defaults to None
@@ -889,31 +946,6 @@ class CivicGksAssertion(
             hasEvidenceLines=self.get_evidence_lines(assertion, level),
             reportedIn=[iriReference(f"{LINKS_URL}/assertion/{assertion.id}")],
         )
-
-    @staticmethod
-    def get_contributions(approval: Approval) -> list[Contribution]:
-        """Get contributions for an approval
-
-        :param approval: Approval for assertion
-        :return: List of contributions containing when the approval was last reviewed
-        """
-        organization: Organization = approval.organization
-        return [
-            Contribution(
-                activityType=f"{approval.type}.last_reviewed",
-                date=approval.last_reviewed.split("T", 1)[0],
-                contributor=Agent(
-                    id=f"civic.{organization.type}:{organization.id}",
-                    name=organization.name,
-                    description=organization.description,
-                    extensions=[
-                        Extension(
-                            name="is_approved_vcep", value=organization.is_approved_vcep
-                        )
-                    ],
-                ),
-            )
-        ]
 
     def get_classification_strength_level(
         self,
@@ -1013,7 +1045,7 @@ class CivicGksAssertion(
                 strengthOfEvidenceProvided=MappableConcept(
                     primaryCoding=(Coding(code=level, system=System.AMP_ASCO_CAP))
                 ),
-                extensions=[Extension(name="citations", value=eid_links)]
+                extensions=[Extension(name="citations", value=eid_links)],
             ).root
         ]
 
@@ -1029,3 +1061,130 @@ class CivicGksAssertion(
             assertion, assertion.assertion_type, is_clinical_significance_prop=True
         )
         return VariantClinicalSignificanceProposition(**params)
+
+
+class CivicGksOncogenicAssertion(
+    VariantOncogenicityStatement,
+    _CivicGksAssertionMixin,
+    _CivicGksEvidenceAssertionMixin,
+):
+    def __init__(self, assertion: Assertion, approval: Approval | None = None) -> None:
+        if not assertion.is_valid_for_gks_json(emit_warnings=True):
+            err_msg = "Assertion is not valid for GKS."
+            raise CivicGksRecordError(err_msg)
+
+        contributions = self.get_contributions(approval) if approval else None
+        proposition = self.get_proposition(assertion)
+        classification, strength = self.get_classification_strength(
+            assertion.significance
+        )
+
+        super().__init__(
+            id=f"civic.aid:{assertion.id}",
+            contributions=contributions,
+            description=assertion.description,
+            specifiedBy=self._get_ccv_method("guideline"),
+            proposition=proposition,
+            direction=self.get_direction(assertion.assertion_direction),
+            classification=classification,
+            strength=strength,
+            hasEvidenceLines=self.get_evidence_lines(assertion, proposition),
+            reportedIn=[iriReference(f"{LINKS_URL}/assertion/{assertion.id}")],
+        )
+
+    def get_classification_strength(
+        self, significance
+    ) -> tuple[MappableConcept, MappableConcept | None]:
+        """Get classification, strength, and level
+
+        :param amp_level: AMP/ASCO/CAP level
+        :return: Classification, strength, and level, if found
+        """
+        _strength = None
+
+        classification = MappableConcept(
+            primaryCoding=Coding(
+                code=code(CcvClassification[significance]), system=System.CCV
+            )
+        )
+
+        if significance in {"LIKELY_BENIGN", "LIKELY_ONCOGENIC"}:
+            _strength = StrengthCode.LIKELY
+        elif significance in {"BENIGN", "ONCOGENIC"}:
+            _strength = StrengthCode.DEFINITIVE
+
+        if _strength:
+            strength = MappableConcept(
+                primaryCoding=Coding(code=code(_strength.value), system=System.CCV)
+            )
+        else:
+            strength = None
+
+        return classification, strength
+
+    def get_evidence_lines(
+        self, assertion: Assertion, proposition: VariantOncogenicityProposition
+    ) -> list[VariantOncogenicityEvidenceLine]:
+        """Get evidence lines for a CIViC assertion
+
+        Only the CIViC evidence items that are supported for GKS will be included
+
+        :param assertion: CIViC assertion
+        :return: List of CIViC evidence lines
+        """
+        direction = (
+            Direction.SUPPORTS
+            if assertion.assertion_direction == "SUPPORTS"
+            else Direction.DISPUTES
+        )
+
+        eid_links: list[str] = []
+        for evidence_item in assertion.evidence_items:
+            # Retain all EID references
+            eid_links.append(f"{LINKS_URL}/evidence/{evidence_item.id}")
+
+        evidence_lines = []
+        for clingen_code in assertion.clingen_codes or []:
+            evidence_attrs = derive_onco_evidence_attributes(
+                VariantOncogenicityEvidenceLine.Criterion(clingen_code.code)
+            )
+            evidence_lines.append(
+                VariantOncogenicityEvidenceLine(
+                    targetProposition=proposition,
+                    directionOfEvidenceProvided=direction,
+                    **evidence_attrs.model_dump(),
+                    extensions=[Extension(name="citations", value=eid_links)],
+                    specifiedBy=self._get_ccv_method(clingen_code.code),
+                )
+            )
+
+        return evidence_lines
+
+    def get_proposition(self, assertion: Assertion) -> VariantOncogenicityProposition:
+        """Get GKS proposition
+
+        :param assertion: CIViC assertion record
+        :return: GKS proposition
+        """
+        params = self._get_proposition_params(
+            assertion, assertion.assertion_type, is_clinical_significance_prop=False
+        )
+        return VariantOncogenicityProposition(**params)
+
+    @staticmethod
+    def _get_ccv_method(method_type: str) -> Method:
+        return Method(
+            name="ClinGen/CGC/VICC Guidelines for Oncogenicity, 2022",
+            reportedIn=Document(
+                id="pmid:35101336",
+                name="Horak et al., 2022, Genet Med.",
+                title="Standards for the classification of pathogenicity of somatic variants in cancer (oncogenicity): Joint recommendations of Clinical Genome Resource (ClinGen), Cancer Genomics Consortium (CGC), and Variant Interpretation for Cancer Consortium (VICC)",
+                doi="10.1016/j.gim.2022.01.001",
+                pmid="35101336",
+                urls=[
+                        "https://doi.org/10.1016/j.gim.2022.01.001",
+                        "https://pubmed.ncbi.nlm.nih.gov/35101336/",
+                    ]
+            ),
+            methodType=method_type,
+        )
