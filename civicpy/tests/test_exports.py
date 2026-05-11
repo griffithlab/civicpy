@@ -1,4 +1,5 @@
 from copy import deepcopy
+import re
 from unittest.mock import PropertyMock, patch
 import pytest
 from deepdiff import DeepDiff
@@ -18,6 +19,7 @@ from civicpy.exports.civic_gks_record import (
     CivicGksRecordError,
     CivicGksClinSigAssertion,
     CivicGksTherapyGroup,
+    create_gks_record_from_assertion,
 )
 
 
@@ -1234,7 +1236,9 @@ class TestCivicGksDiagnosticAssertion(object):
 
         with pytest.raises(
             CivicGksRecordError,
-            match=r"Assertion must have type 'PREDICTIVE', 'PROGNOSTIC', or 'DIAGNOSTIC'",
+            match=re.escape(
+                "Assertion type must be one of ['PREDICTIVE', 'PROGNOSTIC', 'DIAGNOSTIC']"
+            ),
         ):
             CivicGksClinSigAssertion(aid117)
 
@@ -1302,6 +1306,19 @@ class TestCivicGksOncogenicAssertion(object):
         """Test that unsupported assertion types raise exceptions"""
 
         with pytest.raises(
-            CivicGksRecordError, match=r"Assertion must have type 'ONCOGENIC'"
+            CivicGksRecordError,
+            match=re.escape("Assertion type must be one of ['ONCOGENIC']"),
         ):
             CivicGksOncogenicAssertion(aid6)
+
+class TestCivicGksRecord(object):
+    """Test that GKS Record helper functions work correctly"""
+
+    def test_invalid(self):
+        """Test that unsupported assertion types raise NotImplementedError"""
+
+        with pytest.raises(
+            NotImplementedError,
+            match=r"Assertion type PREDISPOSING is not currently supported",
+        ):
+            create_gks_record_from_assertion(civic.get_assertion_by_id(17))

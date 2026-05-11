@@ -108,6 +108,14 @@ class CivicEvidenceAssertionType(str, Enum):
     ONCOGENIC = "ONCOGENIC"
 
 
+CLINICAL_SIGNIFICANCE_ASSERTION_TYPES = [
+    CivicEvidenceAssertionType.PREDICTIVE.value,
+    CivicEvidenceAssertionType.PROGNOSTIC.value,
+    CivicEvidenceAssertionType.DIAGNOSTIC.value,
+]
+ONCOGENIC_ASSERTION_TYPES = [CivicEvidenceAssertionType.ONCOGENIC.value]
+
+
 class CivicEvidenceLevel(str, Enum):
     """Define constraints for CIViC evidence levels"""
 
@@ -933,12 +941,10 @@ class CivicGksClinSigAssertion(
         :raises CivicGksRecordError: If CIViC assertion is not able to be represented as
             GKS object
         """
-        if assertion.assertion_type not in {
-            CivicEvidenceAssertionType.PREDICTIVE,
-            CivicEvidenceAssertionType.PROGNOSTIC,
-            CivicEvidenceAssertionType.DIAGNOSTIC,
-        }:
-            err_msg = f"Assertion must have type '{CivicEvidenceAssertionType.PREDICTIVE.value}', '{CivicEvidenceAssertionType.PROGNOSTIC.value}', or '{CivicEvidenceAssertionType.DIAGNOSTIC.value}'"
+        if assertion.assertion_type not in CLINICAL_SIGNIFICANCE_ASSERTION_TYPES:
+            err_msg = (
+                f"Assertion type must be one of {CLINICAL_SIGNIFICANCE_ASSERTION_TYPES}"
+            )
             raise CivicGksRecordError(err_msg)
 
         if not assertion.is_valid_for_gks_json(emit_warnings=True):
@@ -1094,8 +1100,8 @@ class CivicGksOncogenicAssertion(
         :raises CivicGksRecordError: If CIViC assertion is not able to be represented as
             GKS object
         """
-        if assertion.assertion_type != CivicEvidenceAssertionType.ONCOGENIC:
-            err_msg = f"Assertion must have type '{CivicEvidenceAssertionType.ONCOGENIC.value}'"
+        if assertion.assertion_type not in ONCOGENIC_ASSERTION_TYPES:
+            err_msg = f"Assertion type must be one of {ONCOGENIC_ASSERTION_TYPES}"
             raise CivicGksRecordError(err_msg)
 
         if not assertion.is_valid_for_gks_json(emit_warnings=True):
@@ -1222,3 +1228,26 @@ class CivicGksOncogenicAssertion(
             ),
             methodType=method_type,
         )
+
+
+def create_gks_record_from_assertion(
+    assertion: Assertion, approval: Approval | None = None
+) -> CivicGksClinSigAssertion | CivicGksOncogenicAssertion:
+    """Create GKS Record from CIViC Assertion
+
+    :param assertion: CIViC assertion record
+    :param approval: CIViC approval for the assertion, defaults to None
+    :raises NotImplementedError: If GKS Record translation is not yet supported.
+        Currently, only the following assertion types are supported: DIAGNOSTIC,
+        PREDICTIVE, PROGNOSTIC, and ONCOGENIC.
+    :return: GKS Assertion Record object
+    """
+    assertion_type = assertion.assertion_type
+    if assertion_type in CLINICAL_SIGNIFICANCE_ASSERTION_TYPES:
+        return CivicGksClinSigAssertion(assertion, approval=approval)
+
+    if assertion_type in ONCOGENIC_ASSERTION_TYPES:
+        return CivicGksOncogenicAssertion(assertion, approval=approval)
+
+    err_msg = f"Assertion type {assertion.assertion_type} is not currently supported"
+    raise NotImplementedError(err_msg)

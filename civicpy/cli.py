@@ -4,7 +4,8 @@ import logging
 from civicpy import LOCAL_CACHE_PATH, civic
 from civicpy.exports.civic_gks_record import (
     CivicGksRecordError,
-    CivicGksAssertion
+    CivicGksAssertion,
+    create_gks_record_from_assertion
 )
 from civicpy.exports.civic_gks_writer import CivicGksWriter, GksAssertionError
 from civicpy.exports.civic_vcf_writer import CivicVcfWriter
@@ -106,7 +107,7 @@ def create_gks_json(organization_id: int, output_json: Path) -> None:
         assertion = approval.assertion
         if assertion.is_valid_for_gks_json(emit_warnings=True):
             try:
-                gks_record = CivicGksAssertion(assertion, approval=approval)
+                gks_record = create_gks_record_from_assertion(assertion, approval=approval)
             except (CivicGksRecordError, NotImplementedError) as e:
                 errors.append(
                     GksAssertionError(assertion_id=assertion.id, message=str(e))
