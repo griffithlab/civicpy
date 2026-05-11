@@ -266,6 +266,11 @@ def gks_mpid33():
                     {"syntax": "hgvs.c", "value": "NM_005228.4:c.2573T>G"},
                     {"syntax": "hgvs.g", "value": "NC_000007.13:g.55259515T>G"},
                     {"syntax": "hgvs.p", "value": "NP_005219.2:p.Leu858Arg"},
+                    {
+                        "syntax": "hgvs.c",
+                        "value": "ENST00000275493.7:c.2573T>G",
+                        "extensions": [{"name": "is_mane_select", "value": True}],
+                    },
                 ],
             },
         ],
@@ -690,8 +695,17 @@ class TestCivicGksMolecularProfile(object):
         """Test that get_extensions method works as expected"""
         variant = v600e_mp.variants[0]
 
-        with patch.object(
-            variant, "hgvs_expressions", new=["N/A", "XR_001744858.1:n.1823-3918T>A"]
+        with (
+            patch.object(
+                variant,
+                "hgvs_expressions",
+                new=["N/A", "XR_001744858.1:n.1823-3918T>A"],
+            ),
+            patch.object(
+                variant,
+                "mane_select_transcript",
+                new=None,
+            ),
         ):
             gks_mp = CivicGksMolecularProfile(v600e_mp)
             extensions = gks_mp.get_extensions(v600e_mp)
@@ -777,6 +791,7 @@ class TestCivicGksPredictiveAssertion(object):
     @patch.object(civic.Assertion, "is_valid_for_gks_json")
     @patch.object(civic.Assertion, "evidence_items")
     @patch.object(civic.FusionVariant, "hgvs_expressions", create=True)
+    @patch.object(civic.FusionVariant, "mane_select_transcript", create=True)
     @patch.object(
         civic.FusionVariant,
         "allele_registry_id",
@@ -795,6 +810,7 @@ class TestCivicGksPredictiveAssertion(object):
         test_coordinates,
         test_clinvar_entries,
         test_allele_registry_id,
+        test_mane_select_transcript,
         test_hgvs_expressions,
         test_evidence_items,
         test_is_valid_for_gks_json,
@@ -807,6 +823,7 @@ class TestCivicGksPredictiveAssertion(object):
         test_is_valid_for_gks_json.return_value = True
         test_evidence_items.return_value = []
         test_hgvs_expressions.return_value = None
+        test_mane_select_transcript.return_value = None
         record = CivicGksPredictiveAssertion(aid19)
         assert isinstance(record, VariantTherapeuticResponseStudyStatement)
         therapy = record.proposition.objectTherapeutic.root
