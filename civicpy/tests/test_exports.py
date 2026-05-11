@@ -797,19 +797,19 @@ def gks_aid202_proposition(gks_gid42):
 def gks_aid202(gks_aid202_proposition):
     """Create CIVIC AID6 GKS representation."""
     els_exts = [
-            {
-                "name": "citations",
-                "value": [
-                    "https://civicdb.org/links/evidence/74",
-                    "https://civicdb.org/links/evidence/12800",
-                    "https://civicdb.org/links/evidence/78",
-                    "https://civicdb.org/links/evidence/12711",
-                    "https://civicdb.org/links/evidence/12805",
-                    "https://civicdb.org/links/evidence/11723",
-                    "https://civicdb.org/links/evidence/12709",
-                ],
-            }
-        ]
+        {
+            "name": "citations",
+            "value": [
+                "https://civicdb.org/links/evidence/74",
+                "https://civicdb.org/links/evidence/12800",
+                "https://civicdb.org/links/evidence/78",
+                "https://civicdb.org/links/evidence/12711",
+                "https://civicdb.org/links/evidence/12805",
+                "https://civicdb.org/links/evidence/11723",
+                "https://civicdb.org/links/evidence/12709",
+            ],
+        }
+    ]
     params = {
         "id": "civic.aid:202",
         "type": "Statement",
@@ -849,7 +849,7 @@ def gks_aid202(gks_aid202_proposition):
                 },
                 "scoreOfEvidenceProvided": 2,
                 "specifiedBy": _ccv_method("OM1"),
-                "extensions": els_exts
+                "extensions": els_exts,
             },
             {
                 "type": "EvidenceLine",
@@ -869,7 +869,7 @@ def gks_aid202(gks_aid202_proposition):
                 },
                 "scoreOfEvidenceProvided": 4,
                 "specifiedBy": _ccv_method("OS2"),
-                "extensions": els_exts
+                "extensions": els_exts,
             },
             {
                 "type": "EvidenceLine",
@@ -889,7 +889,7 @@ def gks_aid202(gks_aid202_proposition):
                 },
                 "scoreOfEvidenceProvided": 1,
                 "specifiedBy": _ccv_method("OP4"),
-                "extensions": els_exts
+                "extensions": els_exts,
             },
             {
                 "type": "EvidenceLine",
@@ -909,7 +909,7 @@ def gks_aid202(gks_aid202_proposition):
                 },
                 "scoreOfEvidenceProvided": 1,
                 "specifiedBy": _ccv_method("OP1"),
-                "extensions": els_exts
+                "extensions": els_exts,
             },
             {
                 "type": "EvidenceLine",
@@ -929,7 +929,7 @@ def gks_aid202(gks_aid202_proposition):
                 },
                 "scoreOfEvidenceProvided": 1,
                 "specifiedBy": _ccv_method("OP3"),
-                "extensions": els_exts
+                "extensions": els_exts,
             },
         ],
     }
@@ -1233,7 +1233,8 @@ class TestCivicGksDiagnosticAssertion(object):
         """Test that unsupported assertion types raise exceptions"""
 
         with pytest.raises(
-            CivicGksRecordError, match=r"Assertion is not valid for GKS."
+            CivicGksRecordError,
+            match=r"Assertion must have type 'PREDICTIVE', 'PROGNOSTIC', or 'DIAGNOSTIC'",
         ):
             CivicGksClinSigAssertion(aid117)
 
@@ -1296,3 +1297,11 @@ class TestCivicGksOncogenicAssertion(object):
             )
 
             assert diff == {}, f"Mismatch in key: {key}"
+
+    def test_invalid(self, aid6):
+        """Test that unsupported assertion types raise exceptions"""
+
+        with pytest.raises(
+            CivicGksRecordError, match=r"Assertion must have type 'ONCOGENIC'"
+        ):
+            CivicGksOncogenicAssertion(aid6)

@@ -613,6 +613,8 @@ class CivicGksTherapyGroup(TherapyGroup):
 
 
 class _CivicGksEvidenceAssertionMixin:
+    """Mixin for CIViC Evidence and Assertions"""
+
     @staticmethod
     def get_allele_origin_qualifier(record: Evidence | Assertion) -> MappableConcept:
         """Get GKS allele origin qualifier
@@ -876,12 +878,16 @@ class CivicGksEvidence(Statement, _CivicGksEvidenceAssertionMixin):
 
 
 class _CivicGksAssertionMixin:
+    """Mixin for CIViC Assertions"""
+
     @staticmethod
     def get_contributions(approval: Approval) -> list[Contribution]:
         """Get contributions for an approval
 
         :param approval: Approval for assertion
-        :return: List of contributions containing when the approval was last reviewed
+        :return: List of contributions, with one item containing when the approval was
+            last reviewed an organization.
+            Will include an extension, `is_approved_vcep`.
         """
         organization: Organization = approval.organization
         return [
@@ -903,7 +909,9 @@ class _CivicGksAssertionMixin:
 
 
 class CivicGksClinSigAssertion(
-    VariantClinicalSignificanceStatement, _CivicGksEvidenceAssertionMixin
+    VariantClinicalSignificanceStatement,
+    _CivicGksAssertionMixin,
+    _CivicGksEvidenceAssertionMixin,
 ):
     """Class for CIViC predictive, prognostic, or diagnostic assertion record
     represented as GKS
@@ -925,6 +933,14 @@ class CivicGksClinSigAssertion(
         :raises CivicGksRecordError: If CIViC assertion is not able to be represented as
             GKS object
         """
+        if assertion.assertion_type not in {
+            CivicEvidenceAssertionType.PREDICTIVE,
+            CivicEvidenceAssertionType.PROGNOSTIC,
+            CivicEvidenceAssertionType.DIAGNOSTIC,
+        }:
+            err_msg = f"Assertion must have type '{CivicEvidenceAssertionType.PREDICTIVE.value}', '{CivicEvidenceAssertionType.PROGNOSTIC.value}', or '{CivicEvidenceAssertionType.DIAGNOSTIC.value}'"
+            raise CivicGksRecordError(err_msg)
+
         if not assertion.is_valid_for_gks_json(emit_warnings=True):
             err_msg = "Assertion is not valid for GKS."
             raise CivicGksRecordError(err_msg)
@@ -1068,7 +1084,20 @@ class CivicGksOncogenicAssertion(
     _CivicGksAssertionMixin,
     _CivicGksEvidenceAssertionMixin,
 ):
+    """Class for CIViC oncogenic assertion record represented as GKS"""
+
     def __init__(self, assertion: Assertion, approval: Approval | None = None) -> None:
+        """Initialize CivicGksOncogenicAssertion class
+
+        :param assertion: CIViC assertion record
+        :param approval: CIViC approval for the assertion, defaults to None
+        :raises CivicGksRecordError: If CIViC assertion is not able to be represented as
+            GKS object
+        """
+        if assertion.assertion_type != CivicEvidenceAssertionType.ONCOGENIC:
+            err_msg = f"Assertion must have type '{CivicEvidenceAssertionType.ONCOGENIC.value}'"
+            raise CivicGksRecordError(err_msg)
+
         if not assertion.is_valid_for_gks_json(emit_warnings=True):
             err_msg = "Assertion is not valid for GKS."
             raise CivicGksRecordError(err_msg)
@@ -1095,10 +1124,10 @@ class CivicGksOncogenicAssertion(
     def get_classification_strength(
         self, significance
     ) -> tuple[MappableConcept, MappableConcept | None]:
-        """Get classification, strength, and level
+        """Get classification and strength
 
-        :param amp_level: AMP/ASCO/CAP level
-        :return: Classification, strength, and level, if found
+        :param significance: Assertion's significance
+        :return: Classification and strength, if found
         """
         _strength = None
 
@@ -1127,9 +1156,8 @@ class CivicGksOncogenicAssertion(
     ) -> list[VariantOncogenicityEvidenceLine]:
         """Get evidence lines for a CIViC assertion
 
-        Only the CIViC evidence items that are supported for GKS will be included
-
         :param assertion: CIViC assertion
+        :param proposition: Proposition for CIViC assertion
         :return: List of CIViC evidence lines
         """
         direction = (
@@ -1173,6 +1201,12 @@ class CivicGksOncogenicAssertion(
 
     @staticmethod
     def _get_ccv_method(method_type: str) -> Method:
+        """Get ClinGen/CGC/VICC Guidelines method
+
+        :param method_type: Value to use for `methodType`
+        :return: ClinGen/CGC/VICC Guidelines represented as GKS Method
+        """
+
         return Method(
             name="ClinGen/CGC/VICC Guidelines for Oncogenicity, 2022",
             reportedIn=Document(
@@ -1182,9 +1216,9 @@ class CivicGksOncogenicAssertion(
                 doi="10.1016/j.gim.2022.01.001",
                 pmid="35101336",
                 urls=[
-                        "https://doi.org/10.1016/j.gim.2022.01.001",
-                        "https://pubmed.ncbi.nlm.nih.gov/35101336/",
-                    ]
+                    "https://doi.org/10.1016/j.gim.2022.01.001",
+                    "https://pubmed.ncbi.nlm.nih.gov/35101336/",
+                ],
             ),
             methodType=method_type,
         )
