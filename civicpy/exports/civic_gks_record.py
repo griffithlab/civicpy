@@ -417,13 +417,14 @@ class CivicGksMolecularProfile(CategoricalVariant):
                     Extension(name="is_mane_select", value=True)
                 )
 
-            expressions.append(
-                Expression(
-                    syntax=syntax,
-                    value=hgvs_expr,
-                    extensions=expression_extensions or None,
-                )
+            expression = Expression(
+                syntax=syntax,
+                value=hgvs_expr,
+                extensions=expression_extensions or None,
             )
+
+            if expression not in expressions:
+                expressions.append(expression)
 
         if expressions:
             extensions.append(Extension(name="expressions", value=expressions))
