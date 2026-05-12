@@ -3,8 +3,9 @@ import click
 import logging
 from civicpy import LOCAL_CACHE_PATH, civic
 from civicpy.exports.civic_gks_record import (
+    CivicGksClinSigAssertion,
+    CivicGksOncogenicAssertion,
     CivicGksRecordError,
-    CivicGksAssertion,
     create_gks_record_from_assertion
 )
 from civicpy.exports.civic_gks_writer import CivicGksWriter, GksAssertionError
@@ -98,7 +99,7 @@ def create_gks_json(organization_id: int, output_json: Path) -> None:
         logging.exception("Error getting organization %i", organization_id)
         return
 
-    records: list[CivicGksAssertion] = []
+    records: list[CivicGksClinSigAssertion | CivicGksOncogenicAssertion] = []
     errors: list[GksAssertionError] = []
 
     for approval in civic.get_all_approvals_ready_for_clinvar_submission_for_org(
