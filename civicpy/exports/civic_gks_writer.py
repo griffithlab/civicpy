@@ -8,7 +8,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-from civicpy.exports.civic_gks_record import CivicGksClinSigAssertion
+from civicpy.exports.civic_gks_record import CivicGksClinSigAssertion, CivicGksOncogenicAssertion
 
 
 def get_pkg_version(name: str) -> str:
@@ -43,7 +43,7 @@ class GksAssertionError(BaseModel):
 class GksOutput(BaseModel):
     """Define model for representing GKS JSON output"""
 
-    gks_records: list[CivicGksClinSigAssertion]
+    gks_records: list[CivicGksClinSigAssertion | CivicGksOncogenicAssertion]
     metadata: GksOutputMetadata
     failed_assertion_ids: list[int] = []
     errors: list[GksAssertionError] = []
@@ -60,7 +60,7 @@ class CivicGksWriter:
     def __init__(
         self,
         filepath: Path,
-        gks_records: list[CivicGksClinSigAssertion],
+        gks_records: list[CivicGksClinSigAssertion | CivicGksOncogenicAssertion],
         errors: list[GksAssertionError] | None = None,
     ):
         """Initialize CivicGksWriter class
