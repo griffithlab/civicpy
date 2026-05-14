@@ -13,7 +13,6 @@ from ga4gh.va_spec.ccv_2022 import VariantOncogenicityStatement
 from civicpy import civic
 from civicpy.exports.civic_vcf_record import CivicVcfRecord
 from civicpy.exports.civic_gks_record import (
-    CivicEvidenceAssertionType,
     CivicGksEvidence,
     CivicGksMolecularProfile,
     CivicGksOncogenicAssertion,
@@ -1329,56 +1328,47 @@ class TestCivicGksRecord(object):
     @pytest.mark.parametrize(
         (
             "civic_assertion_fixture_name",
-            "assertion_type",
             "submission_type_filter",
             "should_raise_error",
         ),
         (
             [
                 "aid202",
-                CivicEvidenceAssertionType.ONCOGENIC,
                 ClinVarSubmissionType.ONCOGENICITY,
                 False,
             ],
             [
                 "aid202",
-                CivicEvidenceAssertionType.ONCOGENIC,
                 ClinVarSubmissionType.CLINICAL_IMPACT,
                 True,
             ],
             [
                 "aid9",
-                CivicEvidenceAssertionType.DIAGNOSTIC,
                 ClinVarSubmissionType.CLINICAL_IMPACT,
                 False,
             ],
             [
                 "aid9",
-                CivicEvidenceAssertionType.DIAGNOSTIC,
                 ClinVarSubmissionType.ONCOGENICITY,
                 True,
             ],
             [
                 "aid20",
-                CivicEvidenceAssertionType.PROGNOSTIC,
                 ClinVarSubmissionType.CLINICAL_IMPACT,
                 False,
             ],
             [
                 "aid20",
-                CivicEvidenceAssertionType.PROGNOSTIC,
                 ClinVarSubmissionType.ONCOGENICITY,
                 True,
             ],
             [
                 "aid6",
-                CivicEvidenceAssertionType.PREDICTIVE,
                 ClinVarSubmissionType.CLINICAL_IMPACT,
                 False,
             ],
             [
                 "aid6",
-                CivicEvidenceAssertionType.PREDICTIVE,
                 ClinVarSubmissionType.ONCOGENICITY,
                 True,
             ],
@@ -1388,7 +1378,6 @@ class TestCivicGksRecord(object):
         self,
         request,
         civic_assertion_fixture_name,
-        assertion_type,
         submission_type_filter,
         should_raise_error,
     ):
@@ -1397,7 +1386,7 @@ class TestCivicGksRecord(object):
         if should_raise_error:
             with pytest.raises(
                 NotImplementedError,
-                match=rf"Assertion type {assertion_type.value} is not supported for ClinVar submission type {submission_type_filter.value}",
+                match=rf"Assertion type {civic_aid.assertion_type} is not supported for ClinVar submission type {submission_type_filter.value}",
             ):
                 create_gks_record_from_assertion(
                     civic_aid, submission_type_filter=submission_type_filter
