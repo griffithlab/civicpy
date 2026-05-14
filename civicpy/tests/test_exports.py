@@ -13,12 +13,14 @@ from ga4gh.va_spec.ccv_2022 import VariantOncogenicityStatement
 from civicpy import civic
 from civicpy.exports.civic_vcf_record import CivicVcfRecord
 from civicpy.exports.civic_gks_record import (
+    CivicEvidenceAssertionType,
     CivicGksEvidence,
     CivicGksMolecularProfile,
     CivicGksOncogenicAssertion,
     CivicGksRecordError,
     CivicGksClinSigAssertion,
     CivicGksTherapyGroup,
+    ClinVarSubmissionType,
     create_gks_record_from_assertion,
 )
 
@@ -1311,6 +1313,7 @@ class TestCivicGksOncogenicAssertion(object):
         ):
             CivicGksOncogenicAssertion(aid6)
 
+
 class TestCivicGksRecord(object):
     """Test that GKS Record helper functions work correctly"""
 
@@ -1322,3 +1325,84 @@ class TestCivicGksRecord(object):
             match=r"Assertion type PREDISPOSING is not currently supported",
         ):
             create_gks_record_from_assertion(civic.get_assertion_by_id(17))
+
+    @pytest.mark.parametrize(
+        (
+            "civic_assertion_fixture_name",
+            "assertion_type",
+            "submission_type_filter",
+            "should_raise_error",
+        ),
+        (
+            [
+                "aid202",
+                CivicEvidenceAssertionType.ONCOGENIC,
+                ClinVarSubmissionType.ONCOGENICITY,
+                False,
+            ],
+            [
+                "aid202",
+                CivicEvidenceAssertionType.ONCOGENIC,
+                ClinVarSubmissionType.CLINICAL_IMPACT,
+                True,
+            ],
+            [
+                "aid9",
+                CivicEvidenceAssertionType.DIAGNOSTIC,
+                ClinVarSubmissionType.CLINICAL_IMPACT,
+                False,
+            ],
+            [
+                "aid9",
+                CivicEvidenceAssertionType.DIAGNOSTIC,
+                ClinVarSubmissionType.ONCOGENICITY,
+                True,
+            ],
+            [
+                "aid20",
+                CivicEvidenceAssertionType.PROGNOSTIC,
+                ClinVarSubmissionType.CLINICAL_IMPACT,
+                False,
+            ],
+            [
+                "aid20",
+                CivicEvidenceAssertionType.PROGNOSTIC,
+                ClinVarSubmissionType.ONCOGENICITY,
+                True,
+            ],
+            [
+                "aid6",
+                CivicEvidenceAssertionType.PREDICTIVE,
+                ClinVarSubmissionType.CLINICAL_IMPACT,
+                False,
+            ],
+            [
+                "aid6",
+                CivicEvidenceAssertionType.PREDICTIVE,
+                ClinVarSubmissionType.ONCOGENICITY,
+                True,
+            ],
+        ),
+    )
+    def test_create_gks_record_from_assertion_filter(
+        self,
+        request,
+        civic_assertion_fixture_name,
+        assertion_type,
+        submission_type_filter,
+        should_raise_error,
+    ):
+        """Test that create_gks_record_from_assertion works correctly when submission filter is applied"""
+        civic_aid = request.getfixturevalue(civic_assertion_fixture_name)
+        if should_raise_error:
+            with pytest.raises(
+                NotImplementedError,
+                match=rf"Assertion type {assertion_type.value} is not supported for ClinVar submission type {submission_type_filter.value}",
+            ):
+                create_gks_record_from_assertion(
+                    civic_aid, submission_type_filter=submission_type_filter
+                )
+        else:
+            assert create_gks_record_from_assertion(
+                civic_aid, submission_type_filter=submission_type_filter
+            )

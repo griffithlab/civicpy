@@ -6,7 +6,8 @@ from civicpy.exports.civic_gks_record import (
     CivicGksClinSigAssertion,
     CivicGksOncogenicAssertion,
     CivicGksRecordError,
-    create_gks_record_from_assertion
+    ClinVarSubmissionType,
+    create_gks_record_from_assertion,
 )
 from civicpy.exports.civic_gks_writer import CivicGksWriter, GksAssertionError
 from civicpy.exports.civic_vcf_writer import CivicVcfWriter
@@ -73,6 +74,16 @@ def create_vcf(vcf_file_path, include_status):
     type=int,
 )
 @click.option(
+    "--submission-type",
+    type=click.Choice(
+        [s.value for s in ClinVarSubmissionType],
+        case_sensitive=True,
+    ),
+    help="The ClinVar submission type to generate GKS JSON for.",
+    default=ClinVarSubmissionType.CLINICAL_IMPACT.value,
+    show_default=True,
+)
+@click.option(
     "-o",
     "--output-json",
     required=True,
@@ -84,13 +95,22 @@ def create_vcf(vcf_file_path, include_status):
         path_type=Path,
     ),
 )
-def create_gks_json(organization_id: int, output_json: Path) -> None:
+def create_gks_json(
+    organization_id: int, submission_type: ClinVarSubmissionType, output_json: Path
+) -> None:
     """Create a JSON file for CIViC assertion records approved by a specific organization that are ready for ClinVar submission, represented as GKS objects.
 
     For now, we will only support simple molecular profiles and diagnostic, prognostic,
-    or predictive assertions.
+    predictive, or oncogenic assertions.
+
+    ClinVar only supports submitting records of the same submission type for a given assertion criteria:
+    * Clinical Impact -> diagnostic, prognostic, or predictive assertion
+    * Oncogenicity -> oncogenic assertion
+    Therefore, you must create separate GKS JSON for each submission type
 
     :param organization_id: The CIViC organization ID that approved the assertion(s) for submission to ClinVar
+    :param submission_type: The ClinVar submission type to generate GKS JSON for.
+        Defaults to clinical impact.
     :param output_json: The output file path to write the JSON file to
     """
     try:
@@ -99,7 +119,7 @@ def create_gks_json(organization_id: int, output_json: Path) -> None:
         logging.exception("Error getting organization %i", organization_id)
         return
 
-    records: list[CivicGksClinSigAssertion | CivicGksOncogenicAssertion] = []
+    records: list[CivicGksClinSigAssertion] | list[CivicGksOncogenicAssertion] = []
     errors: list[GksAssertionError] = []
 
     for approval in civic.get_all_approvals_ready_for_clinvar_submission_for_org(
@@ -108,7 +128,9 @@ def create_gks_json(organization_id: int, output_json: Path) -> None:
         assertion = approval.assertion
         if assertion.is_valid_for_gks_json(emit_warnings=True):
             try:
-                gks_record = create_gks_record_from_assertion(assertion, approval=approval)
+                gks_record = create_gks_record_from_assertion(
+                    assertion, approval=approval, submission_type_filter=submission_type
+                )
             except (CivicGksRecordError, NotImplementedError) as e:
                 errors.append(
                     GksAssertionError(assertion_id=assertion.id, message=str(e))

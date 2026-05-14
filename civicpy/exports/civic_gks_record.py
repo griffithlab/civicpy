@@ -116,6 +116,21 @@ CLINICAL_SIGNIFICANCE_ASSERTION_TYPES = [
 ONCOGENIC_ASSERTION_TYPES = [CivicEvidenceAssertionType.ONCOGENIC.value]
 
 
+class ClinVarSubmissionType(str, Enum):
+    """Define supported submission types to ClinVar"""
+
+    CLINICAL_IMPACT = "clinical_impact"
+    ONCOGENICITY = "oncogenicity"
+
+
+ASSERTION_TYPES_BY_CLINVAR_SUBMISSION_TYPE = MappingProxyType(
+    {
+        ClinVarSubmissionType.CLINICAL_IMPACT: CLINICAL_SIGNIFICANCE_ASSERTION_TYPES,
+        ClinVarSubmissionType.ONCOGENICITY: ONCOGENIC_ASSERTION_TYPES,
+    }
+)
+
+
 class CivicEvidenceLevel(str, Enum):
     """Define constraints for CIViC evidence levels"""
 
@@ -1231,23 +1246,38 @@ class CivicGksOncogenicAssertion(
 
 
 def create_gks_record_from_assertion(
-    assertion: Assertion, approval: Approval | None = None
+    assertion: Assertion,
+    approval: Approval | None = None,
+    submission_type_filter: ClinVarSubmissionType | None = None,
 ) -> CivicGksClinSigAssertion | CivicGksOncogenicAssertion:
     """Create GKS Record from CIViC Assertion
 
     :param assertion: CIViC assertion record
     :param approval: CIViC approval for the assertion, defaults to None
+    :param submission_type_filter: Optional ClinVar submission type used to
+        restrict which assertion types may be translated
     :raises NotImplementedError: If GKS Record translation is not yet supported.
         Currently, only the following assertion types are supported: DIAGNOSTIC,
         PREDICTIVE, PROGNOSTIC, and ONCOGENIC.
+        Or if the assertion type is excluded by the provided ClinVar submission type
+            filter.
     :return: GKS Assertion Record object
     """
     assertion_type = assertion.assertion_type
+
+    if submission_type_filter:
+        allowed_assertion_types = ASSERTION_TYPES_BY_CLINVAR_SUBMISSION_TYPE[
+            submission_type_filter
+        ]
+        if assertion_type not in allowed_assertion_types:
+            err_msg = f"Assertion type {assertion_type} is not supported for ClinVar submission type {submission_type_filter.value}"
+            raise NotImplementedError(err_msg)
+
     if assertion_type in CLINICAL_SIGNIFICANCE_ASSERTION_TYPES:
         return CivicGksClinSigAssertion(assertion, approval=approval)
 
     if assertion_type in ONCOGENIC_ASSERTION_TYPES:
         return CivicGksOncogenicAssertion(assertion, approval=approval)
 
-    err_msg = f"Assertion type {assertion.assertion_type} is not currently supported"
+    err_msg = f"Assertion type {assertion_type} is not currently supported"
     raise NotImplementedError(err_msg)
