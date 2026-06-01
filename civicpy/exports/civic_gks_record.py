@@ -930,6 +930,20 @@ class _CivicGksAssertionMixin:
             )
         ]
 
+    @staticmethod
+    def get_reported_in(assertion: Assertion) -> list[iriReference]:
+        """Get reported in information for an assertion
+
+        :param assertion: CIViC assertion record
+        :return: List of CIViC links to records which the assertion is reported in
+        """
+        reported_in: list[iriReference] = [
+            iriReference(f"{LINKS_URL}/assertion/{assertion.id}")
+        ]
+        for evidence_item in assertion.evidence_items or []:
+            reported_in.append(iriReference(f"{LINKS_URL}/evidence/{evidence_item.id}"))
+        return reported_in
+
 
 class CivicGksClinSigAssertion(
     VariantClinicalSignificanceStatement,
@@ -981,7 +995,7 @@ class CivicGksClinSigAssertion(
             classification=classification,
             strength=strength,
             hasEvidenceLines=self.get_evidence_lines(assertion, level),
-            reportedIn=[iriReference(f"{LINKS_URL}/assertion/{assertion.id}")],
+            reportedIn=self.get_reported_in(assertion),
         )
 
     def get_classification_strength_level(
@@ -1044,7 +1058,6 @@ class CivicGksClinSigAssertion(
         )
 
         evidence_items: list[CivicGksEvidence] = []
-        eid_links: list[str] = []
         for evidence_item in assertion.evidence_items:
             try:
                 evidence_items.append(CivicGksEvidence(evidence_item))
@@ -1060,9 +1073,6 @@ class CivicGksClinSigAssertion(
                     evidence_item.name,
                     str(e),
                 )
-            finally:
-                # Retain all EID references
-                eid_links.append(f"{LINKS_URL}/evidence/{evidence_item.id}")
 
         if assertion.assertion_type == CivicEvidenceAssertionType.PREDICTIVE:
             evidence_line_cls = TherapeuticEvidenceLine
@@ -1082,7 +1092,6 @@ class CivicGksClinSigAssertion(
                 strengthOfEvidenceProvided=MappableConcept(
                     primaryCoding=(Coding(code=level, system=System.AMP_ASCO_CAP))
                 ),
-                extensions=[Extension(name="citations", value=eid_links)],
             ).root
         ]
 
@@ -1139,7 +1148,7 @@ class CivicGksOncogenicAssertion(
             classification=classification,
             strength=strength,
             hasEvidenceLines=self.get_evidence_lines(assertion, proposition),
-            reportedIn=[iriReference(f"{LINKS_URL}/assertion/{assertion.id}")],
+            reportedIn=self.get_reported_in(assertion),
         )
 
     def get_classification_strength(
@@ -1187,11 +1196,6 @@ class CivicGksOncogenicAssertion(
             else Direction.DISPUTES
         )
 
-        eid_links: list[str] = []
-        for evidence_item in assertion.evidence_items:
-            # Retain all EID references
-            eid_links.append(f"{LINKS_URL}/evidence/{evidence_item.id}")
-
         evidence_lines = []
         for clingen_code in assertion.clingen_codes or []:
             evidence_attrs = derive_onco_evidence_attributes(
@@ -1202,7 +1206,6 @@ class CivicGksOncogenicAssertion(
                     targetProposition=proposition,
                     directionOfEvidenceProvided=direction,
                     **evidence_attrs.model_dump(),
-                    extensions=[Extension(name="citations", value=eid_links)],
                     specifiedBy=self._get_ccv_method(clingen_code.code),
                 )
             )

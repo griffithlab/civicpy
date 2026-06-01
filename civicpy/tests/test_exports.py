@@ -485,22 +485,17 @@ def gks_aid6(
                         "system": "AMP/ASCO/CAP Guidelines, 2017",
                     },
                 },
-                "extensions": [
-                    {
-                        "name": "citations",
-                        "value": [
-                            "https://civicdb.org/links/evidence/2997",
-                            "https://civicdb.org/links/evidence/879",
-                            "https://civicdb.org/links/evidence/982",
-                            "https://civicdb.org/links/evidence/883",
-                            "https://civicdb.org/links/evidence/968",
-                            "https://civicdb.org/links/evidence/2629",
-                        ],
-                    }
-                ],
             }
         ],
-        "reportedIn": ["https://civicdb.org/links/assertion/6"],
+        "reportedIn": [
+            "https://civicdb.org/links/assertion/6",
+            "https://civicdb.org/links/evidence/2997",
+            "https://civicdb.org/links/evidence/879",
+            "https://civicdb.org/links/evidence/982",
+            "https://civicdb.org/links/evidence/883",
+            "https://civicdb.org/links/evidence/968",
+            "https://civicdb.org/links/evidence/2629",
+        ],
     }
     return VariantClinicalSignificanceStatement(**params)
 
@@ -799,20 +794,6 @@ def gks_aid202_proposition(gks_gid42):
 @pytest.fixture(scope="module")
 def gks_aid202(gks_aid202_proposition):
     """Create CIVIC AID6 GKS representation."""
-    els_exts = [
-        {
-            "name": "citations",
-            "value": [
-                "https://civicdb.org/links/evidence/74",
-                "https://civicdb.org/links/evidence/12800",
-                "https://civicdb.org/links/evidence/78",
-                "https://civicdb.org/links/evidence/12711",
-                "https://civicdb.org/links/evidence/12805",
-                "https://civicdb.org/links/evidence/11723",
-                "https://civicdb.org/links/evidence/12709",
-            ],
-        }
-    ]
     params = {
         "id": "civic.aid:202",
         "type": "Statement",
@@ -830,7 +811,16 @@ def gks_aid202(gks_aid202_proposition):
                 "system": "ClinGen/CGC/VICC Guidelines for Oncogenicity, 2022",
             }
         },
-        "reportedIn": ["https://civicdb.org/links/assertion/202"],
+        "reportedIn": [
+            "https://civicdb.org/links/assertion/202",
+            "https://civicdb.org/links/evidence/74",
+            "https://civicdb.org/links/evidence/12800",
+            "https://civicdb.org/links/evidence/78",
+            "https://civicdb.org/links/evidence/12711",
+            "https://civicdb.org/links/evidence/12805",
+            "https://civicdb.org/links/evidence/11723",
+            "https://civicdb.org/links/evidence/12709",
+        ],
         "direction": "supports",
         "specifiedBy": _ccv_method("guideline"),
         "hasEvidenceLines": [
@@ -852,7 +842,6 @@ def gks_aid202(gks_aid202_proposition):
                 },
                 "scoreOfEvidenceProvided": 2,
                 "specifiedBy": _ccv_method("OM1"),
-                "extensions": els_exts,
             },
             {
                 "type": "EvidenceLine",
@@ -872,7 +861,6 @@ def gks_aid202(gks_aid202_proposition):
                 },
                 "scoreOfEvidenceProvided": 4,
                 "specifiedBy": _ccv_method("OS2"),
-                "extensions": els_exts,
             },
             {
                 "type": "EvidenceLine",
@@ -892,7 +880,6 @@ def gks_aid202(gks_aid202_proposition):
                 },
                 "scoreOfEvidenceProvided": 1,
                 "specifiedBy": _ccv_method("OP4"),
-                "extensions": els_exts,
             },
             {
                 "type": "EvidenceLine",
@@ -912,7 +899,6 @@ def gks_aid202(gks_aid202_proposition):
                 },
                 "scoreOfEvidenceProvided": 1,
                 "specifiedBy": _ccv_method("OP1"),
-                "extensions": els_exts,
             },
             {
                 "type": "EvidenceLine",
@@ -932,7 +918,6 @@ def gks_aid202(gks_aid202_proposition):
                 },
                 "scoreOfEvidenceProvided": 1,
                 "specifiedBy": _ccv_method("OP3"),
-                "extensions": els_exts,
             },
         ],
     }
@@ -1168,12 +1153,9 @@ class TestCivicGksClinSigAssertion(object):
         record = CivicGksClinSigAssertion(aid20)
         assert len(record.hasEvidenceLines) == 1
         assert record.hasEvidenceLines[0].hasEvidenceItems is None
-        assert len(record.hasEvidenceLines[0].extensions) == 1
-        assert record.hasEvidenceLines[0].extensions[0].model_dump(
-            exclude_none=True
-        ) == {
-            "name": "citations",
-            "value": ["https://civicdb.org/links/evidence/11881"],
+        assert {r.model_dump(exclude_none=True) for r in record.reportedIn or []} == {
+            "https://civicdb.org/links/evidence/11881",
+            "https://civicdb.org/links/assertion/20",
         }
 
 
