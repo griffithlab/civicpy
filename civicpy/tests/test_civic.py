@@ -861,6 +861,9 @@ class TestApproval(object):
         assert a.organization_id == 14
         assert a.assertion_id == 101
 
+        a = civic.get_approval_by_id(6)
+        assert a.clinvar_accession == "SCV007542591"
+
     def test_search_approvals_by_organization_id(self):
         approvals = civic.search_approvals_by_organization_id(1)
         assert len(approvals) >= 1

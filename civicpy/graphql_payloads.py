@@ -623,6 +623,7 @@ def _construct_get_assertion_payload():
                 approvals {
                   nodes {
                     id
+                    clinvar_accession: clinvarAccession
                   }
                 }
                 therapies {
@@ -685,6 +686,7 @@ def _construct_get_all_assertions_payload():
                     approvals {
                       nodes {
                         id
+                        clinvar_accession: clinvarAccession
                       }
                     }
                     therapies {
@@ -959,6 +961,7 @@ def _construct_get_approval_payload():
                 status
                 last_reviewed: lastReviewed
                 ready_for_clinvar_submission: readyForClinvarSubmission
+                clinvar_accession: clinvarAccession
             }
         }"""
 
@@ -983,6 +986,7 @@ def _construct_get_all_approvals_payload():
                 status
                 last_reviewed: lastReviewed
                 ready_for_clinvar_submission: readyForClinvarSubmission
+                clinvar_accession: clinvarAccession
               }
             }
         }
