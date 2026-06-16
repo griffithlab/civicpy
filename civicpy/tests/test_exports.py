@@ -109,12 +109,6 @@ def aid117():
 
 
 @pytest.fixture(scope="module")
-def approval4():
-    """Create test fixture for active approval"""
-    return civic.get_approval_by_id(4)
-
-
-@pytest.fixture(scope="module")
 def gks_contributions():
     return [
         {
@@ -436,7 +430,6 @@ def gks_eid2997(
 
 @pytest.fixture(scope="module")
 def gks_aid6(
-    gks_contributions,
     gks_method,
     gks_therapeutic_proposition,
     gks_eid2997,
@@ -450,7 +443,6 @@ def gks_aid6(
 
     params = {
         "id": "civic.aid:6",
-        "contributions": gks_contributions,
         "description": "L858R is among the most common sensitizing EGFR mutations in NSCLC, and is assessed via DNA mutational analysis, including Sanger sequencing and next generation sequencing methods. Tyrosine kinase inhibitor afatinib is FDA approved as a first line systemic therapy in NSCLC with sensitizing EGFR mutation (civic.EID:2997).",
         "type": "Statement",
         "specifiedBy": gks_method,
@@ -762,9 +754,9 @@ class TestCivicGksEvidence(object):
 class TestCivicGksAssertion(object):
     """Test that CivicGksAssertion works as expected"""
 
-    def test_valid_single_therapy(self, aid6, approval4, gks_aid6):
+    def test_valid_single_therapy(self, aid6, gks_aid6):
         """Test that single therapy works as expected"""
-        record = CivicGksAssertion(aid6, approval=approval4)
+        record = CivicGksAssertion(aid6)
         assert isinstance(record, VariantClinicalSignificanceStatement)
         assert len(record.hasEvidenceLines) == 1
 
@@ -927,6 +919,14 @@ class TestCivicGksDiagnosticAssertion(object):
             ignore_order=True,
         )
         assert diff == {}
+
+    def test_clinvar_accession_ext(self):
+        a = civic.get_assertion_by_id(193)
+        record = CivicGksAssertion(a, approval=a.approvals[0])
+        assert isinstance(record, VariantClinicalSignificanceStatement)
+        assert [ext.model_dump(exclude_none=True) for ext in record.extensions] == [
+            {"name": "clinvar_accession", "value": "SCV007542591"}
+        ]
 
     def test_invalid(self, aid117):
         """Test that unsupported assertion types raise exceptions"""

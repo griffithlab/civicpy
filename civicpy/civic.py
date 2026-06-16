@@ -1877,6 +1877,7 @@ class Approval(CivicRecord):
             "status",
             "last_reviewed",
             "ready_for_clinvar_submission",
+            "clinvar_accession",
         }
     )
 

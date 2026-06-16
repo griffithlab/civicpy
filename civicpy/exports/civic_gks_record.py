@@ -908,6 +908,12 @@ class CivicGksAssertion(
         )
         contributions = self.get_contributions(approval) if approval else None
 
+        extensions = []
+        if approval and approval.clinvar_accession:
+            extensions.append(
+                Extension(name="clinvar_accession", value=approval.clinvar_accession)
+            )
+
         super().__init__(
             id=f"civic.aid:{assertion.id}",
             contributions=contributions,
@@ -919,6 +925,7 @@ class CivicGksAssertion(
             strength=strength,
             hasEvidenceLines=self.get_evidence_lines(assertion, level),
             reportedIn=[iriReference(f"{LINKS_URL}/assertion/{assertion.id}")],
+            extensions=extensions or None,
         )
 
     @staticmethod
