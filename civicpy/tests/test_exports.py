@@ -272,7 +272,14 @@ def gks_mpid33():
                     {"syntax": "hgvs.c", "value": "ENST00000275493.2:c.2573T>G"},
                     {"syntax": "hgvs.c", "value": "NM_005228.4:c.2573T>G"},
                     {"syntax": "hgvs.g", "value": "NC_000007.13:g.55259515T>G"},
+                    {"syntax": "hgvs.g", "value": "NC_000007.14:g.55191822T>G"},
                     {"syntax": "hgvs.p", "value": "NP_005219.2:p.Leu858Arg"},
+                    {"syntax": "hgvs.p", "value": "ENSP00000275493.2:p.Leu858Arg"},
+                    {
+                        "syntax": "hgvs.c",
+                        "value": "ENST00000275493.7:c.2573T>G",
+                        "extensions": [{"name": "is_mane_select", "value": True}],
+                    },
                 ],
             },
         ],
@@ -440,7 +447,6 @@ def gks_eid2997(
 
 @pytest.fixture(scope="module")
 def gks_aid6(
-    gks_contributions,
     gks_method,
     gks_therapeutic_proposition,
     gks_eid2997,
@@ -454,7 +460,6 @@ def gks_aid6(
 
     params = {
         "id": "civic.aid:6",
-        "contributions": gks_contributions,
         "description": "L858R is among the most common sensitizing EGFR mutations in NSCLC, and is assessed via DNA mutational analysis, including Sanger sequencing and next generation sequencing methods. Tyrosine kinase inhibitor afatinib is FDA approved as a first line systemic therapy in NSCLC with sensitizing EGFR mutation (civic.EID:2997).",
         "type": "Statement",
         "specifiedBy": gks_method,
@@ -783,7 +788,14 @@ def gks_aid202_proposition(gks_gid42):
                         {"syntax": "hgvs.c", "value": "ENST00000355710.3:c.2753T>C"},
                         {"syntax": "hgvs.c", "value": "NM_020975.4:c.2753T>C"},
                         {"syntax": "hgvs.g", "value": "NC_000010.10:g.43617416T>C"},
+                        {"syntax": "hgvs.g", "value": "NC_000010.11:g.43121968T>C"},
+                        {"syntax": "hgvs.p", "value": "ENSP00000347942.3:p.Met918Thr"},
                         {"syntax": "hgvs.p", "value": "NP_065681.1:p.Met918Thr"},
+                        {
+                            "syntax": "hgvs.c",
+                            "value": "ENST00000355710.8:c.2753T>C",
+                            "extensions": [{"name": "is_mane_select", "value": True}],
+                        },
                     ],
                 },
             ],
@@ -1003,8 +1015,17 @@ class TestCivicGksMolecularProfile(object):
         """Test that get_extensions method works as expected"""
         variant = v600e_mp.variants[0]
 
-        with patch.object(
-            variant, "hgvs_expressions", new=["N/A", "XR_001744858.1:n.1823-3918T>A"]
+        with (
+            patch.object(
+                variant,
+                "hgvs_expressions",
+                new=["N/A", "XR_001744858.1:n.1823-3918T>A"],
+            ),
+            patch.object(
+                variant,
+                "mane_select_transcript",
+                new=None,
+            ),
         ):
             gks_mp = CivicGksMolecularProfile(v600e_mp)
             extensions = gks_mp.get_extensions(v600e_mp)
@@ -1027,6 +1048,20 @@ class TestCivicGksMolecularProfile(object):
                 m.coding.system == "https://www.ncbi.nlm.nih.gov/clinvar/variation/"
                 for m in mappings
             )
+
+    def test_no_representative_coordiantes(self):
+        """Test that empty representative coordinates do not get an extension"""
+        gks_mp = CivicGksMolecularProfile(civic.get_molecular_profile_by_id(2261))
+        assert gks_mp.extensions
+        rep_coord_ext = next(
+            (
+                ext
+                for ext in gks_mp.extensions
+                if ext.name == "CIViC representative coordinate"
+            ),
+            None,
+        )
+        assert rep_coord_ext is None
 
 
 class TestCivicGksTherapyGroup(object):
@@ -1052,9 +1087,9 @@ class TestCivicGksEvidence(object):
 class TestCivicGksClinSigAssertion(object):
     """Test that CivicGksClinSigAssertion works as expected"""
 
-    def test_valid_single_therapy(self, aid6, approval4, gks_aid6):
+    def test_valid_single_therapy(self, aid6, gks_aid6):
         """Test that single therapy works as expected"""
-        record = CivicGksClinSigAssertion(aid6, approval=approval4)
+        record = CivicGksClinSigAssertion(aid6)
         assert isinstance(record, VariantClinicalSignificanceStatement)
         assert len(record.hasEvidenceLines) == 1
 
@@ -1090,6 +1125,7 @@ class TestCivicGksClinSigAssertion(object):
     @patch.object(civic.Assertion, "is_valid_for_gks_json")
     @patch.object(civic.Assertion, "evidence_items")
     @patch.object(civic.FusionVariant, "hgvs_expressions", create=True)
+    @patch.object(civic.FusionVariant, "mane_select_transcript", create=True)
     @patch.object(
         civic.FusionVariant,
         "allele_registry_id",
@@ -1108,6 +1144,7 @@ class TestCivicGksClinSigAssertion(object):
         test_coordinates,
         test_clinvar_entries,
         test_allele_registry_id,
+        test_mane_select_transcript,
         test_hgvs_expressions,
         test_evidence_items,
         test_is_valid_for_gks_json,
@@ -1377,3 +1414,19 @@ class TestCivicGksRecord(object):
             assert create_gks_record_from_assertion(
                 civic_aid, submission_type_filter=submission_type_filter
             )
+
+    def test_clinvar_accession_ext(self):
+        a = civic.get_assertion_by_id(193)
+        record = create_gks_record_from_assertion(a, approval=a.approvals[0])
+        assert isinstance(record, VariantClinicalSignificanceStatement)
+        assert [ext.model_dump(exclude_none=True) for ext in record.extensions] == [
+            {"name": "clinvar_accession", "value": "SCV007542591"}
+        ]
+
+    def test_invalid(self, aid117):
+        """Test that unsupported assertion types raise exceptions"""
+
+        with pytest.raises(
+            CivicGksRecordError, match=r"Assertion is not valid for GKS."
+        ):
+            create_gks_record_from_assertion(aid117)

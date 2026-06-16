@@ -253,6 +253,7 @@ def _construct_get_variant_payload():
                     allele_registry_id: alleleRegistryId
                     clinvar_entries: clinvarIds
                     hgvs_expressions: hgvsDescriptions
+                    mane_select_transcript: maneSelectTranscript
                     coordinates {
                         reference_build: referenceBuild
                         ensembl_version: ensemblVersion
@@ -384,6 +385,7 @@ def _construct_get_all_variants_payload():
                         allele_registry_id: alleleRegistryId
                         clinvar_entries: clinvarIds
                         hgvs_expressions: hgvsDescriptions
+                        mane_select_transcript: maneSelectTranscript
                         coordinates {
                             reference_build: referenceBuild
                             ensembl_version: ensemblVersion
@@ -621,6 +623,7 @@ def _construct_get_assertion_payload():
                 approvals {
                   nodes {
                     id
+                    clinvar_accession: clinvarAccession
                   }
                 }
                 therapies {
@@ -683,6 +686,7 @@ def _construct_get_all_assertions_payload():
                     approvals {
                       nodes {
                         id
+                        clinvar_accession: clinvarAccession
                       }
                     }
                     therapies {
@@ -957,6 +961,7 @@ def _construct_get_approval_payload():
                 status
                 last_reviewed: lastReviewed
                 ready_for_clinvar_submission: readyForClinvarSubmission
+                clinvar_accession: clinvarAccession
             }
         }"""
 
@@ -981,6 +986,7 @@ def _construct_get_all_approvals_payload():
                 status
                 last_reviewed: lastReviewed
                 ready_for_clinvar_submission: readyForClinvarSubmission
+                clinvar_accession: clinvarAccession
               }
             }
         }

@@ -182,6 +182,8 @@ class TestGeneVariants(object):
         variant = civic.get_variant_by_id(11)
         assert variant.entrez_name == "BRAF"
         assert variant.entrez_id == 673
+        assert variant.allele_registry_id == "CA16602419"
+        assert variant.mane_select_transcript == "ENST00000646891.2:c.1799_1800delinsAT"
 
     def test_complex_attributes(self):
         variant = civic.get_variant_by_id(12)
@@ -858,6 +860,9 @@ class TestApproval(object):
         a = civic.get_approval_by_id(1)
         assert a.organization_id == 14
         assert a.assertion_id == 101
+
+        a = civic.get_approval_by_id(6)
+        assert a.clinvar_accession == "SCV007542591"
 
     def test_search_approvals_by_organization_id(self):
         approvals = civic.search_approvals_by_organization_id(1)

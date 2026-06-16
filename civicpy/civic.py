@@ -13,7 +13,7 @@ import time
 
 import re
 
-from civicpy import REMOTE_CACHE_URL, LOCAL_CACHE_PATH, CACHE_TIMEOUT_DAYS
+from civicpy.__env__ import REMOTE_CACHE_URL, LOCAL_CACHE_PATH, CACHE_TIMEOUT_DAYS
 from civicpy import graphql_payloads
 from civicpy import utils
 
@@ -846,7 +846,7 @@ class Variant(CivicRecord):
 
 class GeneVariant(Variant):
     _SIMPLE_FIELDS = Variant._SIMPLE_FIELDS.union(
-        {"allele_registry_id", "entrez_name", "entrez_id"}
+        {"allele_registry_id", "entrez_name", "entrez_id", "mane_select_transcript"}
     )
     _COMPLEX_FIELDS = Variant._COMPLEX_FIELDS.union(
         {
@@ -1877,6 +1877,7 @@ class Approval(CivicRecord):
             "status",
             "last_reviewed",
             "ready_for_clinvar_submission",
+            "clinvar_accession",
         }
     )
 

@@ -1,7 +1,8 @@
 from pathlib import Path
 import click
 import logging
-from civicpy import LOCAL_CACHE_PATH, civic
+from civicpy import civic
+from civicpy.__env__ import LOCAL_CACHE_PATH
 from civicpy.exports.civic_gks_record import (
     CivicGksClinSigAssertion,
     CivicGksOncogenicAssertion,
