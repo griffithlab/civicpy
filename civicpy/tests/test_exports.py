@@ -261,7 +261,9 @@ def gks_mpid33():
                     {"syntax": "hgvs.c", "value": "ENST00000275493.2:c.2573T>G"},
                     {"syntax": "hgvs.c", "value": "NM_005228.4:c.2573T>G"},
                     {"syntax": "hgvs.g", "value": "NC_000007.13:g.55259515T>G"},
+                    {"syntax": "hgvs.g", "value": "NC_000007.14:g.55191822T>G"},
                     {"syntax": "hgvs.p", "value": "NP_005219.2:p.Leu858Arg"},
+                    {"syntax": "hgvs.p", "value": "ENSP00000275493.2:p.Leu858Arg"},
                     {
                         "syntax": "hgvs.c",
                         "value": "ENST00000275493.7:c.2573T>G",
