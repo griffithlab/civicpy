@@ -1016,6 +1016,12 @@ class CivicGksClinSigAssertion(
         )
         contributions = self.get_contributions(approval) if approval else None
 
+        extensions = []
+        if approval and approval.clinvar_accession:
+            extensions.append(
+                Extension(name="clinvar_accession", value=approval.clinvar_accession)
+            )
+
         super().__init__(
             id=f"civic.aid:{assertion.id}",
             contributions=contributions,
@@ -1027,6 +1033,7 @@ class CivicGksClinSigAssertion(
             strength=strength,
             hasEvidenceLines=self.get_evidence_lines(assertion, level),
             reportedIn=self.get_reported_in(assertion),
+            extensions=extensions or None,
         )
 
     def get_classification_strength_level(
