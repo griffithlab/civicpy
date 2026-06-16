@@ -5,10 +5,7 @@ from civicpy import civic
 from civicpy.__env__ import LOCAL_CACHE_PATH
 from civicpy.exports.civic_gks_record import (
     CivicGksRecordError,
-    CivicGksPredictiveAssertion,
-    CivicGksDiagnosticAssertion,
-    CivicGksPrognosticAssertion,
-    create_gks_record_from_assertion,
+    CivicGksAssertion
 )
 from civicpy.exports.civic_gks_writer import CivicGksWriter, GksAssertionError
 from civicpy.exports.civic_vcf_writer import CivicVcfWriter
@@ -101,11 +98,7 @@ def create_gks_json(organization_id: int, output_json: Path) -> None:
         logging.exception("Error getting organization %i", organization_id)
         return
 
-    records: list[
-        CivicGksDiagnosticAssertion
-        | CivicGksPredictiveAssertion
-        | CivicGksPrognosticAssertion
-    ] = []
+    records: list[CivicGksAssertion] = []
     errors: list[GksAssertionError] = []
 
     for approval in civic.get_all_approvals_ready_for_clinvar_submission_for_org(
@@ -114,9 +107,7 @@ def create_gks_json(organization_id: int, output_json: Path) -> None:
         assertion = approval.assertion
         if assertion.is_valid_for_gks_json(emit_warnings=True):
             try:
-                gks_record = create_gks_record_from_assertion(
-                    assertion, approval=approval
-                )
+                gks_record = CivicGksAssertion(assertion, approval=approval)
             except (CivicGksRecordError, NotImplementedError) as e:
                 errors.append(
                     GksAssertionError(assertion_id=assertion.id, message=str(e))
