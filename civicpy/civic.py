@@ -846,7 +846,7 @@ class Variant(CivicRecord):
 
 class GeneVariant(Variant):
     _SIMPLE_FIELDS = Variant._SIMPLE_FIELDS.union(
-        {"allele_registry_id", "entrez_name", "entrez_id"}
+        {"allele_registry_id", "entrez_name", "entrez_id", "mane_select_transcript"}
     )
     _COMPLEX_FIELDS = Variant._COMPLEX_FIELDS.union(
         {

@@ -253,6 +253,7 @@ def _construct_get_variant_payload():
                     allele_registry_id: alleleRegistryId
                     clinvar_entries: clinvarIds
                     hgvs_expressions: hgvsDescriptions
+                    mane_select_transcript: maneSelectTranscript
                     coordinates {
                         reference_build: referenceBuild
                         ensembl_version: ensemblVersion
@@ -384,6 +385,7 @@ def _construct_get_all_variants_payload():
                         allele_registry_id: alleleRegistryId
                         clinvar_entries: clinvarIds
                         hgvs_expressions: hgvsDescriptions
+                        mane_select_transcript: maneSelectTranscript
                         coordinates {
                             reference_build: referenceBuild
                             ensembl_version: ensemblVersion

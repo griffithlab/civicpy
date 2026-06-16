@@ -374,6 +374,24 @@ class CivicGksMolecularProfile(CategoricalVariant):
         :return: List of extensions containing molecular profile score, expressions,
             and representative for a CIViC molecular profile record.
         """
+
+        def _get_syntax(expr: str) -> Syntax | None:
+            """Get syntax for an expression
+
+            :param expr: HGVS expression
+            :return: Syntax for HGVS expression, if p/c/g expression. Otherwise, None
+            """
+            if "p." in expr:
+                return Syntax.HGVS_P
+
+            if "c." in expr:
+                return Syntax.HGVS_C
+
+            if "g." in expr:
+                return Syntax.HGVS_G
+
+            return
+
         extensions = [
             Extension(
                 name="CIViC Molecular Profile Score",
@@ -381,27 +399,36 @@ class CivicGksMolecularProfile(CategoricalVariant):
             )
         ]
 
+        expressions: list[Expression] = []
         variant: GeneVariant = molecular_profile.variants[0]
-        if variant.hgvs_expressions:
-            expressions = []
+        for hgvs_expr in [
+            *(variant.hgvs_expressions or []),
+            variant.mane_select_transcript,
+        ]:
+            if not hgvs_expr or hgvs_expr == "N/A":
+                continue
 
-            for hgvs_expr in variant.hgvs_expressions:
-                if hgvs_expr == "N/A":
-                    continue
+            syntax = _get_syntax(hgvs_expr)
+            if not syntax:
+                continue
 
-                if "p." in hgvs_expr:
-                    syntax = Syntax.HGVS_P
-                elif "c." in hgvs_expr:
-                    syntax = Syntax.HGVS_C
-                elif "g." in hgvs_expr:
-                    syntax = Syntax.HGVS_G
-                else:
-                    continue
+            expression_extensions = []
+            if hgvs_expr == variant.mane_select_transcript:
+                expression_extensions.append(
+                    Extension(name="is_mane_select", value=True)
+                )
 
-                expressions.append(Expression(syntax=syntax, value=hgvs_expr))
+            expression = Expression(
+                syntax=syntax,
+                value=hgvs_expr,
+                extensions=expression_extensions or None,
+            )
 
-            if expressions:
-                extensions.append(Extension(name="expressions", value=expressions))
+            if expression not in expressions:
+                expressions.append(expression)
+
+        if expressions:
+            extensions.append(Extension(name="expressions", value=expressions))
 
         if isinstance(variant.coordinates, Coordinate):
             coords = variant.coordinates
