@@ -405,22 +405,26 @@ class CivicGksMolecularProfile(CategoricalVariant):
 
         if isinstance(variant.coordinates, Coordinate):
             coords = variant.coordinates
-            extensions.append(
-                Extension(
-                    name="CIViC representative coordinate",
-                    value={
-                        "chromosome": coords.chromosome,
-                        "start": coords.start,
-                        "stop": coords.stop,
-                        "reference_bases": coords.reference_bases,
-                        "variant_bases": coords.variant_bases,
-                        "ensembl_version": coords.ensembl_version,
-                        "representative_transcript": coords.representative_transcript,
-                        "reference_build": coords.reference_build,
-                        "type": coords.type,
-                    },
+            ext_value = {
+                "chromosome": coords.chromosome,
+                "start": coords.start,
+                "stop": coords.stop,
+                "reference_bases": coords.reference_bases,
+                "variant_bases": coords.variant_bases,
+                "ensembl_version": coords.ensembl_version,
+                "representative_transcript": coords.representative_transcript,
+                "reference_build": coords.reference_build,
+                "type": coords.type,
+            }
+
+            if all(v is not None for v in ext_value.values()):
+                extensions.append(
+                    Extension(
+                        name="CIViC representative coordinate",
+                        value=ext_value,
+                    )
                 )
-            )
+
         return extensions
 
 

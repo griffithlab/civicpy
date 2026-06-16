@@ -708,6 +708,20 @@ class TestCivicGksMolecularProfile(object):
                 for m in mappings
             )
 
+    def test_no_representative_coordiantes(self):
+        """Test that empty representative coordinates do not get an extension"""
+        gks_mp = CivicGksMolecularProfile(civic.get_molecular_profile_by_id(2261))
+        assert gks_mp.extensions
+        rep_coord_ext = next(
+            (
+                ext
+                for ext in gks_mp.extensions
+                if ext.name == "CIViC representative coordinate"
+            ),
+            None,
+        )
+        assert rep_coord_ext is None
+
 
 class TestCivicGksTherapyGroup(object):
     """Test that CivicGksTherapyGroup works as expected"""
