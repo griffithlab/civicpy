@@ -46,7 +46,7 @@ setup(
     ],
     extras_require={
         "test": [
-            "pytest==6.2.5",
+            "pytest==9.0.3",
             "pytest-cov==5.0.0",
             "attrs==22.1.0",
             "coveralls",
