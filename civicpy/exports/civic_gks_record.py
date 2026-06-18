@@ -1251,7 +1251,6 @@ class CivicGksOncogenicAssertion(
             )
             evidence_lines.append(
                 VariantOncogenicityEvidenceLine(
-                    targetProposition=proposition,
                     directionOfEvidenceProvided=direction,
                     **evidence_attrs.model_dump(),
                     specifiedBy=self._get_ccv_method(clingen_code.code),

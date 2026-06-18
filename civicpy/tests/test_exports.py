@@ -839,7 +839,6 @@ def gks_aid202(gks_aid202_proposition):
             {
                 "type": "EvidenceLine",
                 "directionOfEvidenceProvided": "supports",
-                "targetProposition": gks_aid202_proposition,
                 "strengthOfEvidenceProvided": {
                     "primaryCoding": {
                         "code": "moderate",
@@ -858,7 +857,6 @@ def gks_aid202(gks_aid202_proposition):
             {
                 "type": "EvidenceLine",
                 "directionOfEvidenceProvided": "supports",
-                "targetProposition": gks_aid202_proposition,
                 "strengthOfEvidenceProvided": {
                     "primaryCoding": {
                         "code": "strong",
@@ -877,7 +875,6 @@ def gks_aid202(gks_aid202_proposition):
             {
                 "type": "EvidenceLine",
                 "directionOfEvidenceProvided": "supports",
-                "targetProposition": gks_aid202_proposition,
                 "strengthOfEvidenceProvided": {
                     "primaryCoding": {
                         "code": "supporting",
@@ -896,7 +893,6 @@ def gks_aid202(gks_aid202_proposition):
             {
                 "type": "EvidenceLine",
                 "directionOfEvidenceProvided": "supports",
-                "targetProposition": gks_aid202_proposition,
                 "strengthOfEvidenceProvided": {
                     "primaryCoding": {
                         "code": "supporting",
@@ -915,7 +911,6 @@ def gks_aid202(gks_aid202_proposition):
             {
                 "type": "EvidenceLine",
                 "directionOfEvidenceProvided": "supports",
-                "targetProposition": gks_aid202_proposition,
                 "strengthOfEvidenceProvided": {
                     "primaryCoding": {
                         "code": "supporting",
