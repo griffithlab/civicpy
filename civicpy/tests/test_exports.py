@@ -14,7 +14,7 @@ from civicpy.exports.civic_gks_record import (
     CivicGksEvidence,
     CivicGksMolecularProfile,
     CivicGksRecordError,
-    CivicGksAssertion,
+    CivicGksClinSigAssertion,
     CivicGksTherapyGroup,
 )
 
@@ -751,12 +751,12 @@ class TestCivicGksEvidence(object):
             CivicGksEvidence(eid9285)
 
 
-class TestCivicGksAssertion(object):
-    """Test that CivicGksAssertion works as expected"""
+class TestCivicGksClinSigAssertion(object):
+    """Test that CivicGksClinSigAssertion works as expected"""
 
     def test_valid_single_therapy(self, aid6, gks_aid6):
         """Test that single therapy works as expected"""
-        record = CivicGksAssertion(aid6)
+        record = CivicGksClinSigAssertion(aid6)
         assert isinstance(record, VariantClinicalSignificanceStatement)
         assert len(record.hasEvidenceLines) == 1
 
@@ -778,7 +778,7 @@ class TestCivicGksAssertion(object):
 
     def test_valid_combination_therapy(self, aid7):
         """Test that combination therapy works as expected"""
-        record = CivicGksAssertion(aid7)
+        record = CivicGksClinSigAssertion(aid7)
         assert isinstance(record, VariantClinicalSignificanceStatement)
         assert len(record.hasEvidenceLines) == 1
         assert len(record.hasEvidenceLines[0].hasEvidenceItems) == 4
@@ -825,7 +825,7 @@ class TestCivicGksAssertion(object):
         test_evidence_items.return_value = []
         test_hgvs_expressions.return_value = None
         test_mane_select_transcript.return_value = None
-        record = CivicGksAssertion(aid19)
+        record = CivicGksClinSigAssertion(aid19)
         assert isinstance(record, VariantClinicalSignificanceStatement)
         assert len(record.hasEvidenceLines) == 1
         therapy = record.hasEvidenceLines[0].targetProposition.objectTherapeutic.root
@@ -837,7 +837,7 @@ class TestCivicGksAssertion(object):
 
     def test_valid_prognostic(self, aid20):
         """Test that valid prognostic assertion works as expected"""
-        record = CivicGksAssertion(aid20)
+        record = CivicGksClinSigAssertion(aid20)
         assert isinstance(record, VariantClinicalSignificanceStatement)
         assert len(record.hasEvidenceLines) == 1
         assert len(record.hasEvidenceLines[0].hasEvidenceItems) == 6
@@ -850,18 +850,20 @@ class TestCivicGksAssertion(object):
 
     @patch.object(civic.Assertion, "evidence_items", new_callable=PropertyMock)
     @patch.object(civic.Evidence, "is_valid_for_gks_json")
-    def test_citations(self, test_is_valid_for_gks_json,test_evidence_items, aid20):
+    def test_citations(self, test_is_valid_for_gks_json, test_evidence_items, aid20):
         """Test that citations extension is working correctly for EIDs that are not valid for GKS"""
         test_evidence_items.return_value = [civic.get_evidence_by_id(11881)]
         test_is_valid_for_gks_json.return_value = False
 
-        record = CivicGksAssertion(aid20)
+        record = CivicGksClinSigAssertion(aid20)
         assert len(record.hasEvidenceLines) == 1
         assert record.hasEvidenceLines[0].hasEvidenceItems is None
         assert len(record.hasEvidenceLines[0].extensions) == 1
-        assert record.hasEvidenceLines[0].extensions[0].model_dump(exclude_none=True) == {
+        assert record.hasEvidenceLines[0].extensions[0].model_dump(
+            exclude_none=True
+        ) == {
             "name": "citations",
-            "value": ["https://civicdb.org/links/evidence/11881"]
+            "value": ["https://civicdb.org/links/evidence/11881"],
         }
 
 
@@ -877,7 +879,7 @@ class TestCivicGksDiagnosticAssertion(object):
         gks_aid115_object_condition,
     ):
         """Test that valid diagnostic assertion works as expected"""
-        record = CivicGksAssertion(aid9)
+        record = CivicGksClinSigAssertion(aid9)
         assert isinstance(record, VariantClinicalSignificanceStatement)
         assert len(record.hasEvidenceLines) == 1
         assert len(record.hasEvidenceLines[0].hasEvidenceItems) == 2
@@ -895,7 +897,7 @@ class TestCivicGksDiagnosticAssertion(object):
         )
 
         # Single phenotype (complex condition set)
-        record = CivicGksAssertion(aid93)
+        record = CivicGksClinSigAssertion(aid93)
         assert isinstance(record, VariantClinicalSignificanceStatement)
         record_object_condition = record.proposition.objectCondition
         assert isinstance(record_object_condition, Condition)
@@ -908,7 +910,7 @@ class TestCivicGksDiagnosticAssertion(object):
         assert diff == {}
 
         # Phenotypes (complex condition set)
-        record = CivicGksAssertion(aid115)
+        record = CivicGksClinSigAssertion(aid115)
         assert isinstance(record, VariantClinicalSignificanceStatement)
         record_object_condition = record.proposition.objectCondition
         assert isinstance(record_object_condition, Condition)
@@ -922,7 +924,7 @@ class TestCivicGksDiagnosticAssertion(object):
 
     def test_clinvar_accession_ext(self):
         a = civic.get_assertion_by_id(193)
-        record = CivicGksAssertion(a, approval=a.approvals[0])
+        record = CivicGksClinSigAssertion(a, approval=a.approvals[0])
         assert isinstance(record, VariantClinicalSignificanceStatement)
         assert [ext.model_dump(exclude_none=True) for ext in record.extensions] == [
             {"name": "clinvar_accession", "value": "SCV007542591"}
@@ -934,4 +936,4 @@ class TestCivicGksDiagnosticAssertion(object):
         with pytest.raises(
             CivicGksRecordError, match=r"Assertion is not valid for GKS."
         ):
-            CivicGksAssertion(aid117)
+            CivicGksClinSigAssertion(aid117)
