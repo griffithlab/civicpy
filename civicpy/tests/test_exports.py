@@ -368,7 +368,12 @@ def gks_therapeutic_proposition(gks_mpid33, gks_gid19, gks_tid146, gks_did8):
         "geneContextQualifier": gks_gid19,
         "alleleOriginQualifier": {
             "name": "somatic",
-            "extensions": [{"name": "civic_variant_origin", "value": "SOMATIC"}],
+            "mappings": [
+                {
+                    "coding": {"code": "SOMATIC", "system": "https://civicdb.org"},
+                    "relation": "exactMatch",
+                }
+            ],
         },
         "predicate": "predictsSensitivityTo",
         "objectTherapeutic": gks_tid146,
