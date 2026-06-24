@@ -468,9 +468,9 @@ def _is_valid_for_gks_json(cls, emit_warnings: bool = False) -> bool:
         warnings.append(f"{prefix} does not have 'accepted' status. Skipping")
 
     record_type = cls.evidence_type if isinstance(cls, Evidence) else cls.assertion_type
-    if record_type not in ("DIAGNOSTIC", "PREDICTIVE", "PROGNOSTIC"):
+    if record_type not in ("DIAGNOSTIC", "PREDICTIVE", "PROGNOSTIC", "ONCOGENIC"):
         warnings.append(
-            f"{prefix} type is not one of: 'DIAGNOSTIC', 'PREDICTIVE', or 'PROGNOSTIC'. Skipping"
+            f"{prefix} type is not one of: 'DIAGNOSTIC', 'PREDICTIVE', 'PROGNOSTIC', or 'ONCOGENIC'. Skipping"
         )
 
     len_mp_variants = len(cls.molecular_profile.variants)
