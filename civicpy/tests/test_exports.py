@@ -8,12 +8,14 @@ from ga4gh.va_spec.aac_2017 import (
     VariantClinicalSignificanceStatement,
 )
 from ga4gh.va_spec.base import Condition, ConditionSet, Statement, TherapyGroup
+from ga4gh.va_spec.ccv_2022 import VariantOncogenicityStatement
 
 from civicpy import civic
 from civicpy.exports.civic_gks_record import (
     CivicGksClinSigAssertion,
     CivicGksEvidence,
     CivicGksMolecularProfile,
+    CivicGksOncogenicAssertion,
     CivicGksRecordError,
     CivicGksTherapyGroup,
     ClinVarSubmissionType,
@@ -311,7 +313,7 @@ def gks_gid19():
                     "NISBD2",
                     "PIG61",
                     "mENA",
-                    "NNCIS"
+                    "NNCIS",
                 ],
             },
         ],
@@ -604,6 +606,323 @@ def gks_aid115_object_condition():
         ],
         "membershipOperator": "AND",
     }
+
+
+def _ccv_method(method_type: str) -> dict:
+    """Get CCV Method"""
+    return {
+        "name": "ClinGen/CGC/VICC Guidelines for Oncogenicity, 2022",
+        "reportedIn": {
+            "id": "pmid:35101336",
+            "name": "Horak et al., 2022, Genet Med.",
+            "title": "Standards for the classification of pathogenicity of somatic variants in cancer (oncogenicity): Joint recommendations of Clinical Genome Resource (ClinGen), Cancer Genomics Consortium (CGC), and Variant Interpretation for Cancer Consortium (VICC)",
+            "doi": "10.1016/j.gim.2022.01.001",
+            "pmid": "35101336",
+            "urls": [
+                "https://doi.org/10.1016/j.gim.2022.01.001",
+                "https://pubmed.ncbi.nlm.nih.gov/35101336/",
+            ],
+            "type": "Document",
+        },
+        "methodType": method_type,
+        "type": "Method",
+    }
+
+
+@pytest.fixture(scope="module")
+def gks_gid42():
+    """Create test fixture for CIViC GID42 GKS representation."""
+    return {
+        "id": "civic.gid:42",
+        "conceptType": "Gene",
+        "name": "RET",
+        "mappings": [
+            {
+                "coding": {
+                    "id": "ncbigene:5979",
+                    "code": "5979",
+                    "system": "https://www.ncbi.nlm.nih.gov/gene/",
+                },
+                "relation": "exactMatch",
+            },
+        ],
+        "extensions": [
+            {
+                "name": "description",
+                "value": "RET mutations and the RET fusion RET-PTC lead to activation of this tyrosine kinase receptor and are associated with thyroid cancers. RET point mutations are the most common mutations identified in medullary thyroid cancer (MTC) with germline and somatic mutations in RET associated with hereditary and sporadic forms, respectively. The most common somatic form mutation is M918T (exon 16) and a variety of other mutations effecting exons 10, 11 and 15 have been described. The prognostic significance of these mutations have been hotly debated in the field, however, data suggests that some RET mutation may confer drug resistance. Highly selective and well-tolerated RET inhibitors, selpercatinib (LOXO-292) and pralsetinib (BLU-667), have been FDA approved recently for the treatment of RET fusion-positive non-small-cell lung cancer, RET fusion-positive thyroid cancer and RET-mutant medullary thyroid cancer.",
+            },
+            {
+                "name": "aliases",
+                "value": [
+                    "CDHF12",
+                    "CDHR16",
+                    "HSCR1",
+                    "MEN2A",
+                    "MEN2B",
+                    "MTC1",
+                    "PTC",
+                    "RET",
+                    "RET-ELE1",
+                ],
+            },
+        ],
+    }
+
+
+@pytest.fixture(scope="module")
+def gks_aid202_proposition(gks_gid42):
+    """Create test fixture forCIVIC AID6 proposition"""
+    return {
+        "type": "VariantOncogenicityProposition",
+        "geneContextQualifier": gks_gid42,
+        "objectTumorType": {
+            "id": "civic.did:15",
+            "conceptType": "Disease",
+            "name": "Medullary Thyroid Carcinoma",
+            "mappings": [
+                {
+                    "coding": {
+                        "code": "DOID:3973",
+                        "system": "https://disease-ontology.org/?id=",
+                    },
+                    "relation": "exactMatch",
+                }
+            ],
+        },
+        "alleleOriginQualifier": {
+            "name": "somatic",
+            "extensions": [{"name": "civic_variant_origin", "value": "SOMATIC"}],
+        },
+        "predicate": "isOncogenicFor",
+        "subjectVariant": {
+            "id": "civic.mpid:113",
+            "type": "CategoricalVariant",
+            "description": "RET M918T is the most common somatically acquired mutation in medullary thyroid cancer (MTC). While there currently are no RET-specific inhibiting agents, promiscuous kinase inhibitors have seen some success in treating RET overactivity. Data suggests however, that the M918T mutation may lead to drug resistance, especially against the VEGFR-inhibitor motesanib. It has also been suggested that RET M918T leads to more aggressive MTC with a poorer prognosis.",
+            "name": "RET M918T",
+            "aliases": ["MET918THR"],
+            "mappings": [
+                {
+                    "coding": {
+                        "code": "rs74799832",
+                        "system": "https://www.ncbi.nlm.nih.gov/snp/",
+                    },
+                    "relation": "relatedMatch",
+                },
+                {
+                    "coding": {
+                        "code": "CA009082",
+                        "system": "https://reg.clinicalgenome.org/redmine/projects/registry/genboree_registry/by_canonicalid?canonicalid=",
+                    },
+                    "relation": "relatedMatch",
+                },
+                {
+                    "coding": {
+                        "code": "13919",
+                        "system": "https://www.ncbi.nlm.nih.gov/clinvar/variation/",
+                    },
+                    "relation": "relatedMatch",
+                },
+                {
+                    "coding": {
+                        "id": "civic.mpid:113",
+                        "code": "113",
+                        "system": "https://civicdb.org/links/molecular_profile/",
+                    },
+                    "relation": "exactMatch",
+                },
+                {
+                    "coding": {
+                        "code": "113",
+                        "id": "civic.vid:113",
+                        "name": "M918T",
+                        "system": "https://civicdb.org/links/variant/",
+                        "extensions": [
+                            {"name": "subtype", "value": "gene_variant"},
+                            {
+                                "name": "variant_types",
+                                "value": [
+                                    {
+                                        "coding": {
+                                            "id": "civic.variant_type:47",
+                                            "code": "SO:0001583",
+                                            "name": "Missense Variant",
+                                            "system": "http://www.sequenceontology.org/browser/current_svn/term/",
+                                        },
+                                        "relation": "exactMatch",
+                                    }
+                                ],
+                            },
+                        ],
+                    },
+                    "relation": "exactMatch",
+                },
+            ],
+            "extensions": [
+                {
+                    "name": "CIViC representative coordinate",
+                    "value": {
+                        "chromosome": "10",
+                        "start": 43617416,
+                        "stop": 43617416,
+                        "reference_bases": "T",
+                        "variant_bases": "C",
+                        "representative_transcript": "ENST00000355710.3",
+                        "ensembl_version": 75,
+                        "reference_build": "GRCh37",
+                        "type": "coordinates",
+                    },
+                },
+                {
+                    "name": "CIViC Molecular Profile Score",
+                    "value": 139.0,
+                },
+                {
+                    "name": "expressions",
+                    "value": [
+                        {"syntax": "hgvs.c", "value": "ENST00000355710.3:c.2753T>C"},
+                        {"syntax": "hgvs.c", "value": "NM_020975.4:c.2753T>C"},
+                        {"syntax": "hgvs.g", "value": "NC_000010.10:g.43617416T>C"},
+                        {"syntax": "hgvs.g", "value": "NC_000010.11:g.43121968T>C"},
+                        {"syntax": "hgvs.p", "value": "ENSP00000347942.3:p.Met918Thr"},
+                        {"syntax": "hgvs.p", "value": "NP_065681.1:p.Met918Thr"},
+                        {
+                            "syntax": "hgvs.c",
+                            "value": "ENST00000355710.8:c.2753T>C",
+                            "extensions": [{"name": "is_mane_select", "value": True}],
+                        },
+                    ],
+                },
+            ],
+        },
+    }
+
+
+@pytest.fixture(scope="module")
+def gks_aid202(gks_aid202_proposition):
+    """Create CIVIC AID6 GKS representation."""
+    params = {
+        "id": "civic.aid:202",
+        "type": "Statement",
+        "description": "Published sequencing studies have shown that RET mutations are very common in medullary thryoid carcinoma (MTC) and M918T is the most common specific variant, especially in the MEN2B clinical subtype of familial disease (civic.EID:78) but also in sporadic cases(civic.EID:12800). M918T mutations may predict worse outcomes (civic.EID:74). Biochemical and functional characterization demonstrates that the M918T mutation leads to functional activation of RET relative to wild-type through multiple complementary mechanisms, including increased ATP affinity (>10-fold) and complex stability, reduced conformational rigidity, and the promotion of ligand-independent dimerization and autophosphorylation (civic.EID:12805). Exogenous expression has been shown to induce transformation of Ba/F3 cells (civic.EID:11723), and drive colony formation in NIH3T3 cells (civic.EID:12709, OS2). RET M918T occurs in the region of the tyrosine kinase domain which is associated with multiple endocrine neoplasia type 2 B (OM1). RET M918T is predicted to be deleterious (CHASMplus score 0.314 > VECS gene-specific cutoff of 0.22, OP1). Eleven instances of the variant occur in cancerhotspots.org (V2): 6 Thyroid, 4 Adrenal Gland, 1 Breast (OP3). The variant is absent in gnomAD database (v4.1.0, OP4). Together these criteria indicate that M918T is likely oncogenic, with a score of 9.",
+        "proposition": gks_aid202_proposition,
+        "strength": {
+            "primaryCoding": {
+                "code": "likely",
+                "system": "ClinGen/CGC/VICC Guidelines for Oncogenicity, 2022",
+            }
+        },
+        "classification": {
+            "primaryCoding": {
+                "code": "likely oncogenic",
+                "system": "ClinGen/CGC/VICC Guidelines for Oncogenicity, 2022",
+            }
+        },
+        "reportedIn": [
+            "https://civicdb.org/links/assertion/202",
+            "https://civicdb.org/links/evidence/74",
+            "https://civicdb.org/links/evidence/12800",
+            "https://civicdb.org/links/evidence/78",
+            "https://civicdb.org/links/evidence/12711",
+            "https://civicdb.org/links/evidence/12805",
+            "https://civicdb.org/links/evidence/11723",
+            "https://civicdb.org/links/evidence/12709",
+        ],
+        "direction": "supports",
+        "specifiedBy": _ccv_method("guideline"),
+        "hasEvidenceLines": [
+            {
+                "type": "EvidenceLine",
+                "directionOfEvidenceProvided": "supports",
+                "strengthOfEvidenceProvided": {
+                    "primaryCoding": {
+                        "code": "moderate",
+                        "system": "ClinGen/CGC/VICC Guidelines for Oncogenicity, 2022",
+                    }
+                },
+                "evidenceOutcome": {
+                    "primaryCoding": {
+                        "code": "OM1",
+                        "system": "ClinGen/CGC/VICC Guidelines for Oncogenicity, 2022",
+                    }
+                },
+                "scoreOfEvidenceProvided": 2,
+                "specifiedBy": _ccv_method("OM1"),
+            },
+            {
+                "type": "EvidenceLine",
+                "directionOfEvidenceProvided": "supports",
+                "strengthOfEvidenceProvided": {
+                    "primaryCoding": {
+                        "code": "strong",
+                        "system": "ClinGen/CGC/VICC Guidelines for Oncogenicity, 2022",
+                    }
+                },
+                "evidenceOutcome": {
+                    "primaryCoding": {
+                        "code": "OS2",
+                        "system": "ClinGen/CGC/VICC Guidelines for Oncogenicity, 2022",
+                    }
+                },
+                "scoreOfEvidenceProvided": 4,
+                "specifiedBy": _ccv_method("OS2"),
+            },
+            {
+                "type": "EvidenceLine",
+                "directionOfEvidenceProvided": "supports",
+                "strengthOfEvidenceProvided": {
+                    "primaryCoding": {
+                        "code": "supporting",
+                        "system": "ClinGen/CGC/VICC Guidelines for Oncogenicity, 2022",
+                    }
+                },
+                "evidenceOutcome": {
+                    "primaryCoding": {
+                        "code": "OP4",
+                        "system": "ClinGen/CGC/VICC Guidelines for Oncogenicity, 2022",
+                    }
+                },
+                "scoreOfEvidenceProvided": 1,
+                "specifiedBy": _ccv_method("OP4"),
+            },
+            {
+                "type": "EvidenceLine",
+                "directionOfEvidenceProvided": "supports",
+                "strengthOfEvidenceProvided": {
+                    "primaryCoding": {
+                        "code": "supporting",
+                        "system": "ClinGen/CGC/VICC Guidelines for Oncogenicity, 2022",
+                    }
+                },
+                "evidenceOutcome": {
+                    "primaryCoding": {
+                        "code": "OP1",
+                        "system": "ClinGen/CGC/VICC Guidelines for Oncogenicity, 2022",
+                    }
+                },
+                "scoreOfEvidenceProvided": 1,
+                "specifiedBy": _ccv_method("OP1"),
+            },
+            {
+                "type": "EvidenceLine",
+                "directionOfEvidenceProvided": "supports",
+                "strengthOfEvidenceProvided": {
+                    "primaryCoding": {
+                        "code": "supporting",
+                        "system": "ClinGen/CGC/VICC Guidelines for Oncogenicity, 2022",
+                    }
+                },
+                "evidenceOutcome": {
+                    "primaryCoding": {
+                        "code": "OP3",
+                        "system": "ClinGen/CGC/VICC Guidelines for Oncogenicity, 2022",
+                    }
+                },
+                "scoreOfEvidenceProvided": 1,
+                "specifiedBy": _ccv_method("OP3"),
+            },
+        ],
+    }
+    return VariantOncogenicityStatement(**params)
 
 
 class TestCivicVcfRecord(object):
@@ -942,6 +1261,75 @@ class TestCivicGksDiagnosticAssertion(object):
             CivicGksClinSigAssertion(aid117)
 
 
+class TestCivicGksOncogenicAssertion(object):
+    """Test that CivicGksOncogenicAssertion works as expected"""
+
+    def test_valid(self, aid202, gks_aid202):
+        """Test that valid oncogenic assertions works as expected"""
+
+        def evidence_key(item: dict) -> str:
+            return item["evidenceOutcome"]["primaryCoding"]["code"]
+
+        record = CivicGksOncogenicAssertion(aid202, approval=None)
+        assert isinstance(record, VariantOncogenicityStatement)
+
+        actual = record.model_dump(exclude_none=True)
+        expected = gks_aid202.model_dump(exclude_none=True)
+
+        assert set(actual.keys()) == set(expected.keys())
+
+        # Split out due to large record
+        for key in expected:
+            if key == "hasEvidenceLines":
+                actual_evidence = actual[key]
+                expected_evidence = expected[key]
+
+                assert len(actual_evidence) == len(expected_evidence), (
+                    f"Mismatch in hasEvidenceLines length: "
+                    f"actual={len(actual_evidence)}, expected={len(expected_evidence)}"
+                )
+
+                actual_by_code = {evidence_key(item): item for item in actual_evidence}
+                expected_by_code = {
+                    evidence_key(item): item for item in expected_evidence
+                }
+
+                assert set(actual_by_code) == set(expected_by_code), (
+                    "Mismatch in hasEvidence evidenceOutcome.primaryCoding.code values"
+                )
+
+                for code in expected_by_code:
+                    diff = DeepDiff(
+                        actual_by_code[code],
+                        expected_by_code[code],
+                        ignore_order=True,
+                    )
+
+                    assert diff == {}, (
+                        "Mismatch in hasEvidence item with "
+                        f"evidenceOutcome.primaryCoding.code={code}"
+                    )
+
+                continue
+
+            diff = DeepDiff(
+                actual[key],
+                expected[key],
+                ignore_order=True,
+            )
+
+            assert diff == {}, f"Mismatch in key: {key}"
+
+    def test_invalid(self, aid6):
+        """Test that unsupported assertion types raise exceptions"""
+
+        with pytest.raises(
+            CivicGksRecordError,
+            match=re.escape("Assertion type must be one of ['ONCOGENIC']"),
+        ):
+            CivicGksOncogenicAssertion(aid6)
+
+
 class TestCivicGksRecord(object):
     """Test that GKS Record helper functions work correctly"""
 
@@ -963,6 +1351,11 @@ class TestCivicGksRecord(object):
         (
             [
                 "aid202",
+                ClinVarSubmissionType.ONCOGENICITY,
+                False,
+            ],
+            [
+                "aid202",
                 ClinVarSubmissionType.CLINICAL_IMPACT,
                 True,
             ],
@@ -972,14 +1365,29 @@ class TestCivicGksRecord(object):
                 False,
             ],
             [
+                "aid9",
+                ClinVarSubmissionType.ONCOGENICITY,
+                True,
+            ],
+            [
                 "aid20",
                 ClinVarSubmissionType.CLINICAL_IMPACT,
                 False,
             ],
             [
+                "aid20",
+                ClinVarSubmissionType.ONCOGENICITY,
+                True,
+            ],
+            [
                 "aid6",
                 ClinVarSubmissionType.CLINICAL_IMPACT,
                 False,
+            ],
+            [
+                "aid6",
+                ClinVarSubmissionType.ONCOGENICITY,
+                True,
             ],
         ),
     )
@@ -1012,3 +1420,11 @@ class TestCivicGksRecord(object):
         assert [ext.model_dump(exclude_none=True) for ext in record.extensions] == [
             {"name": "clinvar_accession", "value": "SCV007542591"}
         ]
+
+    def test_invalid_for_gks(self, aid117):
+        """Test that assertions invalid for GKS raise exceptions"""
+
+        with pytest.raises(
+            CivicGksRecordError, match=r"Assertion is not valid for GKS."
+        ):
+            create_gks_record_from_assertion(aid117)

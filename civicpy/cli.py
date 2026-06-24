@@ -5,6 +5,7 @@ from civicpy import civic
 from civicpy.__env__ import LOCAL_CACHE_PATH
 from civicpy.exports.civic_gks_record import (
     CivicGksRecordError,
+    CivicGksOncogenicAssertion,
     CivicGksClinSigAssertion,
     ClinVarSubmissionType,
     create_gks_record_from_assertion,
@@ -101,11 +102,13 @@ def create_gks_json(
     """Create a JSON file for CIViC assertion records approved by a specific organization that are ready for ClinVar submission, represented as GKS objects.
 
     For now, we will only support simple molecular profiles and diagnostic, prognostic,
-    or predictive assertions.
+    predictive, or oncogenic assertions.
 
     ClinVar only supports submitting records of the same submission type for a
     given assertion criteria:
     * Clinical Impact -> diagnostic, prognostic, or predictive assertion
+    * Oncogenicity -> oncogenic assertion
+    Therefore, you must create separate GKS JSON for each submission type
 
     :param organization_id: The CIViC organization ID that approved the assertion(s) for submission to ClinVar
     :param submission_type: The ClinVar submission type to generate GKS JSON for.
@@ -118,7 +121,7 @@ def create_gks_json(
         logging.exception("Error getting organization %i", organization_id)
         return
 
-    records: list[CivicGksClinSigAssertion] = []
+    records: list[CivicGksClinSigAssertion] | list[CivicGksOncogenicAssertion] = []
     errors: list[GksAssertionError] = []
 
     for approval in civic.get_all_approvals_ready_for_clinvar_submission_for_org(
