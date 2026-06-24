@@ -1,22 +1,25 @@
+import re
 from copy import deepcopy
 from unittest.mock import PropertyMock, patch
+
 import pytest
 from deepdiff import DeepDiff
-from ga4gh.va_spec.base import Condition, ConditionSet, Statement, TherapyGroup
 from ga4gh.va_spec.aac_2017 import (
     VariantClinicalSignificanceStatement,
 )
-
+from ga4gh.va_spec.base import Condition, ConditionSet, Statement, TherapyGroup
 
 from civicpy import civic
-from civicpy.exports.civic_vcf_record import CivicVcfRecord
 from civicpy.exports.civic_gks_record import (
+    CivicGksClinSigAssertion,
     CivicGksEvidence,
     CivicGksMolecularProfile,
     CivicGksRecordError,
-    CivicGksClinSigAssertion,
     CivicGksTherapyGroup,
+    ClinVarSubmissionType,
+    create_gks_record_from_assertion,
 )
+from civicpy.exports.civic_vcf_record import CivicVcfRecord
 
 
 # snv
@@ -106,6 +109,12 @@ def aid115():
 def aid117():
     """Create test fixture for assertion not supported for GKS"""
     return civic.get_assertion_by_id(117)
+
+
+@pytest.fixture(scope="module")
+def aid202():
+    """Create test fixture for oncogenic assertion"""
+    return civic.get_assertion_by_id(202)
 
 
 @pytest.fixture(scope="module")
@@ -934,6 +943,81 @@ class TestCivicGksDiagnosticAssertion(object):
         """Test that unsupported assertion types raise exceptions"""
 
         with pytest.raises(
-            CivicGksRecordError, match=r"Assertion is not valid for GKS."
+            CivicGksRecordError,
+            match=re.escape(
+                "Assertion type must be one of ['PREDICTIVE', 'PROGNOSTIC', 'DIAGNOSTIC']"
+            ),
         ):
             CivicGksClinSigAssertion(aid117)
+
+
+class TestCivicGksRecord(object):
+    """Test that GKS Record helper functions work correctly"""
+
+    def test_unsupported_assertion_type(self):
+        """Test that unsupported assertion types raise NotImplementedError"""
+
+        with pytest.raises(
+            NotImplementedError,
+            match=r"Assertion type PREDISPOSING is not currently supported",
+        ):
+            create_gks_record_from_assertion(civic.get_assertion_by_id(17))
+
+    @pytest.mark.parametrize(
+        (
+            "civic_assertion_fixture_name",
+            "submission_type_filter",
+            "should_raise_error",
+        ),
+        (
+            [
+                "aid202",
+                ClinVarSubmissionType.CLINICAL_IMPACT,
+                True,
+            ],
+            [
+                "aid9",
+                ClinVarSubmissionType.CLINICAL_IMPACT,
+                False,
+            ],
+            [
+                "aid20",
+                ClinVarSubmissionType.CLINICAL_IMPACT,
+                False,
+            ],
+            [
+                "aid6",
+                ClinVarSubmissionType.CLINICAL_IMPACT,
+                False,
+            ],
+        ),
+    )
+    def test_create_gks_record_from_assertion_filter(
+        self,
+        request,
+        civic_assertion_fixture_name,
+        submission_type_filter,
+        should_raise_error,
+    ):
+        """Test that create_gks_record_from_assertion works correctly when submission filter is applied"""
+        civic_aid = request.getfixturevalue(civic_assertion_fixture_name)
+        if should_raise_error:
+            with pytest.raises(
+                NotImplementedError,
+                match=rf"Assertion type {civic_aid.assertion_type} is not supported for ClinVar submission type {submission_type_filter.value}",
+            ):
+                create_gks_record_from_assertion(
+                    civic_aid, submission_type_filter=submission_type_filter
+                )
+        else:
+            assert create_gks_record_from_assertion(
+                civic_aid, submission_type_filter=submission_type_filter
+            )
+
+    def test_clinvar_accession_ext(self):
+        a = civic.get_assertion_by_id(193)
+        record = create_gks_record_from_assertion(a, approval=a.approvals[0])
+        assert isinstance(record, VariantClinicalSignificanceStatement)
+        assert [ext.model_dump(exclude_none=True) for ext in record.extensions] == [
+            {"name": "clinvar_accession", "value": "SCV007542591"}
+        ]
