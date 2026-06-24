@@ -941,7 +941,12 @@ class _CivicGksAssertionMixin:
         :param assertion: CIViC assertion record
         :return: List of CIViC links to records which the assertion is reported in
         """
-        return [iriReference(f"{LINKS_URL}/assertion/{assertion.id}")]
+        reported_in: list[iriReference] = [
+            iriReference(f"{LINKS_URL}/assertion/{assertion.id}")
+        ]
+        for evidence_item in assertion.evidence_items or []:
+            reported_in.append(iriReference(f"{LINKS_URL}/evidence/{evidence_item.id}"))
+        return reported_in
 
 
 class CivicGksClinSigAssertion(
@@ -1065,7 +1070,6 @@ class CivicGksClinSigAssertion(
         )
 
         evidence_items: list[CivicGksEvidence] = []
-        eid_links: list[str] = []
         for evidence_item in assertion.evidence_items:
             try:
                 evidence_items.append(CivicGksEvidence(evidence_item))
@@ -1081,9 +1085,6 @@ class CivicGksClinSigAssertion(
                     evidence_item.name,
                     str(e),
                 )
-            finally:
-                # Retain all EID references
-                eid_links.append(f"{LINKS_URL}/evidence/{evidence_item.id}")
 
         if assertion.assertion_type == CivicEvidenceAssertionType.PREDICTIVE:
             evidence_line_cls = TherapeuticEvidenceLine
@@ -1103,7 +1104,6 @@ class CivicGksClinSigAssertion(
                 strengthOfEvidenceProvided=MappableConcept(
                     primaryCoding=(Coding(code=level, system=System.AMP_ASCO_CAP))
                 ),
-                extensions=[Extension(name="citations", value=eid_links)]
             ).root
         ]
 
