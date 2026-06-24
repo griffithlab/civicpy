@@ -4,33 +4,33 @@
   Clinical Significance Statements that follow the AMP/ASCO/CAP 2017 guidelines
 """
 
-from enum import Enum
 import logging
 import re
+from enum import Enum
 from types import MappingProxyType
 
 from ga4gh.cat_vrs.models import CategoricalVariant
 from ga4gh.core.models import (
     Coding,
     ConceptMapping,
-    iriReference,
     Extension,
     MappableConcept,
     Relation,
+    iriReference,
 )
 from ga4gh.va_spec.aac_2017 import (
+    AMP_ASCO_CAP_CLASSIFICATION_MAP,
     AmpAscoCapClassificationCode,
     AmpAscoCapEvidenceLineStrength,
-    VariantClinicalSignificanceStatement,
-    AMP_ASCO_CAP_CLASSIFICATION_MAP,
     DiagnosticEvidenceLine,
     PrognosticEvidenceLine,
     TherapeuticEvidenceLine,
+    VariantClinicalSignificanceStatement,
 )
 from ga4gh.va_spec.base import (
     Agent,
-    Contribution,
     ConditionSet,
+    Contribution,
     DiagnosticPredicate,
     Direction,
     Document,
@@ -48,20 +48,21 @@ from ga4gh.va_spec.base import (
 )
 from ga4gh.vrs.models import Expression, Syntax
 from pydantic import BaseModel
+
 from civicpy.civic import (
     LINKS_URL,
+    Approval,
     Assertion,
     Coordinate,
-    Approval,
-    Evidence,
     Disease,
+    Evidence,
     Gene,
+    GeneVariant,
+    MolecularProfile,
     Organization,
     Phenotype,
     Source,
     Therapy,
-    GeneVariant,
-    MolecularProfile,
 )
 
 _logger = logging.getLogger(__name__)
@@ -94,6 +95,26 @@ class CivicEvidenceAssertionType(str, Enum):
     PREDICTIVE = "PREDICTIVE"
     PROGNOSTIC = "PROGNOSTIC"
     DIAGNOSTIC = "DIAGNOSTIC"
+
+
+CLINICAL_SIGNIFICANCE_ASSERTION_TYPES = [
+    CivicEvidenceAssertionType.PREDICTIVE.value,
+    CivicEvidenceAssertionType.PROGNOSTIC.value,
+    CivicEvidenceAssertionType.DIAGNOSTIC.value,
+]
+
+
+class ClinVarSubmissionType(str, Enum):
+    """Define supported submission types to ClinVar"""
+
+    CLINICAL_IMPACT = "clinical_impact"
+
+
+ASSERTION_TYPES_BY_CLINVAR_SUBMISSION_TYPE = MappingProxyType(
+    {
+        ClinVarSubmissionType.CLINICAL_IMPACT: CLINICAL_SIGNIFICANCE_ASSERTION_TYPES,
+    }
+)
 
 
 class CivicEvidenceLevel(str, Enum):
@@ -945,9 +966,16 @@ class CivicGksClinSigAssertion(
 
         :param assertion: CIViC assertion record
         :param approval: CIViC approval for the assertion, defaults to None
-        :raises CivicGksRecordError: If CIViC assertion is not able to be represented as
-            GKS object
+        :raises CivicGksRecordError: If CIViC assertion type is not one of
+            ``CLINICAL_SIGNIFICANCE_ASSERTION_TYPES`` or if assertion is not
+            able to be represented as GKS object
         """
+        if assertion.assertion_type not in CLINICAL_SIGNIFICANCE_ASSERTION_TYPES:
+            err_msg = (
+                f"Assertion type must be one of {CLINICAL_SIGNIFICANCE_ASSERTION_TYPES}"
+            )
+            raise CivicGksRecordError(err_msg)
+
         if not assertion.is_valid_for_gks_json(emit_warnings=True):
             err_msg = "Assertion is not valid for GKS."
             raise CivicGksRecordError(err_msg)
@@ -1091,3 +1119,38 @@ class CivicGksClinSigAssertion(
             assertion, assertion.assertion_type, is_clinical_significance_prop=True
         )
         return VariantClinicalSignificanceProposition(**params)
+
+
+def create_gks_record_from_assertion(
+    assertion: Assertion,
+    approval: Approval | None = None,
+    submission_type_filter: ClinVarSubmissionType | None = None,
+) -> CivicGksClinSigAssertion:
+    """Create GKS Record from CIViC Assertion
+
+    :param assertion: CIViC assertion record
+    :param approval: CIViC approval for the assertion, defaults to None
+    :param submission_type_filter: Optional ClinVar submission type used to
+        restrict which assertion types may be translated
+    :raises NotImplementedError: If GKS Record translation is not yet supported.
+        Currently, only the following assertion types are supported: DIAGNOSTIC,
+        PREDICTIVE, and PROGNOSTIC.
+        Or if the assertion type is excluded by the provided ClinVar submission type
+            filter.
+    :return: GKS Assertion Record object
+    """
+    assertion_type = assertion.assertion_type
+
+    if submission_type_filter:
+        allowed_assertion_types = ASSERTION_TYPES_BY_CLINVAR_SUBMISSION_TYPE[
+            submission_type_filter
+        ]
+        if assertion_type not in allowed_assertion_types:
+            err_msg = f"Assertion type {assertion_type} is not supported for ClinVar submission type {submission_type_filter.value}"
+            raise NotImplementedError(err_msg)
+
+    if assertion_type in CLINICAL_SIGNIFICANCE_ASSERTION_TYPES:
+        return CivicGksClinSigAssertion(assertion, approval=approval)
+
+    err_msg = f"Assertion type {assertion_type} is not currently supported"
+    raise NotImplementedError(err_msg)
