@@ -11,7 +11,15 @@ import re
 from enum import Enum
 from types import MappingProxyType
 
-from ga4gh.cat_vrs.models import CategoricalVariant
+from ga4gh.cat_vrs.models import (
+    CategoricalVariant,
+    Constraint,
+    CopyChangeConstraint,
+    DefiningAlleleConstraint,
+    DefiningLocationConstraint,
+    FeatureContextConstraint,
+)
+from ga4gh.cat_vrs.relations import LIFTOVER_TO_RELATION, TRANSLATION_OF_RELATION
 from ga4gh.core.models import (
     Coding,
     ConceptMapping,
@@ -60,7 +68,7 @@ from ga4gh.va_spec.ccv_2022 import (
     VariantOncogenicityStatement,
 )
 from ga4gh.va_spec.ccv_2022.derived_evidence import derive_onco_evidence_attributes
-from ga4gh.vrs.models import Expression, Syntax
+from ga4gh.vrs.models import Allele, CopyNumberChange, Expression, Syntax, Variation
 from pydantic import BaseModel
 
 from civicpy.civic import (
@@ -77,6 +85,10 @@ from civicpy.civic import (
     Phenotype,
     Source,
     Therapy,
+)
+from civicpy.exports.variation_normalizer import (
+    VariationNormalizerDataProxy,
+    VariationNormalizerRestDataProxy,
 )
 
 _logger = logging.getLogger(__name__)
@@ -202,6 +214,18 @@ VARIANT_ORIGIN_TO_ALLELE_ORIGIN = MappingProxyType(
 _SNP_RE = re.compile(r"RS\d+")
 
 
+def resolve_variation_normalizer(
+    variation_normalizer: VariationNormalizerDataProxy | None = None,
+) -> VariationNormalizerDataProxy:
+    """Return the provided Variation Normalizer data proxy or the default REST
+    data proxy.
+
+    :param variation_normalizer: Variation Normalizer data proxy
+    :return: Variation Normalizer data proxy to use
+    """
+    return variation_normalizer or VariationNormalizerRestDataProxy()
+
+
 class CivicGksSop(Method):
     """Class for representing CIViC Curation SOP as GKS Method"""
 
@@ -245,7 +269,8 @@ class CivicGksGene(MappableConcept):
             extensions=self.get_extensions(gene),
         )
 
-    def get_mappings(self, gene: Gene) -> list[ConceptMapping] | None:
+    @staticmethod
+    def get_mappings(gene: Gene) -> list[ConceptMapping] | None:
         """Get mappings for CIViC gene
 
         :param gene: CIViC gene record
@@ -269,7 +294,8 @@ class CivicGksGene(MappableConcept):
 
         return mappings
 
-    def get_extensions(self, gene: Gene) -> list[Extension] | None:
+    @staticmethod
+    def get_extensions(gene: Gene) -> list[Extension] | None:
         """Get extensions for CIViC gene
 
         :param gene: CIViC gene record
@@ -291,31 +317,67 @@ class CivicGksMolecularProfile(CategoricalVariant):
     """Class for representing CIViC Molecular Profile as CategoricalVariant
 
     :param molecular_profile: CIViC molecular profile record
+    :param variation_normalizer: Variation Normalizer data proxy
     """
 
-    def __init__(self, molecular_profile: MolecularProfile) -> None:
+    def __init__(
+        self,
+        molecular_profile: MolecularProfile,
+        variation_normalizer: VariationNormalizerDataProxy | None = None,
+    ) -> None:
         """Initialize CivicGksMolecularProfile class
 
         :param molecular_profile: CIViC molecular profile record
+        :param variation_normalizer: Variation Normalizer data proxy
+        :raises CivicGksRecordError: If molecular profile does not contain exactly one
+            variant, or if the variant associated is not a Gene Variant
         """
-        aliases, mappings = self.get_aliases_and_mappings(molecular_profile)
+        mp_id = molecular_profile.id
+        mp_name = molecular_profile.sanitized_name
+        variants = molecular_profile.variants
+
+        if not variants:
+            msg = f"Molecular profile contains no variants. mpid={mp_id}, name={mp_name!r}"
+            raise CivicGksRecordError(msg)
+
+        len_variants = len(variants)
+        if len(variants) != 1:
+            msg = f"Only molecular profiles containing a single variant are supported. mpid={mp_id}, variant_count={len_variants}"
+
+        variant = molecular_profile.variants[0]
+        if not isinstance(variant, GeneVariant):
+            msg = f"Only GeneVariant records are supported. mpid={mp_id}, variant_type={type(variant).__name__!r}"
+            raise CivicGksRecordError
+
+        variation_normalizer = resolve_variation_normalizer(variation_normalizer)
+
+        aliases, mappings = self._get_aliases_and_mappings(molecular_profile, variant)
+        expressions = self._get_expressions(variant.hgvs_expressions or [])
+        constraints, member_syntaxes = self._build_constraints_and_member_syntaxes(
+            molecular_profile, expressions, variation_normalizer
+        )
 
         super().__init__(
             id=f"civic.mpid:{molecular_profile.id}",
             name=molecular_profile.name,
             description=molecular_profile.description,
             aliases=aliases or None,
-            extensions=self.get_extensions(molecular_profile),
+            extensions=self._get_extensions(molecular_profile, variant, expressions),
             mappings=mappings or None,
+            constraints=constraints,
+            members=self._build_members(
+                expressions, member_syntaxes, variation_normalizer
+            ),
         )
 
     @staticmethod
-    def get_aliases_and_mappings(
-        molecular_profile: MolecularProfile,
+    def _get_aliases_and_mappings(
+        molecular_profile: MolecularProfile, variant: GeneVariant
     ) -> tuple[list[str], list[ConceptMapping]]:
         """Get aliases and mappings for a molecular profile
 
         :param molecular_profile: CIViC molecular profile record
+        :param variant: Variant associated to molecular profile
         :return: A tuple containing aliases and dbSNP mappings for a molecular profile.
         """
 
@@ -357,7 +419,6 @@ class CivicGksMolecularProfile(CategoricalVariant):
             )
 
         aliases = []
-        variant: GeneVariant = molecular_profile.variants[0]
         variant_concept_mapping = _get_variant_concept_mapping(variant)
         mappings = [
             ConceptMapping(
@@ -376,6 +437,7 @@ class CivicGksMolecularProfile(CategoricalVariant):
             mappings.append(
                 ConceptMapping(
                     coding=Coding(
+                        id=f"clingen.allele:{allele_registry_id}",  # bioregistry
                         system="https://reg.clinicalgenome.org/redmine/projects/registry/genboree_registry/by_canonicalid?canonicalid=",
                         code=allele_registry_id,
                     ),
@@ -388,6 +450,7 @@ class CivicGksMolecularProfile(CategoricalVariant):
             mappings.extend(
                 ConceptMapping(
                     coding=Coding(
+                        id=f"clinvar:{clinvar_id}",  # identifiers.org + bioregistry
                         system="https://www.ncbi.nlm.nih.gov/clinvar/variation/",
                         code=clinvar_id,
                     ),
@@ -399,11 +462,12 @@ class CivicGksMolecularProfile(CategoricalVariant):
 
         for a in molecular_profile.aliases:
             if _SNP_RE.match(a):
-                a = a.lower()
+                dbsnp_id = a.lower()
                 mappings.append(
                     ConceptMapping(
                         coding=Coding(
-                            code=a,
+                            id=f"dbsnp:{dbsnp_id}",  # identifiers.org + bioregistry
+                            code=dbsnp_id,
                             system="https://www.ncbi.nlm.nih.gov/snp/",
                         ),
                         relation=Relation.RELATED_MATCH,
@@ -415,10 +479,41 @@ class CivicGksMolecularProfile(CategoricalVariant):
         return aliases, mappings
 
     @staticmethod
-    def get_extensions(molecular_profile: MolecularProfile) -> list[Extension]:
+    def _get_expressions(hgvs_expressions: list[str]) -> list[Expression]:
+        """Get expressions for a list of HGVS expressions
+
+        :param hgvs_expressions: HGVS expressions for a gene variant
+        :return: List of GKS expressions
+        """
+        expressions = []
+
+        for hgvs_expr in hgvs_expressions:
+            if hgvs_expr == "N/A":
+                continue
+
+            if "p." in hgvs_expr:
+                syntax = Syntax.HGVS_P
+            elif "c." in hgvs_expr:
+                syntax = Syntax.HGVS_C
+            elif "g." in hgvs_expr:
+                syntax = Syntax.HGVS_G
+            else:
+                continue
+
+            expressions.append(Expression(syntax=syntax, value=hgvs_expr))
+        return expressions
+
+    @staticmethod
+    def _get_extensions(
+        molecular_profile: MolecularProfile,
+        variant: GeneVariant,
+        expressions: list[Expression],
+    ) -> list[Extension]:
         """Get extensions for CIViC molecular profile
 
         :param molecular_profile: CIViC molecular profile record
+        :param variant: Variant associated to molecular profile
+        :param expressions: List of expressions for the ``variant``
         :return: List of extensions containing molecular profile score, expressions,
             and representative for a CIViC molecular profile record.
         """
@@ -501,6 +596,124 @@ class CivicGksMolecularProfile(CategoricalVariant):
                 )
 
         return extensions
+
+    @staticmethod
+    def _build_members(
+        expressions: list[Expression],
+        member_syntaxes: list[Syntax],
+        variation_normalizer: VariationNormalizerDataProxy,
+    ) -> list[Variation]:
+        """Build members from list of expressions
+
+        :param expressions: List of expressions for the gene variant
+        :param member_syntaxes: Syntaxes that members will have
+        :param variation_normalizer: Variation Normalizer data proxy
+        :return: List of members
+        """
+        members = []
+        for expression in expressions:
+            if expression.syntax not in member_syntaxes:
+                continue
+
+            hgvs_expr = expression.value
+
+            vrs_variation = variation_normalizer.normalize(hgvs_expr)
+
+            if vrs_variation:
+                vrs_variation.name = hgvs_expr
+                vrs_variation.expressions = [expression]
+                members.append(Variation(root=vrs_variation))
+        return members
+
+    @staticmethod
+    def _build_constraints_and_member_syntaxes(
+        molecular_profile: MolecularProfile,
+        expressions: list[Expression],
+        variation_normalizer: VariationNormalizerDataProxy,
+    ) -> tuple[list[Constraint], list[Syntax]]:
+        """Build constraints and member syntaxes for Categorical Variant
+
+        :param molecular_profile: CIViC molecular profile record
+        :param expressions: List of expressions for the gene variant
+        :param variation_normalizer: Variation Normalizer data proxy
+        :return: Tuple containing the categorical variant constraints and the
+            expression syntaxes that should be included as members.
+        :raises CivicGksRecordError: If Gene Mutation has no mapping for Gene, the
+            Variation Normalizer is unable to normalize the molecular profile, or the
+            Variation Normalizer returns unsupported variation type. Currently, we only
+            support Alleles and Copy Number Changes
+        """
+        member_syntaxes = [Syntax.HGVS_P, Syntax.HGVS_C, Syntax.HGVS_G]
+
+        mp_parsed_name = molecular_profile.parsed_name
+        if all(
+            (
+                len(mp_parsed_name) == 2,
+                isinstance(mp_parsed_name[0], Gene),
+                mp_parsed_name[1].name.lower() == "mutation",
+            )
+        ):
+            # GENE mutation
+            mappings = CivicGksGene.get_mappings(mp_parsed_name[0])
+            if not mappings:
+                msg = f"Unable to retrieve mappings for gene {mp_parsed_name[0].id}"
+                raise CivicGksRecordError(msg)
+
+            return [
+                Constraint(
+                    root=FeatureContextConstraint(
+                        featureContext=MappableConcept(primaryCoding=mappings[0].coding)
+                    )
+                )
+            ], member_syntaxes
+
+        vrs_variation = variation_normalizer.normalize_molecular_profile(
+            molecular_profile
+        )
+        if not vrs_variation:
+            msg = f"Unable to normalize molecular profile to VRS variation. mpid={molecular_profile.id}, name={molecular_profile.name!r}"
+            raise CivicGksRecordError(msg)
+
+        if isinstance(vrs_variation, Allele):
+            hgvs_p_syntax = member_syntaxes.pop(0)
+            protein_expressions = [
+                expr for expr in expressions if expr.syntax == hgvs_p_syntax
+            ]
+            if expressions:
+                vrs_variation.expressions = protein_expressions
+
+            return [
+                Constraint(
+                    root=DefiningAlleleConstraint(
+                        allele=vrs_variation,
+                        relations=[LIFTOVER_TO_RELATION, TRANSLATION_OF_RELATION],
+                    )
+                )
+            ], member_syntaxes
+
+        if isinstance(vrs_variation, CopyNumberChange):
+            return [
+                Constraint(
+                    root=CopyChangeConstraint(
+                        copyChange=vrs_variation.copyChange,
+                    )
+                ),
+                Constraint(
+                    root=DefiningLocationConstraint(
+                        location=vrs_variation.location,
+                        matchCharacteristic=MappableConcept(
+                            primaryCoding=Coding(
+                                code=code("is_within"),
+                                system="ga4gh-gks-term:location-match",
+                            )
+                        ),
+                        relations=[LIFTOVER_TO_RELATION],
+                    )
+                ),
+            ], member_syntaxes
+
+        msg = f"Unsupported VRS variation type returned by Variation Normalizer. mpid={molecular_profile.id}, type={type(vrs_variation).__name__!r}"
+        raise CivicGksRecordError(msg)
 
 
 class CivicGksDisease(MappableConcept):
@@ -752,12 +965,14 @@ class _CivicGksEvidenceAssertionMixin:
         self,
         record: Evidence | Assertion,
         record_type: CivicEvidenceAssertionType,
+        variation_normalizer: VariationNormalizerDataProxy,
         is_clinical_significance_prop: bool = False,
     ) -> dict:
         """Get proposition parameters shared between propositions
 
         :param record: CIViC assertion or evidence item
         :param record_type: The type of ``record``
+        :param variation_normalizer: Variation Normalizer data proxy
         :param is_clinical_significance_prop: Whether to generate parameters for
             VariantClinicalSignificanceProposition
         :return: Dictionary containing proposition parameters shared between
@@ -766,7 +981,9 @@ class _CivicGksEvidenceAssertionMixin:
         variant: GeneVariant = record.molecular_profile.variants[0]
 
         params = {
-            "subjectVariant": CivicGksMolecularProfile(record.molecular_profile),
+            "subjectVariant": CivicGksMolecularProfile(
+                record.molecular_profile, variation_normalizer
+            ),
             "geneContextQualifier": CivicGksGene(variant.gene),
             "alleleOriginQualifier": self.get_allele_origin_qualifier(record),
             "predicate": self.get_predicate(record)
@@ -811,7 +1028,9 @@ class _CivicGksEvidenceAssertionMixin:
         return params
 
     def get_target_proposition(
-        self, record: Evidence | Assertion
+        self,
+        record: Evidence | Assertion,
+        variation_normalizer: VariationNormalizerDataProxy,
     ) -> (
         VariantTherapeuticResponseProposition
         | VariantDiagnosticProposition
@@ -820,6 +1039,7 @@ class _CivicGksEvidenceAssertionMixin:
         """Get GKS target proposition
 
         :param record: CIViC assertion or evidence item
+        :param variation_normalizer: Variation Normalizer data proxy
         :return: GKS target proposition
         """
         record_type = (
@@ -827,7 +1047,9 @@ class _CivicGksEvidenceAssertionMixin:
             if isinstance(record, Assertion)
             else record.evidence_type
         )
-        params: dict = self._get_proposition_params(record, record_type)
+        params: dict = self._get_proposition_params(
+            record, record_type, variation_normalizer
+        )
 
         if record_type == CivicEvidenceAssertionType.PREDICTIVE:
             if len(record.therapies) == 1:
@@ -908,10 +1130,15 @@ class CivicGksEvidence(Statement, _CivicGksEvidenceAssertionMixin):
     :param evidence_item: CIViC evidence item
     """
 
-    def __init__(self, evidence_item: Evidence) -> None:
+    def __init__(
+        self,
+        evidence_item: Evidence,
+        variation_normalizer: VariationNormalizerDataProxy | None = None,
+    ) -> None:
         """Initialize CivicGksEvidence class
 
         :param evidence_item: CIViC evidence item
+        :param variation_normalizer: Variation Normalizer data proxy
         :raises CivicGksRecordError: If CIViC evidence item is not able to be
             represented as GKS object
         """
@@ -919,11 +1146,15 @@ class CivicGksEvidence(Statement, _CivicGksEvidenceAssertionMixin):
             err_msg = f"Evidence {evidence_item.id} is not valid for GKS."
             raise CivicGksRecordError(err_msg)
 
+        variation_normalizer = resolve_variation_normalizer(variation_normalizer)
+
         super().__init__(
             id=f"civic.eid:{evidence_item.id}",
             description=evidence_item.description,
             specifiedBy=CivicGksSop(),
-            proposition=self.get_target_proposition(evidence_item),
+            proposition=self.get_target_proposition(
+                evidence_item, variation_normalizer
+            ),
             direction=self.get_direction(evidence_item.evidence_direction),
             strength=self.get_evidence_strength(
                 CivicEvidenceLevel(evidence_item.evidence_level)
@@ -966,6 +1197,21 @@ class _CivicGksAssertionMixin:
         ]
 
     @staticmethod
+    def get_extensions(approval: Approval | None) -> list[Extension]:
+        """Get extensions for an assertion
+
+        :param approval: Approval for assertion, if exists
+        :return: List of extensions for an assertion. This will contain a
+            single record, `clinvar_accession` if one exists
+        """
+        extensions = []
+        if approval and approval.clinvar_accession:
+            extensions.append(
+                Extension(name="clinvar_accession", value=approval.clinvar_accession)
+            )
+        return extensions
+
+    @staticmethod
     def get_reported_in(assertion: Assertion) -> list[iriReference]:
         """Get reported in information for an assertion
 
@@ -989,6 +1235,7 @@ class CivicGksClinSigAssertion(
     represented as GKS
 
     :param assertion: CIViC assertion record
+    :param variation_normalizer: Variation Normalizer data proxy
     :raises CivicGksRecordError: If CIViC assertion is not able to be represented as
         GKS object
     """
@@ -997,14 +1244,15 @@ class CivicGksClinSigAssertion(
         self,
         assertion: Assertion,
         approval: Approval | None = None,
+        variation_normalizer: VariationNormalizerDataProxy | None = None,
     ) -> None:
         """Initialize CivicGksClinSigAssertion class
 
         :param assertion: CIViC assertion record
         :param approval: CIViC approval for the assertion, defaults to None
-        :raises CivicGksRecordError: If CIViC assertion type is not one of
-            ``CLINICAL_SIGNIFICANCE_ASSERTION_TYPES`` or if assertion is not
-            able to be represented as GKS object
+        :param variation_normalizer: Variation Normalizer data proxy
+        :raises CivicGksRecordError: If CIViC assertion is not able to be represented as
+            GKS object
         """
         if assertion.assertion_type not in CLINICAL_SIGNIFICANCE_ASSERTION_TYPES:
             err_msg = (
@@ -1020,25 +1268,22 @@ class CivicGksClinSigAssertion(
             assertion.amp_level
         )
         contributions = self.get_contributions(approval) if approval else None
-
-        extensions = []
-        if approval and approval.clinvar_accession:
-            extensions.append(
-                Extension(name="clinvar_accession", value=approval.clinvar_accession)
-            )
+        variation_normalizer = resolve_variation_normalizer(variation_normalizer)
 
         super().__init__(
             id=f"civic.aid:{assertion.id}",
             contributions=contributions,
             description=assertion.description,
             specifiedBy=CivicGksSop(),
-            proposition=self.get_proposition(assertion),
+            proposition=self.get_proposition(assertion, variation_normalizer),
             direction=self.get_direction(assertion.assertion_direction),
             classification=classification,
             strength=strength,
-            hasEvidenceLines=self.get_evidence_lines(assertion, level),
+            hasEvidenceLines=self.get_evidence_lines(
+                assertion, level, variation_normalizer
+            ),
             reportedIn=self.get_reported_in(assertion),
-            extensions=extensions or None,
+            extensions=self.get_extensions(approval) or None,
         )
 
     def get_classification_strength_level(
@@ -1079,7 +1324,10 @@ class CivicGksClinSigAssertion(
         return classification, strength, level
 
     def get_evidence_lines(
-        self, assertion: Assertion, level: AmpAscoCapEvidenceLineStrength
+        self,
+        assertion: Assertion,
+        level: AmpAscoCapEvidenceLineStrength,
+        variation_normalizer: VariationNormalizerDataProxy,
     ) -> (
         list[DiagnosticEvidenceLine]
         | list[PrognosticEvidenceLine]
@@ -1091,6 +1339,7 @@ class CivicGksClinSigAssertion(
 
         :param assertion: CIViC assertion
         :param level: The CIViC Assertion's AMP/ASCO/CAP category level
+        :param variation_normalizer: Variation Normalizer data proxy
         :return: List of CIViC evidence lines
         :raise NotImplementedError: If evidence line type not supported
         """
@@ -1129,7 +1378,9 @@ class CivicGksClinSigAssertion(
 
         return [
             evidence_line_cls(
-                targetProposition=self.get_target_proposition(assertion),
+                targetProposition=self.get_target_proposition(
+                    assertion, variation_normalizer
+                ),
                 hasEvidenceItems=evidence_items or None,
                 directionOfEvidenceProvided=direction,
                 strengthOfEvidenceProvided=MappableConcept(
@@ -1139,15 +1390,19 @@ class CivicGksClinSigAssertion(
         ]
 
     def get_proposition(
-        self, assertion: Assertion
+        self, assertion: Assertion, variation_normalizer: VariationNormalizerDataProxy
     ) -> VariantClinicalSignificanceProposition:
         """Get GKS proposition
 
         :param assertion: CIViC assertion record
+        :param variation_normalizer: Variation Normalizer data proxy
         :return: GKS proposition
         """
         params = self._get_proposition_params(
-            assertion, assertion.assertion_type, is_clinical_significance_prop=True
+            assertion,
+            assertion.assertion_type,
+            variation_normalizer,
+            is_clinical_significance_prop=True,
         )
         return VariantClinicalSignificanceProposition(**params)
 
@@ -1159,11 +1414,17 @@ class CivicGksOncogenicAssertion(
 ):
     """Class for CIViC oncogenic assertion record represented as GKS"""
 
-    def __init__(self, assertion: Assertion, approval: Approval | None = None) -> None:
+    def __init__(
+        self,
+        assertion: Assertion,
+        approval: Approval | None = None,
+        variation_normalizer: VariationNormalizerDataProxy | None = None,
+    ) -> None:
         """Initialize CivicGksOncogenicAssertion class
 
         :param assertion: CIViC assertion record
         :param approval: CIViC approval for the assertion, defaults to None
+        :param variation_normalizer: Variation Normalizer data proxy
         :raises CivicGksRecordError: If CIViC assertion is not able to be represented as
             GKS object
         """
@@ -1175,8 +1436,10 @@ class CivicGksOncogenicAssertion(
             err_msg = "Assertion is not valid for GKS."
             raise CivicGksRecordError(err_msg)
 
+        variation_normalizer = resolve_variation_normalizer(variation_normalizer)
+
         contributions = self.get_contributions(approval) if approval else None
-        proposition = self.get_proposition(assertion)
+        proposition = self.get_proposition(assertion, variation_normalizer)
         classification, strength = self.get_classification_strength(
             assertion.significance
         )
@@ -1192,6 +1455,7 @@ class CivicGksOncogenicAssertion(
             strength=strength,
             hasEvidenceLines=self.get_evidence_lines(assertion, proposition),
             reportedIn=self.get_reported_in(assertion),
+            extensions=self.get_extensions(approval) or None,
         )
 
     def get_classification_strength(
@@ -1257,26 +1521,34 @@ class CivicGksOncogenicAssertion(
 
         return evidence_lines
 
-    def get_proposition(self, assertion: Assertion) -> VariantOncogenicityProposition:
+    def get_proposition(
+        self, assertion: Assertion, variation_normalizer: VariationNormalizerDataProxy
+    ) -> VariantOncogenicityProposition:
         """Get GKS proposition
 
         :param assertion: CIViC assertion record
+        :param variation_normalizer: Variation Normalizer data proxy
         :return: GKS proposition
         """
         params = self._get_proposition_params(
-            assertion, assertion.assertion_type, is_clinical_significance_prop=False
+            assertion,
+            assertion.assertion_type,
+            variation_normalizer,
+            is_clinical_significance_prop=False,
         )
         return VariantOncogenicityProposition(**params)
 
 
 def create_gks_record_from_assertion(
     assertion: Assertion,
+    variation_normalizer: VariationNormalizerDataProxy,
     approval: Approval | None = None,
     submission_type_filter: ClinVarSubmissionType | None = None,
 ) -> CivicGksClinSigAssertion | CivicGksOncogenicAssertion:
     """Create GKS Record from CIViC Assertion
 
     :param assertion: CIViC assertion record
+    :param variation_normalizer: Variation Normalizer data proxy
     :param approval: CIViC approval for the assertion, defaults to None
     :param submission_type_filter: Optional ClinVar submission type used to
         restrict which assertion types may be translated
@@ -1298,10 +1570,14 @@ def create_gks_record_from_assertion(
             raise NotImplementedError(err_msg)
 
     if assertion_type in CLINICAL_SIGNIFICANCE_ASSERTION_TYPES:
-        return CivicGksClinSigAssertion(assertion, approval=approval)
+        return CivicGksClinSigAssertion(
+            assertion, approval=approval, variation_normalizer=variation_normalizer
+        )
 
     if assertion_type in ONCOGENIC_ASSERTION_TYPES:
-        return CivicGksOncogenicAssertion(assertion, approval=approval)
+        return CivicGksOncogenicAssertion(
+            assertion, approval=approval, variation_normalizer=variation_normalizer
+        )
 
     err_msg = f"Assertion type {assertion_type} is not currently supported"
     raise NotImplementedError(err_msg)
