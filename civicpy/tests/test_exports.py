@@ -370,7 +370,13 @@ def gks_therapeutic_proposition(gks_mpid33, gks_gid19, gks_tid146, gks_did8):
             "name": "somatic",
             "mappings": [
                 {
-                    "coding": {"code": "SOMATIC", "system": "https://civicdb.org"},
+                    "coding": {
+                        "code": "SOMATIC",
+                        "system": "CIViC Knowledgebase",
+                        "iris": [
+                            "https://civic.readthedocs.io/en/latest/model/evidence/origin.html"
+                        ],
+                    },
                     "relation": "exactMatch",
                 }
             ],
