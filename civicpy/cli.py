@@ -1,12 +1,13 @@
 from pathlib import Path
+from civicpy.exports.variation_normalizer import VariationNormalizerRestDataProxy
 import click
 import logging
 from civicpy import civic
 from civicpy.__env__ import LOCAL_CACHE_PATH
 from civicpy.exports.civic_gks_record import (
-    CivicGksRecordError,
-    CivicGksOncogenicAssertion,
     CivicGksClinSigAssertion,
+    CivicGksOncogenicAssertion,
+    CivicGksRecordError,
     ClinVarSubmissionType,
     create_gks_record_from_assertion,
 )
@@ -96,8 +97,17 @@ def create_vcf(vcf_file_path, include_status):
         path_type=Path,
     ),
 )
+@click.option(
+    "--variation-normalizer-url",
+    envvar=VariationNormalizerRestDataProxy.BASE_URL_ENV_VAR,
+    default=None,
+    help=f"Base URL for the Variation Normalizer REST service. If not provided, {VariationNormalizerRestDataProxy.BASE_URL_ENV_VAR} environment variable or the default ({VariationNormalizerRestDataProxy.DEFAULT_BASE_URL!r}) will be used.",
+)
 def create_gks_json(
-    organization_id: int, submission_type: ClinVarSubmissionType, output_json: Path
+    organization_id: int,
+    submission_type: ClinVarSubmissionType,
+    output_json: Path,
+    variation_normalizer_url: str | None,
 ) -> None:
     """Create a JSON file for CIViC assertion records approved by a specific organization that are ready for ClinVar submission, represented as GKS objects.
 
@@ -114,6 +124,8 @@ def create_gks_json(
     :param submission_type: The ClinVar submission type to generate GKS JSON for.
         Defaults to clinical impact.
     :param output_json: The output file path to write the JSON file to
+    :param variation_normalizer_url: Base URL for the Variation Normalizer REST
+    service
     """
     try:
         civic.get_organization_by_id(organization_id)
@@ -124,6 +136,8 @@ def create_gks_json(
     records: list[CivicGksClinSigAssertion] | list[CivicGksOncogenicAssertion] = []
     errors: list[GksAssertionError] = []
 
+    variation_normalizer_dp = VariationNormalizerRestDataProxy(variation_normalizer_url)
+
     for approval in civic.get_all_approvals_ready_for_clinvar_submission_for_org(
         organization_id
     ):
@@ -131,7 +145,10 @@ def create_gks_json(
         if assertion.is_valid_for_gks_json(emit_warnings=True):
             try:
                 gks_record = create_gks_record_from_assertion(
-                    assertion, approval=approval, submission_type_filter=submission_type
+                    assertion,
+                    variation_normalizer_dp,
+                    approval=approval,
+                    submission_type_filter=submission_type,
                 )
             except (CivicGksRecordError, NotImplementedError) as e:
                 errors.append(

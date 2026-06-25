@@ -31,8 +31,8 @@ jobs:
       - name: List installed packages
         run: |
           pip list
-      - name: Run tests
-        run: pytest --cov civicpy --cov-report term-missing
+      - name: Run CI tests
+        run: pytest --cov civicpy --cov-report term-missing -m "not live"
       - name: Coveralls
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

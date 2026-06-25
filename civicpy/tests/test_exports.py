@@ -1,19 +1,24 @@
 import re
 from copy import deepcopy
-from unittest.mock import PropertyMock, patch
+from unittest import mock
+from unittest.mock import Mock, PropertyMock, patch
 
 import pytest
 from deepdiff import DeepDiff
+from ga4gh.cat_vrs.models import CategoricalVariant
+from ga4gh.core.models import iriReference
 from ga4gh.va_spec.aac_2017 import (
     VariantClinicalSignificanceStatement,
 )
 from ga4gh.va_spec.base import Condition, ConditionSet, Statement, TherapyGroup
 from ga4gh.va_spec.ccv_2022 import VariantOncogenicityStatement
+from ga4gh.vrs.models import Allele, CopyNumberCount
 
 from civicpy import civic
 from civicpy.exports.civic_gks_record import (
     CivicGksClinSigAssertion,
     CivicGksEvidence,
+    CivicGksGene,
     CivicGksMolecularProfile,
     CivicGksOncogenicAssertion,
     CivicGksRecordError,
@@ -22,17 +27,16 @@ from civicpy.exports.civic_gks_record import (
     create_gks_record_from_assertion,
 )
 from civicpy.exports.civic_vcf_record import CivicVcfRecord
+from civicpy.exports.variation_normalizer import (
+    VariationNormalizerDataProxy,
+    VariationNormalizerRestDataProxy,
+)
 
 
 # snv
 @pytest.fixture(scope="module")
 def v600e():
     return civic.get_variant_by_id(12)
-
-
-@pytest.fixture(scope="module")
-def v600e_mp():
-    return civic.get_molecular_profile_by_id(12)
 
 
 # simple insertion
@@ -169,10 +173,52 @@ def gks_mpid33():
         "type": "CategoricalVariant",
         "description": "EGFR L858R has long been recognized as a functionally significant mutation in cancer, and is one of the most prevalent single mutations in lung cancer. Best described in non-small cell lung cancer (NSCLC), the mutation seems to confer sensitivity to first and second generation TKI's like gefitinib and neratinib. NSCLC patients with this mutation treated with TKI's show increased overall and progression-free survival, as compared to chemotherapy alone. Third generation TKI's are currently in clinical trials that specifically focus on mutant forms of EGFR, a few of which have shown efficacy in treating patients that failed to respond to earlier generation TKI therapies.",
         "name": "EGFR L858R",
+        "constraints": [
+            {
+                "type": "DefiningAlleleConstraint",
+                "allele": {
+                    "id": "ga4gh:VA.S41CcMJT2bcd8R4-qXZWH1PoHWNtG2PZ",
+                    "type": "Allele",
+                    "name": "EGFR L858R",
+                    "digest": "S41CcMJT2bcd8R4-qXZWH1PoHWNtG2PZ",
+                    "location": {
+                        "id": "ga4gh:SL.v0_edynH98OIu-0QPVT5anCSOriAFSDQ",
+                        "type": "SequenceLocation",
+                        "digest": "v0_edynH98OIu-0QPVT5anCSOriAFSDQ",
+                        "sequenceReference": {
+                            "type": "SequenceReference",
+                            "refgetAccession": "SQ.vyo55F6mA6n2LgN4cagcdRzOuh38V4mE",
+                        },
+                        "start": 857,
+                        "end": 858,
+                        "sequence": "L",
+                    },
+                    "state": {"type": "LiteralSequenceExpression", "sequence": "R"},
+                    "expressions": [
+                        {"syntax": "hgvs.p", "value": "NP_005219.2:p.Leu858Arg"}
+                    ],
+                },
+                "relations": [
+                    {
+                        "primaryCoding": {
+                            "system": "ga4gh-gks-term:allele-relation",
+                            "code": "liftover_to",
+                        }
+                    },
+                    {
+                        "primaryCoding": {
+                            "system": "http://www.sequenceontology.org",
+                            "code": "translation_of",
+                        }
+                    },
+                ],
+            }
+        ],
         "aliases": ["LEU858ARG", "L813R", "LEU813ARG"],
         "mappings": [
             {
                 "coding": {
+                    "id": "clingen.allele:CA126713",
                     "code": "CA126713",
                     "system": "https://reg.clinicalgenome.org/redmine/projects/registry/genboree_registry/by_canonicalid?canonicalid=",
                 },
@@ -180,6 +226,7 @@ def gks_mpid33():
             },
             {
                 "coding": {
+                    "id": "clinvar:16609",
                     "code": "16609",
                     "system": "https://www.ncbi.nlm.nih.gov/clinvar/variation/",
                 },
@@ -187,6 +234,7 @@ def gks_mpid33():
             },
             {
                 "coding": {
+                    "id": "clinvar:376282",
                     "code": "376282",
                     "system": "https://www.ncbi.nlm.nih.gov/clinvar/variation/",
                 },
@@ -194,6 +242,7 @@ def gks_mpid33():
             },
             {
                 "coding": {
+                    "id": "clinvar:376280",
                     "code": "376280",
                     "system": "https://www.ncbi.nlm.nih.gov/clinvar/variation/",
                 },
@@ -201,6 +250,7 @@ def gks_mpid33():
             },
             {
                 "coding": {
+                    "id": "dbsnp:rs121434568",
                     "code": "rs121434568",
                     "system": "https://www.ncbi.nlm.nih.gov/snp/",
                 },
@@ -670,7 +720,224 @@ def gks_gid42():
 
 
 @pytest.fixture(scope="module")
-def gks_aid202_proposition(gks_gid42):
+def ret_m918t_vrs():
+    return {
+        "id": "ga4gh:VA.hEybNB_CeKflfFhT5AKOU5i1lgZPP-aS",
+        "type": "Allele",
+        "name": "RET M918T",
+        "digest": "hEybNB_CeKflfFhT5AKOU5i1lgZPP-aS",
+        "location": {
+            "id": "ga4gh:SL.oIeqSfOEuqO7KNOPt8YUIa9vo1f6yMao",
+            "type": "SequenceLocation",
+            "digest": "oIeqSfOEuqO7KNOPt8YUIa9vo1f6yMao",
+            "sequenceReference": {
+                "type": "SequenceReference",
+                "refgetAccession": "SQ.jMu9-ItXSycQsm4hyABeW_UfSNRXRVnl",
+            },
+            "start": 917,
+            "end": 918,
+            "sequence": "M",
+        },
+        "state": {"type": "LiteralSequenceExpression", "sequence": "T"},
+    }
+
+
+@pytest.fixture(scope="module")
+def civic_mpid113_cdna_vrs():
+    return {
+        "id": "ga4gh:VA.TZBjEPHhLRYxssQopcOQLWEBQrwzhH3T",
+        "type": "Allele",
+        "digest": "TZBjEPHhLRYxssQopcOQLWEBQrwzhH3T",
+        "location": {
+            "id": "ga4gh:SL.LD_QnJ8V1MR3stLat01acwyO4fWrUGco",
+            "type": "SequenceLocation",
+            "digest": "LD_QnJ8V1MR3stLat01acwyO4fWrUGco",
+            "sequenceReference": {
+                "type": "SequenceReference",
+                "refgetAccession": "SQ.jHlgYyFWJThVNL_o5UXEBwcQVNEPc62c",
+            },
+            "start": 2942,
+            "end": 2943,
+            "sequence": "T",
+        },
+        "state": {"type": "LiteralSequenceExpression", "sequence": "C"},
+    }
+
+
+@pytest.fixture(scope="module")
+def civic_mpid113_genomic_vrs():
+    return {
+        "id": "ga4gh:VA.ON-Q17mJBYx3unmQ8GiqllzEphxR-Fie",
+        "type": "Allele",
+        "digest": "ON-Q17mJBYx3unmQ8GiqllzEphxR-Fie",
+        "location": {
+            "id": "ga4gh:SL.wIzpygPWdaZBkoKcIg461KaERW7XfyZS",
+            "type": "SequenceLocation",
+            "digest": "wIzpygPWdaZBkoKcIg461KaERW7XfyZS",
+            "sequenceReference": {
+                "type": "SequenceReference",
+                "refgetAccession": "SQ.ss8r_wB0-b9r44TQTMmVTI92884QvBiB",
+            },
+            "start": 43121967,
+            "end": 43121968,
+            "sequence": "T",
+        },
+        "state": {"type": "LiteralSequenceExpression", "sequence": "C"},
+    }
+
+
+@pytest.fixture(scope="module")
+def civic_mpid113(ret_m918t_vrs, civic_mpid113_cdna_vrs, civic_mpid113_genomic_vrs):
+    ret_m918t_vrs_copy = deepcopy(ret_m918t_vrs)
+    hgvs_p = "NP_065681.1:p.Met918Thr"
+    ret_m918t_vrs_copy["expressions"] = [
+        {"syntax": "hgvs.p", "value": hgvs_p},
+        {"syntax": "hgvs.p", "value": "ENSP00000347942.3:p.Met918Thr"},
+    ]
+
+    civic_mpid113_cdna_vrs_copy = deepcopy(civic_mpid113_cdna_vrs)
+    hgvs_c = "NM_020975.4:c.2753T>C"
+    civic_mpid113_cdna_vrs_copy["name"] = hgvs_c
+    civic_mpid113_cdna_vrs_copy["expressions"] = [{"syntax": "hgvs.c", "value": hgvs_c}]
+
+    civic_mpid113_genomic_vrs_copy = deepcopy(civic_mpid113_genomic_vrs)
+    hgvs_g = "NC_000010.10:g.43617416T>C"
+    civic_mpid113_genomic_vrs_copy["name"] = hgvs_g
+    civic_mpid113_genomic_vrs_copy["expressions"] = [
+        {"syntax": "hgvs.g", "value": hgvs_g}
+    ]
+
+    return {
+        "id": "civic.mpid:113",
+        "type": "CategoricalVariant",
+        "description": "RET M918T is the most common somatically acquired mutation in medullary thyroid cancer (MTC). While there currently are no RET-specific inhibiting agents, promiscuous kinase inhibitors have seen some success in treating RET overactivity. Data suggests however, that the M918T mutation may lead to drug resistance, especially against the VEGFR-inhibitor motesanib. It has also been suggested that RET M918T leads to more aggressive MTC with a poorer prognosis.",
+        "name": "RET M918T",
+        "aliases": ["MET918THR"],
+        "constraints": [
+            {
+                "type": "DefiningAlleleConstraint",
+                "allele": ret_m918t_vrs_copy,
+                "relations": [
+                    {
+                        "primaryCoding": {
+                            "system": "ga4gh-gks-term:allele-relation",
+                            "code": "liftover_to",
+                        }
+                    },
+                    {
+                        "primaryCoding": {
+                            "system": "http://www.sequenceontology.org",
+                            "code": "translation_of",
+                        }
+                    },
+                ],
+            }
+        ],
+        "mappings": [
+            {
+                "coding": {
+                    "id": "dbsnp:rs74799832",
+                    "code": "rs74799832",
+                    "system": "https://www.ncbi.nlm.nih.gov/snp/",
+                },
+                "relation": "relatedMatch",
+            },
+            {
+                "coding": {
+                    "id": "clingen.allele:CA009082",
+                    "code": "CA009082",
+                    "system": "https://reg.clinicalgenome.org/redmine/projects/registry/genboree_registry/by_canonicalid?canonicalid=",
+                },
+                "relation": "relatedMatch",
+            },
+            {
+                "coding": {
+                    "id": "clinvar:13919",
+                    "code": "13919",
+                    "system": "https://www.ncbi.nlm.nih.gov/clinvar/variation/",
+                },
+                "relation": "relatedMatch",
+            },
+            {
+                "coding": {
+                    "id": "civic.mpid:113",
+                    "code": "113",
+                    "system": "https://civicdb.org/links/molecular_profile/",
+                },
+                "relation": "exactMatch",
+            },
+            {
+                "coding": {
+                    "code": "113",
+                    "id": "civic.vid:113",
+                    "name": "M918T",
+                    "system": "https://civicdb.org/links/variant/",
+                    "extensions": [
+                        {"name": "subtype", "value": "gene_variant"},
+                        {
+                            "name": "variant_types",
+                            "value": [
+                                {
+                                    "coding": {
+                                        "id": "civic.variant_type:47",
+                                        "code": "SO:0001583",
+                                        "name": "Missense Variant",
+                                        "system": "http://www.sequenceontology.org/browser/current_svn/term/",
+                                    },
+                                    "relation": "exactMatch",
+                                }
+                            ],
+                        },
+                    ],
+                },
+                "relation": "exactMatch",
+            },
+        ],
+        "members": [
+            civic_mpid113_cdna_vrs_copy,
+            civic_mpid113_genomic_vrs_copy,
+        ],
+        "extensions": [
+            {
+                "name": "CIViC representative coordinate",
+                "value": {
+                    "chromosome": "10",
+                    "start": 43617416,
+                    "stop": 43617416,
+                    "reference_bases": "T",
+                    "variant_bases": "C",
+                    "representative_transcript": "ENST00000355710.3",
+                    "ensembl_version": 75,
+                    "reference_build": "GRCh37",
+                    "type": "coordinates",
+                },
+            },
+            {
+                "name": "CIViC Molecular Profile Score",
+                "value": 139.0,
+            },
+            {
+                "name": "expressions",
+                "value": [
+                    {"syntax": "hgvs.c", "value": "ENST00000355710.3:c.2753T>C"},
+                    {"syntax": "hgvs.c", "value": "NM_020975.4:c.2753T>C"},
+                    {"syntax": "hgvs.g", "value": "NC_000010.10:g.43617416T>C"},
+                    {"syntax": "hgvs.p", "value": "NP_065681.1:p.Met918Thr"},
+                    {"syntax": "hgvs.g", "value": "NC_000010.11:g.43121968T>C"},
+                    {"syntax": "hgvs.p", "value": "ENSP00000347942.3:p.Met918Thr"},
+                    {
+                        "syntax": "hgvs.c",
+                        "value": "ENST00000355710.8:c.2753T>C",
+                        "extensions": [{"name": "is_mane_select", "value": True}],
+                    },
+                ],
+            },
+        ],
+    }
+
+
+@pytest.fixture(scope="module")
+def gks_aid202_proposition(gks_gid42, civic_mpid113):
     """Create test fixture forCIVIC AID6 proposition"""
     return {
         "type": "VariantOncogenicityProposition",
@@ -694,106 +961,7 @@ def gks_aid202_proposition(gks_gid42):
             "extensions": [{"name": "civic_variant_origin", "value": "SOMATIC"}],
         },
         "predicate": "isOncogenicFor",
-        "subjectVariant": {
-            "id": "civic.mpid:113",
-            "type": "CategoricalVariant",
-            "description": "RET M918T is the most common somatically acquired mutation in medullary thyroid cancer (MTC). While there currently are no RET-specific inhibiting agents, promiscuous kinase inhibitors have seen some success in treating RET overactivity. Data suggests however, that the M918T mutation may lead to drug resistance, especially against the VEGFR-inhibitor motesanib. It has also been suggested that RET M918T leads to more aggressive MTC with a poorer prognosis.",
-            "name": "RET M918T",
-            "aliases": ["MET918THR"],
-            "mappings": [
-                {
-                    "coding": {
-                        "code": "rs74799832",
-                        "system": "https://www.ncbi.nlm.nih.gov/snp/",
-                    },
-                    "relation": "relatedMatch",
-                },
-                {
-                    "coding": {
-                        "code": "CA009082",
-                        "system": "https://reg.clinicalgenome.org/redmine/projects/registry/genboree_registry/by_canonicalid?canonicalid=",
-                    },
-                    "relation": "relatedMatch",
-                },
-                {
-                    "coding": {
-                        "code": "13919",
-                        "system": "https://www.ncbi.nlm.nih.gov/clinvar/variation/",
-                    },
-                    "relation": "relatedMatch",
-                },
-                {
-                    "coding": {
-                        "id": "civic.mpid:113",
-                        "code": "113",
-                        "system": "https://civicdb.org/links/molecular_profile/",
-                    },
-                    "relation": "exactMatch",
-                },
-                {
-                    "coding": {
-                        "code": "113",
-                        "id": "civic.vid:113",
-                        "name": "M918T",
-                        "system": "https://civicdb.org/links/variant/",
-                        "extensions": [
-                            {"name": "subtype", "value": "gene_variant"},
-                            {
-                                "name": "variant_types",
-                                "value": [
-                                    {
-                                        "coding": {
-                                            "id": "civic.variant_type:47",
-                                            "code": "SO:0001583",
-                                            "name": "Missense Variant",
-                                            "system": "http://www.sequenceontology.org/browser/current_svn/term/",
-                                        },
-                                        "relation": "exactMatch",
-                                    }
-                                ],
-                            },
-                        ],
-                    },
-                    "relation": "exactMatch",
-                },
-            ],
-            "extensions": [
-                {
-                    "name": "CIViC representative coordinate",
-                    "value": {
-                        "chromosome": "10",
-                        "start": 43617416,
-                        "stop": 43617416,
-                        "reference_bases": "T",
-                        "variant_bases": "C",
-                        "representative_transcript": "ENST00000355710.3",
-                        "ensembl_version": 75,
-                        "reference_build": "GRCh37",
-                        "type": "coordinates",
-                    },
-                },
-                {
-                    "name": "CIViC Molecular Profile Score",
-                    "value": 139.0,
-                },
-                {
-                    "name": "expressions",
-                    "value": [
-                        {"syntax": "hgvs.c", "value": "ENST00000355710.3:c.2753T>C"},
-                        {"syntax": "hgvs.c", "value": "NM_020975.4:c.2753T>C"},
-                        {"syntax": "hgvs.g", "value": "NC_000010.10:g.43617416T>C"},
-                        {"syntax": "hgvs.g", "value": "NC_000010.11:g.43121968T>C"},
-                        {"syntax": "hgvs.p", "value": "ENSP00000347942.3:p.Met918Thr"},
-                        {"syntax": "hgvs.p", "value": "NP_065681.1:p.Met918Thr"},
-                        {
-                            "syntax": "hgvs.c",
-                            "value": "ENST00000355710.8:c.2753T>C",
-                            "extensions": [{"name": "is_mane_select", "value": True}],
-                        },
-                    ],
-                },
-            ],
-        },
+        "subjectVariant": civic_mpid113,
     }
 
 
@@ -925,6 +1093,15 @@ def gks_aid202(gks_aid202_proposition):
     return VariantOncogenicityStatement(**params)
 
 
+@pytest.fixture(scope="module")
+def mocked_normalizer(braf_v600e_vrs):
+    """Mocked normalizer for tests where actual allele does not matter"""
+    variation_normalizer = Mock()
+    variation_normalizer.normalize.return_value = None
+    variation_normalizer.normalize_molecular_profile.return_value = braf_v600e_vrs
+    return variation_normalizer
+
+
 class TestCivicVcfRecord(object):
     def test_protein_altering(self, caplog, v600e):
         record = CivicVcfRecord(v600e)
@@ -1000,6 +1177,53 @@ class TestCivicVcfRecord(object):
 class TestCivicGksMolecularProfile(object):
     """Test that CivicGksMolecularProfile works as expected"""
 
+    def test_valid(
+        self,
+        ret_m918t_vrs,
+        civic_mpid113,
+        civic_mpid113_cdna_vrs,
+        civic_mpid113_genomic_vrs,
+    ):
+
+        def normalize_side_effect(expr):
+            if expr == "RET M918T":
+                return Allele.model_validate(ret_m918t_vrs)
+
+            if expr == "NM_020975.4:c.2753T>C":
+                return Allele.model_validate(civic_mpid113_cdna_vrs)
+
+            if expr == "NC_000010.10:g.43617416T>C":
+                return Allele.model_validate(civic_mpid113_genomic_vrs)
+
+            if expr in ["ENST00000355710.3:c.2753T>C", "NC_000010.11:g.43121968T>C"]:
+                return None
+
+            raise AssertionError(f"Unexpected normalize query: {expr}")
+
+        mp = civic.get_molecular_profile_by_id(113)
+
+        variation_normalizer = VariationNormalizerRestDataProxy()
+
+        with patch.object(
+            variation_normalizer,
+            "normalize",
+            side_effect=normalize_side_effect,
+        ) as mock_normalize:
+            gks_mp = CivicGksMolecularProfile(
+                molecular_profile=mp,
+                variation_normalizer=variation_normalizer,
+            )
+
+        assert mock_normalize.call_count == 5
+
+        diff = DeepDiff(
+            gks_mp.model_dump(exclude_none=True),
+            civic_mpid113,
+            ignore_order=True,
+        )
+
+        assert diff == {}
+
     def test_get_extensions(self, v600e_mp):
         """Test that get_extensions method works as expected"""
         variant = v600e_mp.variants[0]
@@ -1017,7 +1241,7 @@ class TestCivicGksMolecularProfile(object):
             ),
         ):
             gks_mp = CivicGksMolecularProfile(v600e_mp)
-            extensions = gks_mp.get_extensions(v600e_mp)
+            extensions = gks_mp.extensions
             assert extensions
 
             expressions = next(
@@ -1031,11 +1255,159 @@ class TestCivicGksMolecularProfile(object):
 
         with patch.object(variant, "clinvar_entries", new=["N/A"]):
             gks_mp = CivicGksMolecularProfile(v600e_mp)
-            _, mappings = gks_mp.get_aliases_and_mappings(v600e_mp)
+            mappings = gks_mp.mappings
             assert mappings
             assert not any(
                 m.coding.system == "https://www.ncbi.nlm.nih.gov/clinvar/variation/"
                 for m in mappings
+            )
+
+    def test_build_constraints_gene_mutation(self, mocked_normalizer):
+        mp = civic.get_molecular_profile_by_id(395)
+        gks_mp = CivicGksMolecularProfile(mp, mocked_normalizer)
+        constraints = gks_mp.constraints
+        assert constraints
+        assert len(constraints) == 1
+        assert constraints[0].model_dump(exclude_none=True) == {
+            "type": "FeatureContextConstraint",
+            "featureContext": {
+                "primaryCoding": {
+                    "code": "673",
+                    "id": "ncbigene:673",
+                    "system": "https://www.ncbi.nlm.nih.gov/gene/",
+                }
+            },
+        }
+
+    @patch.object(
+        CivicGksGene,
+        "get_mappings",
+    )
+    def test_build_constraints_no_gene_mappings(
+        self,
+        test_get_mappings,
+        mocked_normalizer,
+    ):
+        test_get_mappings.return_value = []
+
+        mp = civic.get_molecular_profile_by_id(395)
+
+        with pytest.raises(
+            CivicGksRecordError,
+            match="Unable to retrieve mappings for gene 5",
+        ):
+            CivicGksMolecularProfile(
+                mp,
+                mocked_normalizer,
+            )
+
+    def test_build_constraints_normalization_failure(self):
+        mp = civic.get_molecular_profile_by_id(113)
+
+        variation_normalizer = Mock()
+        variation_normalizer.normalize_molecular_profile.return_value = None
+
+        with pytest.raises(
+            CivicGksRecordError,
+            match="Unable to normalize molecular profile to VRS variation. mpid=113, name='RET M918T'",
+        ):
+            CivicGksMolecularProfile(
+                mp,
+                variation_normalizer,
+            )
+
+    def test_build_constraints_allele(self, braf_v600e_vrs, mocked_normalizer):
+        mp = civic.get_molecular_profile_by_id(12)
+
+        gks_mp = CivicGksMolecularProfile(mp, mocked_normalizer)
+        constraints = gks_mp.constraints
+        assert constraints
+        assert len(constraints) == 1
+        assert constraints[0].model_dump(exclude_none=True) == {
+            "type": "DefiningAlleleConstraint",
+            "allele": braf_v600e_vrs.model_dump(exclude_none=True),
+            "relations": [
+                {
+                    "primaryCoding": {
+                        "code": "liftover_to",
+                        "system": "ga4gh-gks-term:allele-relation",
+                    }
+                },
+                {
+                    "primaryCoding": {
+                        "code": "translation_of",
+                        "system": "http://www.sequenceontology.org",
+                    }
+                },
+            ],
+        }
+
+    def test_build_constraints_copy_number_change(
+        self,
+        braf_amplification_vrs,
+    ):
+        mp = civic.get_molecular_profile_by_id(1243)
+
+        variation_normalizer = Mock()
+        variation_normalizer.normalize_molecular_profile.return_value = (
+            braf_amplification_vrs
+        )
+
+        gks_mp = CivicGksMolecularProfile(mp, variation_normalizer)
+        constraints = gks_mp.constraints
+        assert constraints
+        assert len(constraints) == 2
+        constraints_dict = [c.model_dump(exclude_none=True) for c in constraints]
+        diff = DeepDiff(
+            constraints_dict,
+            [
+                {
+                    "type": "CopyChangeConstraint",
+                    "copyChange": braf_amplification_vrs.copyChange,
+                },
+                {
+                    "type": "DefiningLocationConstraint",
+                    "location": braf_amplification_vrs.location.model_dump(
+                        exclude_none=True
+                    ),
+                    "relations": [
+                        {
+                            "primaryCoding": {
+                                "code": "liftover_to",
+                                "system": "ga4gh-gks-term:allele-relation",
+                            }
+                        }
+                    ],
+                    "matchCharacteristic": {
+                        "primaryCoding": {
+                            "code": "is_within",
+                            "system": "ga4gh-gks-term:location-match",
+                        }
+                    },
+                },
+            ],
+            ignore_order=True,
+        )
+        assert diff == {}
+
+    def test_build_constraints_unsupported_vrs_type(
+        self,
+    ):
+        # Need to pick non- Gene Mutation MP ID
+        # Mocked value is dummy value purely for test purposes
+        mp = civic.get_molecular_profile_by_id(1243)
+        variation_normalizer = Mock()
+        variation_normalizer.normalize_molecular_profile.return_value = CopyNumberCount(
+            copies=1, location=iriReference("#/location/1")
+        )
+
+        with pytest.raises(
+            CivicGksRecordError,
+            match="Unsupported VRS variation type returned by Variation Normalizer. mpid=1243, type='CopyNumberCount'",
+        ):
+            CivicGksMolecularProfile(
+                mp,
+                variation_normalizer,
             )
 
     def test_no_representative_coordiantes(self):
@@ -1076,8 +1448,10 @@ class TestCivicGksEvidence(object):
 class TestCivicGksClinSigAssertion(object):
     """Test that CivicGksClinSigAssertion works as expected"""
 
-    def test_valid_single_therapy(self, aid6, gks_aid6):
+    @patch("civicpy.exports.civic_gks_record.CivicGksMolecularProfile")
+    def test_valid_single_therapy(self, test_mp, aid6, gks_aid6, gks_mpid33):
         """Test that single therapy works as expected"""
+        test_mp.return_value = CategoricalVariant.model_validate(gks_mpid33)
         record = CivicGksClinSigAssertion(aid6)
         assert isinstance(record, VariantClinicalSignificanceStatement)
         assert len(record.hasEvidenceLines) == 1
@@ -1128,8 +1502,10 @@ class TestCivicGksClinSigAssertion(object):
     @patch.object(
         civic.FusionVariant, "gene", new=civic.get_gene_by_id(1590), create=True
     )
+    @patch("civicpy.exports.civic_gks_record.CivicGksMolecularProfile")
     def test_valid_substitution_therapy(
         self,
+        test_mp,
         test_coordinates,
         test_clinvar_entries,
         test_allele_registry_id,
@@ -1138,8 +1514,10 @@ class TestCivicGksClinSigAssertion(object):
         test_evidence_items,
         test_is_valid_for_gks_json,
         aid19,
+        civic_mpid113,
     ):
         """Test that substitution therapy works as expected"""
+        test_mp.return_value = CategoricalVariant.model_validate(civic_mpid113)
         test_coordinates.return_value = None
         test_clinvar_entries.return_value = []
         test_allele_registry_id.return_value = None
@@ -1189,8 +1567,14 @@ class TestCivicGksClinSigAssertion(object):
 class TestCivicGksDiagnosticAssertion(object):
     """Test that CivicGksDiagnosticAssertion works as expected"""
 
+    @patch.object(
+        VariationNormalizerDataProxy,
+        "normalize_molecular_profile",
+    )
     def test_valid(
         self,
+        test_normalize,
+        braf_v600e_vrs,
         aid9,
         aid93,
         gks_aid93_object_condition,
@@ -1198,6 +1582,9 @@ class TestCivicGksDiagnosticAssertion(object):
         gks_aid115_object_condition,
     ):
         """Test that valid diagnostic assertion works as expected"""
+        test_normalize.return_value = (
+            braf_v600e_vrs  # actual allele does not matter in this test
+        )
         record = CivicGksClinSigAssertion(aid9)
         assert isinstance(record, VariantClinicalSignificanceStatement)
         assert len(record.hasEvidenceLines) == 1
@@ -1241,14 +1628,6 @@ class TestCivicGksDiagnosticAssertion(object):
         )
         assert diff == {}
 
-    def test_clinvar_accession_ext(self):
-        a = civic.get_assertion_by_id(193)
-        record = CivicGksClinSigAssertion(a, approval=a.approvals[0])
-        assert isinstance(record, VariantClinicalSignificanceStatement)
-        assert [ext.model_dump(exclude_none=True) for ext in record.extensions] == [
-            {"name": "clinvar_accession", "value": "SCV007542591"}
-        ]
-
     def test_invalid(self, aid117):
         """Test that unsupported assertion types raise exceptions"""
 
@@ -1264,13 +1643,22 @@ class TestCivicGksDiagnosticAssertion(object):
 class TestCivicGksOncogenicAssertion(object):
     """Test that CivicGksOncogenicAssertion works as expected"""
 
-    def test_valid(self, aid202, gks_aid202):
+    @patch("civicpy.exports.civic_gks_record.CivicGksMolecularProfile")
+    def test_valid(
+        self,
+        test_mp,
+        civic_mpid113,
+        aid202,
+        gks_aid202,
+    ):
         """Test that valid oncogenic assertions works as expected"""
 
         def evidence_key(item: dict) -> str:
             return item["evidenceOutcome"]["primaryCoding"]["code"]
 
+        test_mp.return_value = CategoricalVariant.model_validate(civic_mpid113)
         record = CivicGksOncogenicAssertion(aid202, approval=None)
+
         assert isinstance(record, VariantOncogenicityStatement)
 
         actual = record.model_dump(exclude_none=True)
@@ -1333,14 +1721,16 @@ class TestCivicGksOncogenicAssertion(object):
 class TestCivicGksRecord(object):
     """Test that GKS Record helper functions work correctly"""
 
-    def test_unsupported_assertion_type(self):
+    def test_unsupported_assertion_type(self, mocked_normalizer):
         """Test that unsupported assertion types raise NotImplementedError"""
 
         with pytest.raises(
             NotImplementedError,
             match=r"Assertion type PREDISPOSING is not currently supported",
         ):
-            create_gks_record_from_assertion(civic.get_assertion_by_id(17))
+            create_gks_record_from_assertion(
+                civic.get_assertion_by_id(17), mocked_normalizer
+            )
 
     @pytest.mark.parametrize(
         (
@@ -1397,6 +1787,7 @@ class TestCivicGksRecord(object):
         civic_assertion_fixture_name,
         submission_type_filter,
         should_raise_error,
+        mocked_normalizer,
     ):
         """Test that create_gks_record_from_assertion works correctly when submission filter is applied"""
         civic_aid = request.getfixturevalue(civic_assertion_fixture_name)
@@ -1406,25 +1797,34 @@ class TestCivicGksRecord(object):
                 match=rf"Assertion type {civic_aid.assertion_type} is not supported for ClinVar submission type {submission_type_filter.value}",
             ):
                 create_gks_record_from_assertion(
-                    civic_aid, submission_type_filter=submission_type_filter
+                    civic_aid,
+                    mocked_normalizer,
+                    submission_type_filter=submission_type_filter,
                 )
         else:
             assert create_gks_record_from_assertion(
-                civic_aid, submission_type_filter=submission_type_filter
+                civic_aid,
+                mocked_normalizer,
+                submission_type_filter=submission_type_filter,
             )
 
-    def test_clinvar_accession_ext(self):
+    def test_clinvar_accession_ext(self, mocked_normalizer):
         a = civic.get_assertion_by_id(193)
-        record = create_gks_record_from_assertion(a, approval=a.approvals[0])
+        record = create_gks_record_from_assertion(
+            a, mocked_normalizer, approval=a.approvals[0]
+        )
         assert isinstance(record, VariantClinicalSignificanceStatement)
         assert [ext.model_dump(exclude_none=True) for ext in record.extensions] == [
             {"name": "clinvar_accession", "value": "SCV007542591"}
         ]
 
-    def test_invalid_for_gks(self, aid117):
-        """Test that assertions invalid for GKS raise exceptions"""
+    def test_assertion_invalid(self, aid117, mocked_normalizer):
+        """Test that invalid assertion raise exceptions"""
 
         with pytest.raises(
-            CivicGksRecordError, match=r"Assertion is not valid for GKS."
+            CivicGksRecordError,
+            match=re.escape(
+                "Assertion type must be one of ['PREDICTIVE', 'PROGNOSTIC', 'DIAGNOSTIC']"
+            ),
         ):
-            create_gks_record_from_assertion(aid117)
+            CivicGksClinSigAssertion(aid117, mocked_normalizer)
