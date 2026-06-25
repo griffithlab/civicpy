@@ -1,4 +1,8 @@
-"""Module for representing CIViC assertion record as GKS AAC 2017 Study Statement"""
+"""Module for representing CIViC records as GKS representations
+
+* CIViC Predictive, Prognostic, and Diagnostic Assertions map to Variant
+  Clinical Significance Statements that follow the AMP/ASCO/CAP 2017 guidelines
+"""
 
 from enum import Enum
 import logging
@@ -623,6 +627,8 @@ class CivicGksTherapyGroup(TherapyGroup):
 
 
 class _CivicGksEvidenceAssertionMixin:
+    """Mixin for CIViC Evidence and Assertions"""
+
     @staticmethod
     def get_allele_origin_qualifier(record: Evidence | Assertion) -> MappableConcept:
         """Get GKS allele origin qualifier
@@ -877,10 +883,53 @@ class CivicGksEvidence(Statement, _CivicGksEvidenceAssertionMixin):
         )
 
 
-class CivicGksAssertion(
-    VariantClinicalSignificanceStatement, _CivicGksEvidenceAssertionMixin
+class _CivicGksAssertionMixin:
+    """Mixin for CIViC Assertions"""
+
+    @staticmethod
+    def get_contributions(approval: Approval) -> list[Contribution]:
+        """Get contributions for an approval
+
+        :param approval: Approval for assertion
+        :return: List of contributions, with one item containing when the approval was
+            last reviewed an organization.
+            Will include an extension, `is_approved_vcep`.
+        """
+        organization: Organization = approval.organization
+        return [
+            Contribution(
+                activityType=f"{approval.type}.last_reviewed",
+                date=approval.last_reviewed.split("T", 1)[0],
+                contributor=Agent(
+                    id=f"civic.{organization.type}:{organization.id}",
+                    name=organization.name,
+                    description=organization.description,
+                    extensions=[
+                        Extension(
+                            name="is_approved_vcep", value=organization.is_approved_vcep
+                        )
+                    ],
+                ),
+            )
+        ]
+
+    @staticmethod
+    def get_reported_in(assertion: Assertion) -> list[iriReference]:
+        """Get reported in information for an assertion
+
+        :param assertion: CIViC assertion record
+        :return: List of CIViC links to records which the assertion is reported in
+        """
+        return [iriReference(f"{LINKS_URL}/assertion/{assertion.id}")]
+
+
+class CivicGksClinSigAssertion(
+    VariantClinicalSignificanceStatement,
+    _CivicGksAssertionMixin,
+    _CivicGksEvidenceAssertionMixin,
 ):
-    """Class for CIViC assertion record represented as GKS
+    """Class for CIViC predictive, prognostic, or diagnostic assertion record
+    represented as GKS
 
     :param assertion: CIViC assertion record
     :raises CivicGksRecordError: If CIViC assertion is not able to be represented as
@@ -892,7 +941,7 @@ class CivicGksAssertion(
         assertion: Assertion,
         approval: Approval | None = None,
     ) -> None:
-        """Initialize _CivicGksAssertionRecord class
+        """Initialize CivicGksClinSigAssertion class
 
         :param assertion: CIViC assertion record
         :param approval: CIViC approval for the assertion, defaults to None
@@ -924,34 +973,9 @@ class CivicGksAssertion(
             classification=classification,
             strength=strength,
             hasEvidenceLines=self.get_evidence_lines(assertion, level),
-            reportedIn=[iriReference(f"{LINKS_URL}/assertion/{assertion.id}")],
+            reportedIn=self.get_reported_in(assertion),
             extensions=extensions or None,
         )
-
-    @staticmethod
-    def get_contributions(approval: Approval) -> list[Contribution]:
-        """Get contributions for an approval
-
-        :param approval: Approval for assertion
-        :return: List of contributions containing when the approval was last reviewed
-        """
-        organization: Organization = approval.organization
-        return [
-            Contribution(
-                activityType=f"{approval.type}.last_reviewed",
-                date=approval.last_reviewed.split("T", 1)[0],
-                contributor=Agent(
-                    id=f"civic.{organization.type}:{organization.id}",
-                    name=organization.name,
-                    description=organization.description,
-                    extensions=[
-                        Extension(
-                            name="is_approved_vcep", value=organization.is_approved_vcep
-                        )
-                    ],
-                ),
-            )
-        ]
 
     def get_classification_strength_level(
         self,
