@@ -638,7 +638,7 @@ class _CivicGksEvidenceAssertionMixin:
                 ConceptMapping(
                     coding=Coding(
                         code=variant_origin,
-                        system="CIViC Knowledgebase",
+                        system="https://civicdb.org",
                         iris=[
                             iriReference(
                                 root="https://civic.readthedocs.io/en/latest/model/evidence/origin.html"
