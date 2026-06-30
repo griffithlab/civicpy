@@ -18,7 +18,7 @@ Knowledge Standards (GKS) objects. GKS JSON exports are maintained via the
 namespace::
 
     >>>from civicpy.exports.civic_gks_writer import CivicGksWriter
-    >>>from civicpy.exports.civic_gks_record import CivicGksAssertion
+    >>>from civicpy.exports.civic_gks_record import CivicGksClinSigAssertion
 
 Other file formats are planned for future releases. Suggestions are welcome on our
 `GitHub issues page <https://github.com/griffithlab/civicpy/issues>`_.
@@ -212,17 +212,17 @@ GKS JSON
 --------
 
 GKS JSON files are written using the :class:`civicpy.exports.civic_gks_writer.CivicGksWriter`
-class to which you add :class:`civicpy.exports.civic_gks_record.CivicGksAssertion`
+class to which you add :class:`civicpy.exports.civic_gks_record.CivicGksClinSigAssertion`
 during initialization.
 
-In order to verify whether an assertion can be converted to a CivicGksAssertion
+In order to verify whether an assertion can be converted to a CivicGksClinSigAssertion
 object, the convenience method ``is_valid_for_gks_json`` can be called on a
 :class:`civic.Assertion` object.
 
-CivicGksAssertion
+CivicGksClinSigAssertion
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. autoclass:: civicpy.exports.civic_gks_record.CivicGksAssertion
+.. autoclass:: civicpy.exports.civic_gks_record.CivicGksClinSigAssertion
    :members:
    :show-inheritance:
 
@@ -239,14 +239,14 @@ Here's an example of how to export all assertions to GKS JSON::
 
     from civicpy import civic
     from civicpy.exports.civic_gks_writer import CivicGksWriter
-    from civicpy.exports.civic_gks_record import CivicGksAssertion
+    from civicpy.exports.civic_gks_record import CivicGksClinSigAssertion
 
     records = []
 
     for assertion in civic.get_all_assertions():
       if assertion.is_valid_for_gks_json():
         try:
-          gks_record = CivicGksAssertion(assertion)
+          gks_record = CivicGksClinSigAssertion(assertion)
         except CivicGksRecordError:
           continue
 
@@ -258,7 +258,7 @@ ready for submission to ClinVar.::
 
     from civicpy import civic
     from civicpy.exports.civic_gks_writer import CivicGksWriter
-    from civicpy.exports.civic_gks_record import CivicGksAssertion
+    from civicpy.exports.civic_gks_record import CivicGksClinSigAssertion
 
     records = []
     organization_id = 1
@@ -266,7 +266,7 @@ ready for submission to ClinVar.::
     for assertion in civic.get_all_assertions_ready_for_clinvar_submission_for_org(organization_id):
       if assertion.is_valid_for_gks_json():
         try:
-          gks_record = CivicGksAssertion(assertion)
+          gks_record = CivicGksClinSigAssertion(assertion)
         except CivicGksRecordError:
           continue
 
