@@ -2,6 +2,7 @@ import re
 from copy import deepcopy
 from unittest.mock import PropertyMock, patch
 
+from ga4gh.vrs.models import iriReference
 import pytest
 from deepdiff import DeepDiff
 from ga4gh.va_spec.aac_2017 import (
@@ -406,6 +407,7 @@ def gks_source592():
         "pmid": "23982599",
         "type": "Document",
         "urls": [
+            "https://civicdb.org/links/evidence/2997",
             "https://civicdb.org/links/source/1725",
             "http://www.ncbi.nlm.nih.gov/pubmed/23982599",
         ],
@@ -443,17 +445,13 @@ def gks_eid2997(
         },
         "proposition": gks_therapeutic_proposition,
         "specifiedBy": gks_method,
-        "reportedIn": [gks_source592, "https://civicdb.org/links/evidence/2997"],
+        "reportedIn": [gks_source592],
     }
     return Statement(**params)
 
 
 @pytest.fixture(scope="module")
-def gks_aid6(
-    gks_method,
-    gks_therapeutic_proposition,
-    gks_eid2997,
-):
+def gks_aid6(gks_method, gks_therapeutic_proposition, gks_eid2997, gks_source592):
     """Create CIVIC AID6 GKS representation."""
     clin_sig_prop = deepcopy(gks_therapeutic_proposition)
     clin_sig_prop["predicate"] = "hasClinicalSignificanceFor"
@@ -497,12 +495,69 @@ def gks_aid6(
         ],
         "reportedIn": [
             "https://civicdb.org/links/assertion/6",
-            "https://civicdb.org/links/evidence/2997",
-            "https://civicdb.org/links/evidence/879",
-            "https://civicdb.org/links/evidence/982",
-            "https://civicdb.org/links/evidence/883",
-            "https://civicdb.org/links/evidence/968",
-            "https://civicdb.org/links/evidence/2629",
+            gks_source592,
+            {
+                "type": "Document",
+                "id": "civic.sid:592",
+                "name": "Sequist et al., 2013",
+                "title": "Phase III study of afatinib or cisplatin plus pemetrexed in patients with metastatic lung adenocarcinoma with EGFR mutations.",
+                "pmid": "23816960",
+                "urls": [
+                    "https://civicdb.org/links/evidence/879",
+                    "https://civicdb.org/links/source/592",
+                    "http://www.ncbi.nlm.nih.gov/pubmed/23816960",
+                ],
+            },
+            {
+                "type": "Document",
+                "id": "civic.sid:679",
+                "name": "Wu et al., 2014",
+                "title": "Afatinib versus cisplatin plus gemcitabine for first-line treatment of Asian patients with advanced non-small-cell lung cancer harbouring EGFR mutations (LUX-Lung 6): an open-label, randomised phase 3 trial.",
+                "pmid": "24439929",
+                "urls": [
+                    "https://civicdb.org/links/evidence/982",
+                    "https://civicdb.org/links/source/679",
+                    "http://www.ncbi.nlm.nih.gov/pubmed/24439929",
+                ],
+            },
+            {
+                "type": "Document",
+                "id": "civic.sid:594",
+                "name": "Yang et al., 2012",
+                "title": "Afatinib for patients with lung adenocarcinoma and epidermal growth factor receptor mutations (LUX-Lung 2): a phase 2 trial.",
+                "pmid": "22452895",
+                "urls": [
+                    "https://civicdb.org/links/evidence/883",
+                    "https://civicdb.org/links/source/594",
+                    "http://www.ncbi.nlm.nih.gov/pubmed/22452895",
+                ],
+            },
+            {
+                "type": "Document",
+                "id": "civic.sid:669",
+                "name": "Hirano et al., 2015",
+                "title": "In vitro modeling to determine mutation specificity of EGFR tyrosine kinase inhibitors against clinically relevant EGFR mutants in non-small-cell lung cancer.",
+                "pmid": "26515464",
+                "urls": [
+                    "https://civicdb.org/links/evidence/968",
+                    "https://civicdb.org/links/source/669",
+                    "http://www.ncbi.nlm.nih.gov/pubmed/26515464",
+                    "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4770737",
+                ],
+            },
+            {
+                "type": "Document",
+                "id": "civic.sid:1525",
+                "name": "Li et al., 2008",
+                "title": "BIBW2992, an irreversible EGFR/HER2 inhibitor highly effective in preclinical lung cancer models.",
+                "pmid": "18408761",
+                "urls": [
+                    "https://civicdb.org/links/evidence/2629",
+                    "https://civicdb.org/links/source/1525",
+                    "http://www.ncbi.nlm.nih.gov/pubmed/18408761",
+                    "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC2748240",
+                ],
+            },
         ],
     }
     return VariantClinicalSignificanceStatement(**params)
@@ -872,10 +927,29 @@ class TestCivicGksClinSigAssertion(object):
         record = CivicGksClinSigAssertion(aid20)
         assert len(record.hasEvidenceLines) == 1
         assert record.hasEvidenceLines[0].hasEvidenceItems is None
-        assert {r.model_dump(exclude_none=True) for r in record.reportedIn or []} == {
-            "https://civicdb.org/links/evidence/11881",
+
+        reported_in = []
+        for r in record.reportedIn:
+            if isinstance(r, iriReference):
+                reported_in.append(r.root)
+            else:
+                reported_in.append(r.model_dump(exclude_none=True))
+
+        assert reported_in == [
             "https://civicdb.org/links/assertion/20",
-        }
+            {
+                "type": "Document",
+                "id": "civic.sid:4914",
+                "name": "Grimwade et al., 1998",
+                "title": "The importance of diagnostic cytogenetics on outcome in AML: analysis of 1,612 patients entered into the MRC AML 10 trial. The Medical Research Council Adult and Children's Leukaemia Working Parties.",
+                "pmid": "9746770",
+                "urls": [
+                    "https://civicdb.org/links/evidence/11881",
+                    "https://civicdb.org/links/source/4914",
+                    "http://www.ncbi.nlm.nih.gov/pubmed/9746770",
+                ],
+            },
+        ]
 
 
 class TestCivicGksDiagnosticAssertion(object):
