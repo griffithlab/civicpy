@@ -661,7 +661,20 @@ class _CivicGksEvidenceAssertionMixin:
 
         return MappableConcept(
             name=VARIANT_ORIGIN_TO_ALLELE_ORIGIN[variant_origin],
-            extensions=[Extension(name="civic_variant_origin", value=variant_origin)],
+            mappings=[
+                ConceptMapping(
+                    coding=Coding(
+                        code=variant_origin,
+                        system="https://civicdb.org",
+                        iris=[
+                            iriReference(
+                                root="https://civic.readthedocs.io/en/latest/model/evidence/origin.html"
+                            )
+                        ],
+                    ),
+                    relation=Relation.EXACT_MATCH,
+                )
+            ],
         )
 
     @staticmethod

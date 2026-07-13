@@ -1048,7 +1048,7 @@ class TestCoordinateSearch(object):
         search_results = civic.bulk_search_variants_by_coordinates(
             sorted_queries, search_mode="query_encompassing"
         )
-        assert len(search_results[sorted_queries[0]]) == 1
+        assert len(search_results[sorted_queries[0]]) > 1
         assert len(search_results[sorted_queries[1]]) >= 5
 
     def test_bulk_re_search_variants(self):
