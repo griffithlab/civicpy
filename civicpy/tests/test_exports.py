@@ -757,7 +757,18 @@ def gks_aid202_proposition(gks_gid42):
         },
         "alleleOriginQualifier": {
             "name": "somatic",
-            "extensions": [{"name": "civic_variant_origin", "value": "SOMATIC"}],
+            "mappings": [
+                {
+                    "coding": {
+                        "code": "SOMATIC",
+                        "system": "https://civicdb.org",
+                        "iris": [
+                            "https://civic.readthedocs.io/en/latest/model/evidence/origin.html"
+                        ],
+                    },
+                    "relation": "exactMatch",
+                }
+            ],
         },
         "predicate": "isOncogenicFor",
         "subjectVariant": {
@@ -885,13 +896,91 @@ def gks_aid202(gks_aid202_proposition):
         },
         "reportedIn": [
             "https://civicdb.org/links/assertion/202",
-            "https://civicdb.org/links/evidence/74",
-            "https://civicdb.org/links/evidence/12800",
-            "https://civicdb.org/links/evidence/78",
-            "https://civicdb.org/links/evidence/12711",
-            "https://civicdb.org/links/evidence/12805",
-            "https://civicdb.org/links/evidence/11723",
-            "https://civicdb.org/links/evidence/12709",
+            {
+                "id": "civic.sid:44",
+                "type": "Document",
+                "name": "Elisei et al., 2008",
+                "title": "Prognostic significance of somatic RET oncogene mutations in sporadic medullary thyroid cancer: a 10-year follow-up study.",
+                "urls": [
+                    "https://civicdb.org/links/evidence/74",
+                    "https://civicdb.org/links/source/44",
+                    "http://www.ncbi.nlm.nih.gov/pubmed/18073307",
+                ],
+                "pmid": "18073307",
+            },
+            {
+                "id": "civic.sid:44",
+                "type": "Document",
+                "name": "Elisei et al., 2008",
+                "title": "Prognostic significance of somatic RET oncogene mutations in sporadic medullary thyroid cancer: a 10-year follow-up study.",
+                "urls": [
+                    "https://civicdb.org/links/evidence/12800",
+                    "https://civicdb.org/links/source/44",
+                    "http://www.ncbi.nlm.nih.gov/pubmed/18073307",
+                ],
+                "pmid": "18073307",
+            },
+            {
+                "id": "civic.sid:92",
+                "type": "Document",
+                "name": "Egawa et al., 1998",
+                "title": "Genotype-phenotype correlation of patients with multiple endocrine neoplasia type 2 in Japan.",
+                "urls": [
+                    "https://civicdb.org/links/evidence/78",
+                    "https://civicdb.org/links/source/92",
+                    "http://www.ncbi.nlm.nih.gov/pubmed/9839497",
+                ],
+                "pmid": "9839497",
+            },
+            {
+                "id": "civic.sid:5458",
+                "type": "Document",
+                "name": "Romei et al., 2018",
+                "title": "RET mutation heterogeneity in primary advanced medullary thyroid cancers and their metastases.",
+                "urls": [
+                    "https://civicdb.org/links/evidence/12711",
+                    "https://civicdb.org/links/source/5458",
+                    "http://www.ncbi.nlm.nih.gov/pubmed/29515777",
+                    "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5839408",
+                ],
+                "pmid": "29515777",
+            },
+            {
+                "id": "civic.sid:5519",
+                "type": "Document",
+                "name": "Gujral et al., 2006",
+                "title": "Molecular mechanisms of RET receptor-mediated oncogenesis in multiple endocrine neoplasia 2B.",
+                "urls": [
+                    "https://civicdb.org/links/evidence/12805",
+                    "https://civicdb.org/links/source/5519",
+                    "http://www.ncbi.nlm.nih.gov/pubmed/17108110",
+                ],
+                "pmid": "17108110",
+            },
+            {
+                "id": "civic.sid:4870",
+                "type": "Document",
+                "name": "Zhao et al., 2020",
+                "title": "Identifying novel oncogenic RET mutations and characterising their sensitivity to RET-specific inhibitors.",
+                "urls": [
+                    "https://civicdb.org/links/evidence/11723",
+                    "https://civicdb.org/links/source/4870",
+                    "http://www.ncbi.nlm.nih.gov/pubmed/32284345",
+                ],
+                "pmid": "32284345",
+            },
+            {
+                "id": "civic.sid:4953",
+                "type": "Document",
+                "name": "Ceccherini et al., 1997",
+                "title": "Somatic in frame deletions not involving juxtamembranous cysteine residues strongly activate the RET proto-oncogene.",
+                "urls": [
+                    "https://civicdb.org/links/evidence/12709",
+                    "https://civicdb.org/links/source/4953",
+                    "http://www.ncbi.nlm.nih.gov/pubmed/9191060",
+                ],
+                "pmid": "9191060",
+            },
         ],
         "direction": "supports",
         "specifiedBy": _ccv_method("guideline"),
