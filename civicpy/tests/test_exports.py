@@ -2,7 +2,6 @@ import re
 from copy import deepcopy
 from unittest.mock import PropertyMock, patch
 
-from ga4gh.vrs.models import iriReference
 import pytest
 from deepdiff import DeepDiff
 from ga4gh.va_spec.aac_2017 import (
@@ -10,6 +9,7 @@ from ga4gh.va_spec.aac_2017 import (
 )
 from ga4gh.va_spec.base import Condition, ConditionSet, Statement, TherapyGroup
 from ga4gh.va_spec.ccv_2022 import VariantOncogenicityStatement
+from ga4gh.vrs.models import iriReference
 
 from civicpy import civic
 from civicpy.exports.civic_gks_record import (

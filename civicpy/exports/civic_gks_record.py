@@ -1115,11 +1115,7 @@ class CivicGksClinSigAssertion(
         :return: List of CIViC evidence lines
         :raise NotImplementedError: If evidence line type not supported
         """
-        direction = (
-            Direction.SUPPORTS
-            if assertion.assertion_direction == "SUPPORTS"
-            else Direction.DISPUTES
-        )
+        direction = self.get_direction(assertion.assertion_direction)
 
         evidence_items: list[CivicGksEvidence] = []
         for evidence_item in assertion.evidence_items:
