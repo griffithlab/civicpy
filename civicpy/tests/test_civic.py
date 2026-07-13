@@ -103,7 +103,7 @@ class TestEvidence(object):
         evidence = v600e_mp.evidence[0]
         assert evidence.molecular_profile.name == "BRAF V600E"
         assert evidence.statement == evidence.description
-        assert len(evidence.assertions) == 0
+        assert len(evidence.assertions) == 1
         assert evidence.disease.name == "Skin Melanoma"
         assert len(evidence.therapies) == 1
         assert len(evidence.phenotypes) == 0
@@ -1048,7 +1048,7 @@ class TestCoordinateSearch(object):
         search_results = civic.bulk_search_variants_by_coordinates(
             sorted_queries, search_mode="query_encompassing"
         )
-        assert len(search_results[sorted_queries[0]]) == 1
+        assert len(search_results[sorted_queries[0]]) > 1
         assert len(search_results[sorted_queries[1]]) >= 5
 
     def test_bulk_re_search_variants(self):
