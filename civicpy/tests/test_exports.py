@@ -13,6 +13,7 @@ from ga4gh.va_spec.aac_2017 import (
 from ga4gh.va_spec.base import Condition, ConditionSet, Statement, TherapyGroup
 from ga4gh.va_spec.ccv_2022 import VariantOncogenicityStatement
 from ga4gh.vrs.models import Allele, CopyNumberCount
+from ga4gh.vrs.models import iriReference
 
 from civicpy import civic
 from civicpy.exports.civic_gks_record import (
@@ -429,7 +430,18 @@ def gks_therapeutic_proposition(gks_mpid33, gks_gid19, gks_tid146, gks_did8):
         "geneContextQualifier": gks_gid19,
         "alleleOriginQualifier": {
             "name": "somatic",
-            "extensions": [{"name": "civic_variant_origin", "value": "SOMATIC"}],
+            "mappings": [
+                {
+                    "coding": {
+                        "code": "SOMATIC",
+                        "system": "https://civicdb.org",
+                        "iris": [
+                            "https://civic.readthedocs.io/en/latest/model/evidence/origin.html"
+                        ],
+                    },
+                    "relation": "exactMatch",
+                }
+            ],
         },
         "predicate": "predictsSensitivityTo",
         "objectTherapeutic": gks_tid146,
@@ -447,6 +459,7 @@ def gks_source592():
         "pmid": "23982599",
         "type": "Document",
         "urls": [
+            "https://civicdb.org/links/evidence/2997",
             "https://civicdb.org/links/source/1725",
             "http://www.ncbi.nlm.nih.gov/pubmed/23982599",
         ],
@@ -484,17 +497,13 @@ def gks_eid2997(
         },
         "proposition": gks_therapeutic_proposition,
         "specifiedBy": gks_method,
-        "reportedIn": [gks_source592, "https://civicdb.org/links/evidence/2997"],
+        "reportedIn": [gks_source592],
     }
     return Statement(**params)
 
 
 @pytest.fixture(scope="module")
-def gks_aid6(
-    gks_method,
-    gks_therapeutic_proposition,
-    gks_eid2997,
-):
+def gks_aid6(gks_method, gks_therapeutic_proposition, gks_eid2997, gks_source592):
     """Create CIVIC AID6 GKS representation."""
     clin_sig_prop = deepcopy(gks_therapeutic_proposition)
     clin_sig_prop["predicate"] = "hasClinicalSignificanceFor"
@@ -538,12 +547,69 @@ def gks_aid6(
         ],
         "reportedIn": [
             "https://civicdb.org/links/assertion/6",
-            "https://civicdb.org/links/evidence/2997",
-            "https://civicdb.org/links/evidence/879",
-            "https://civicdb.org/links/evidence/982",
-            "https://civicdb.org/links/evidence/883",
-            "https://civicdb.org/links/evidence/968",
-            "https://civicdb.org/links/evidence/2629",
+            gks_source592,
+            {
+                "type": "Document",
+                "id": "civic.sid:592",
+                "name": "Sequist et al., 2013",
+                "title": "Phase III study of afatinib or cisplatin plus pemetrexed in patients with metastatic lung adenocarcinoma with EGFR mutations.",
+                "pmid": "23816960",
+                "urls": [
+                    "https://civicdb.org/links/evidence/879",
+                    "https://civicdb.org/links/source/592",
+                    "http://www.ncbi.nlm.nih.gov/pubmed/23816960",
+                ],
+            },
+            {
+                "type": "Document",
+                "id": "civic.sid:679",
+                "name": "Wu et al., 2014",
+                "title": "Afatinib versus cisplatin plus gemcitabine for first-line treatment of Asian patients with advanced non-small-cell lung cancer harbouring EGFR mutations (LUX-Lung 6): an open-label, randomised phase 3 trial.",
+                "pmid": "24439929",
+                "urls": [
+                    "https://civicdb.org/links/evidence/982",
+                    "https://civicdb.org/links/source/679",
+                    "http://www.ncbi.nlm.nih.gov/pubmed/24439929",
+                ],
+            },
+            {
+                "type": "Document",
+                "id": "civic.sid:594",
+                "name": "Yang et al., 2012",
+                "title": "Afatinib for patients with lung adenocarcinoma and epidermal growth factor receptor mutations (LUX-Lung 2): a phase 2 trial.",
+                "pmid": "22452895",
+                "urls": [
+                    "https://civicdb.org/links/evidence/883",
+                    "https://civicdb.org/links/source/594",
+                    "http://www.ncbi.nlm.nih.gov/pubmed/22452895",
+                ],
+            },
+            {
+                "type": "Document",
+                "id": "civic.sid:669",
+                "name": "Hirano et al., 2015",
+                "title": "In vitro modeling to determine mutation specificity of EGFR tyrosine kinase inhibitors against clinically relevant EGFR mutants in non-small-cell lung cancer.",
+                "pmid": "26515464",
+                "urls": [
+                    "https://civicdb.org/links/evidence/968",
+                    "https://civicdb.org/links/source/669",
+                    "http://www.ncbi.nlm.nih.gov/pubmed/26515464",
+                    "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4770737",
+                ],
+            },
+            {
+                "type": "Document",
+                "id": "civic.sid:1525",
+                "name": "Li et al., 2008",
+                "title": "BIBW2992, an irreversible EGFR/HER2 inhibitor highly effective in preclinical lung cancer models.",
+                "pmid": "18408761",
+                "urls": [
+                    "https://civicdb.org/links/evidence/2629",
+                    "https://civicdb.org/links/source/1525",
+                    "http://www.ncbi.nlm.nih.gov/pubmed/18408761",
+                    "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC2748240",
+                ],
+            },
         ],
     }
     return VariantClinicalSignificanceStatement(**params)
@@ -958,7 +1024,18 @@ def gks_aid202_proposition(gks_gid42, civic_mpid113):
         },
         "alleleOriginQualifier": {
             "name": "somatic",
-            "extensions": [{"name": "civic_variant_origin", "value": "SOMATIC"}],
+            "mappings": [
+                {
+                    "coding": {
+                        "code": "SOMATIC",
+                        "system": "https://civicdb.org",
+                        "iris": [
+                            "https://civic.readthedocs.io/en/latest/model/evidence/origin.html"
+                        ],
+                    },
+                    "relation": "exactMatch",
+                }
+            ],
         },
         "predicate": "isOncogenicFor",
         "subjectVariant": civic_mpid113,
@@ -987,13 +1064,91 @@ def gks_aid202(gks_aid202_proposition):
         },
         "reportedIn": [
             "https://civicdb.org/links/assertion/202",
-            "https://civicdb.org/links/evidence/74",
-            "https://civicdb.org/links/evidence/12800",
-            "https://civicdb.org/links/evidence/78",
-            "https://civicdb.org/links/evidence/12711",
-            "https://civicdb.org/links/evidence/12805",
-            "https://civicdb.org/links/evidence/11723",
-            "https://civicdb.org/links/evidence/12709",
+            {
+                "id": "civic.sid:44",
+                "type": "Document",
+                "name": "Elisei et al., 2008",
+                "title": "Prognostic significance of somatic RET oncogene mutations in sporadic medullary thyroid cancer: a 10-year follow-up study.",
+                "urls": [
+                    "https://civicdb.org/links/evidence/74",
+                    "https://civicdb.org/links/source/44",
+                    "http://www.ncbi.nlm.nih.gov/pubmed/18073307",
+                ],
+                "pmid": "18073307",
+            },
+            {
+                "id": "civic.sid:44",
+                "type": "Document",
+                "name": "Elisei et al., 2008",
+                "title": "Prognostic significance of somatic RET oncogene mutations in sporadic medullary thyroid cancer: a 10-year follow-up study.",
+                "urls": [
+                    "https://civicdb.org/links/evidence/12800",
+                    "https://civicdb.org/links/source/44",
+                    "http://www.ncbi.nlm.nih.gov/pubmed/18073307",
+                ],
+                "pmid": "18073307",
+            },
+            {
+                "id": "civic.sid:92",
+                "type": "Document",
+                "name": "Egawa et al., 1998",
+                "title": "Genotype-phenotype correlation of patients with multiple endocrine neoplasia type 2 in Japan.",
+                "urls": [
+                    "https://civicdb.org/links/evidence/78",
+                    "https://civicdb.org/links/source/92",
+                    "http://www.ncbi.nlm.nih.gov/pubmed/9839497",
+                ],
+                "pmid": "9839497",
+            },
+            {
+                "id": "civic.sid:5458",
+                "type": "Document",
+                "name": "Romei et al., 2018",
+                "title": "RET mutation heterogeneity in primary advanced medullary thyroid cancers and their metastases.",
+                "urls": [
+                    "https://civicdb.org/links/evidence/12711",
+                    "https://civicdb.org/links/source/5458",
+                    "http://www.ncbi.nlm.nih.gov/pubmed/29515777",
+                    "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5839408",
+                ],
+                "pmid": "29515777",
+            },
+            {
+                "id": "civic.sid:5519",
+                "type": "Document",
+                "name": "Gujral et al., 2006",
+                "title": "Molecular mechanisms of RET receptor-mediated oncogenesis in multiple endocrine neoplasia 2B.",
+                "urls": [
+                    "https://civicdb.org/links/evidence/12805",
+                    "https://civicdb.org/links/source/5519",
+                    "http://www.ncbi.nlm.nih.gov/pubmed/17108110",
+                ],
+                "pmid": "17108110",
+            },
+            {
+                "id": "civic.sid:4870",
+                "type": "Document",
+                "name": "Zhao et al., 2020",
+                "title": "Identifying novel oncogenic RET mutations and characterising their sensitivity to RET-specific inhibitors.",
+                "urls": [
+                    "https://civicdb.org/links/evidence/11723",
+                    "https://civicdb.org/links/source/4870",
+                    "http://www.ncbi.nlm.nih.gov/pubmed/32284345",
+                ],
+                "pmid": "32284345",
+            },
+            {
+                "id": "civic.sid:4953",
+                "type": "Document",
+                "name": "Ceccherini et al., 1997",
+                "title": "Somatic in frame deletions not involving juxtamembranous cysteine residues strongly activate the RET proto-oncogene.",
+                "urls": [
+                    "https://civicdb.org/links/evidence/12709",
+                    "https://civicdb.org/links/source/4953",
+                    "http://www.ncbi.nlm.nih.gov/pubmed/9191060",
+                ],
+                "pmid": "9191060",
+            },
         ],
         "direction": "supports",
         "specifiedBy": _ccv_method("guideline"),
@@ -1558,10 +1713,29 @@ class TestCivicGksClinSigAssertion(object):
         record = CivicGksClinSigAssertion(aid20)
         assert len(record.hasEvidenceLines) == 1
         assert record.hasEvidenceLines[0].hasEvidenceItems is None
-        assert {r.model_dump(exclude_none=True) for r in record.reportedIn or []} == {
-            "https://civicdb.org/links/evidence/11881",
+
+        reported_in = []
+        for r in record.reportedIn:
+            if isinstance(r, iriReference):
+                reported_in.append(r.root)
+            else:
+                reported_in.append(r.model_dump(exclude_none=True))
+
+        assert reported_in == [
             "https://civicdb.org/links/assertion/20",
-        }
+            {
+                "type": "Document",
+                "id": "civic.sid:4914",
+                "name": "Grimwade et al., 1998",
+                "title": "The importance of diagnostic cytogenetics on outcome in AML: analysis of 1,612 patients entered into the MRC AML 10 trial. The Medical Research Council Adult and Children's Leukaemia Working Parties.",
+                "pmid": "9746770",
+                "urls": [
+                    "https://civicdb.org/links/evidence/11881",
+                    "https://civicdb.org/links/source/4914",
+                    "http://www.ncbi.nlm.nih.gov/pubmed/9746770",
+                ],
+            },
+        ]
 
 
 class TestCivicGksDiagnosticAssertion(object):

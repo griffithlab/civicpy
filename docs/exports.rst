@@ -18,7 +18,7 @@ Knowledge Standards (GKS) objects. GKS JSON exports are maintained via the
 namespace::
 
     >>>from civicpy.exports.civic_gks_writer import CivicGksWriter
-    >>>from civicpy.exports.civic_gks_record import CivicGksAssertion
+    >>>from civicpy.exports.civic_gks_record import CivicGksClinSigAssertion, CivicGksOncogenicAssertion
 
 Other file formats are planned for future releases. Suggestions are welcome on our
 `GitHub issues page <https://github.com/griffithlab/civicpy/issues>`_.
@@ -212,17 +212,25 @@ GKS JSON
 --------
 
 GKS JSON files are written using the :class:`civicpy.exports.civic_gks_writer.CivicGksWriter`
-class to which you add :class:`civicpy.exports.civic_gks_record.CivicGksAssertion`
-during initialization.
+class to which you add :class:`civicpy.exports.civic_gks_record.CivicGksClinSigAssertion`
+or :class:`civicpy.exports.civic_gks_record.CivicGksOncogenicAssertion` during
+initialization.
 
-In order to verify whether an assertion can be converted to a CivicGksAssertion
-object, the convenience method ``is_valid_for_gks_json`` can be called on a
-:class:`civic.Assertion` object.
+In order to verify whether an assertion can be converted to a CivicGksClinSigAssertion
+or CivicGksOncogenicAssertion object, the convenience method ``is_valid_for_gks_json``
+can be called on a :class:`civic.Assertion` object.
 
-CivicGksAssertion
+CivicGksClinSigAssertion
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. autoclass:: civicpy.exports.civic_gks_record.CivicGksAssertion
+.. autoclass:: civicpy.exports.civic_gks_record.CivicGksClinSigAssertion
+   :members:
+   :show-inheritance:
+
+CivicGksOncogenicAssertion
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. autoclass:: civicpy.exports.civic_gks_record.CivicGksOncogenicAssertion
    :members:
    :show-inheritance:
 
@@ -237,38 +245,53 @@ Examples
 
 Here's an example of how to export all assertions to GKS JSON::
 
+    from pathlib import Path
+
     from civicpy import civic
+    from civicpy.exports.civic_gks_record import (
+        CivicGksRecordError,
+        create_gks_record_from_assertion,
+    )
     from civicpy.exports.civic_gks_writer import CivicGksWriter
-    from civicpy.exports.civic_gks_record import CivicGksAssertion
 
     records = []
 
     for assertion in civic.get_all_assertions():
-      if assertion.is_valid_for_gks_json():
-        try:
-          gks_record = CivicGksAssertion(assertion)
-        except CivicGksRecordError:
-          continue
+        if assertion.is_valid_for_gks_json():
+            try:
+                gks_record = create_gks_record_from_assertion(assertion)
+            except CivicGksRecordError:
+                continue
+            else:
+                records.append(gks_record)
 
-        records.append(gks_record)
-    CivicGksWriter("gks.json", records)
+    CivicGksWriter(Path("gks.json"), records)
 
 Here's an example of how to export all assertions approved by a specific organization that are
 ready for submission to ClinVar.::
 
+    from pathlib import Path
+
     from civicpy import civic
+    from civicpy.exports.civic_gks_record import (
+      CivicGksRecordError,
+      create_gks_record_from_assertion,
+    )
     from civicpy.exports.civic_gks_writer import CivicGksWriter
-    from civicpy.exports.civic_gks_record import CivicGksAssertion
 
     records = []
     organization_id = 1
 
-    for assertion in civic.get_all_assertions_ready_for_clinvar_submission_for_org(organization_id):
-      if assertion.is_valid_for_gks_json():
-        try:
-          gks_record = CivicGksAssertion(assertion)
-        except CivicGksRecordError:
-          continue
+    for approval in civic.get_all_approvals_ready_for_clinvar_submission_for_org(organization_id):
+        assertion = approval.assertion
 
-        records.append(gks_record)
-    CivicGksWriter("gks.json", records)
+        if assertion.is_valid_for_gks_json():
+            try:
+                gks_record = create_gks_record_from_assertion(assertion, approval=approval)
+            except CivicGksRecordError:
+                continue
+            else:
+                records.append(gks_record)
+
+    CivicGksWriter(Path("gks.json"), records)
+

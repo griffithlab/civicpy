@@ -897,7 +897,20 @@ class _CivicGksEvidenceAssertionMixin:
 
         return MappableConcept(
             name=VARIANT_ORIGIN_TO_ALLELE_ORIGIN[variant_origin],
-            extensions=[Extension(name="civic_variant_origin", value=variant_origin)],
+            mappings=[
+                ConceptMapping(
+                    coding=Coding(
+                        code=variant_origin,
+                        system="https://civicdb.org",
+                        iris=[
+                            iriReference(
+                                root="https://civic.readthedocs.io/en/latest/model/evidence/origin.html"
+                            )
+                        ],
+                    ),
+                    relation=Relation.EXACT_MATCH,
+                )
+            ],
         )
 
     @staticmethod
@@ -1075,22 +1088,24 @@ class CivicGksSource(Document):
     :param source: CIViC source record
     """
 
-    def __init__(self, source: Source) -> None:
+    def __init__(self, source: Source, urls: list[str] | None = None) -> None:
         """Initialize CivicGksSource class
 
         :param source: CIViC source record
+        :param urls: List of additional URLs to include in the document
         """
-        urls = [f"{LINKS_URL}/source/{source.id}", source.source_url]
+        source_urls = urls or []
+        source_urls.extend([f"{LINKS_URL}/source/{source.id}", source.source_url])
         pmid = source.citation_id if source.source_type == "PUBMED" else None
         if pmc_id := source.pmc_id:
-            urls.append(f"https://www.ncbi.nlm.nih.gov/pmc/articles/{pmc_id}")
+            source_urls.append(f"https://www.ncbi.nlm.nih.gov/pmc/articles/{pmc_id}")
 
         super().__init__(
             id=f"civic.sid:{source.id}",
             name=source.citation,
             title=source.title,
             pmid=pmid,
-            urls=urls,
+            urls=source_urls,
         )
 
 
@@ -1160,8 +1175,10 @@ class CivicGksEvidence(Statement, _CivicGksEvidenceAssertionMixin):
                 CivicEvidenceLevel(evidence_item.evidence_level)
             ),
             reportedIn=[
-                CivicGksSource(evidence_item.source),
-                iriReference(f"{LINKS_URL}/evidence/{evidence_item.id}"),
+                CivicGksSource(
+                    evidence_item.source,
+                    urls=[f"{LINKS_URL}/evidence/{evidence_item.id}"],
+                ),
             ],
         )
 
@@ -1218,11 +1235,15 @@ class _CivicGksAssertionMixin:
         :param assertion: CIViC assertion record
         :return: List of CIViC links to records which the assertion is reported in
         """
-        reported_in: list[iriReference] = [
+        reported_in: list[iriReference | Document] = [
             iriReference(f"{LINKS_URL}/assertion/{assertion.id}")
         ]
         for evidence_item in assertion.evidence_items or []:
-            reported_in.append(iriReference(f"{LINKS_URL}/evidence/{evidence_item.id}"))
+            civic_gks_source = CivicGksSource(
+                evidence_item.source,
+                urls=[f"{LINKS_URL}/evidence/{evidence_item.id}"],
+            )
+            reported_in.append(Document.model_validate(civic_gks_source))
         return reported_in
 
 
@@ -1343,11 +1364,7 @@ class CivicGksClinSigAssertion(
         :return: List of CIViC evidence lines
         :raise NotImplementedError: If evidence line type not supported
         """
-        direction = (
-            Direction.SUPPORTS
-            if assertion.assertion_direction == "SUPPORTS"
-            else Direction.DISPUTES
-        )
+        direction = self.get_direction(assertion.assertion_direction)
 
         evidence_items: list[CivicGksEvidence] = []
         for evidence_item in assertion.evidence_items:
