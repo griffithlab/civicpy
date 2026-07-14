@@ -312,21 +312,17 @@ def gks_mpid33():
                 "value": 379.0,
             },
             {
-                "name": "expressions",
+                "name": "hgvsDescriptions",
                 "value": [
-                    {"syntax": "hgvs.c", "value": "ENST00000275493.2:c.2573T>G"},
-                    {"syntax": "hgvs.c", "value": "NM_005228.4:c.2573T>G"},
-                    {"syntax": "hgvs.g", "value": "NC_000007.13:g.55259515T>G"},
-                    {"syntax": "hgvs.g", "value": "NC_000007.14:g.55191822T>G"},
-                    {"syntax": "hgvs.p", "value": "NP_005219.2:p.Leu858Arg"},
-                    {"syntax": "hgvs.p", "value": "ENSP00000275493.2:p.Leu858Arg"},
-                    {
-                        "syntax": "hgvs.c",
-                        "value": "ENST00000275493.7:c.2573T>G",
-                        "extensions": [{"name": "is_mane_select", "value": True}],
-                    },
+                    "ENST00000275493.2:c.2573T>G",
+                    "NM_005228.4:c.2573T>G",
+                    "NC_000007.13:g.55259515T>G",
+                    "NC_000007.14:g.55191822T>G",
+                    "NP_005219.2:p.Leu858Arg",
+                    "ENSP00000275493.2:p.Leu858Arg",
                 ],
             },
+            {"name": "maneSelectTranscript", "value": "ENST00000275493.7:c.2573T>G"},
         ],
     }
 
@@ -983,20 +979,19 @@ def civic_mpid113(ret_m918t_vrs, civic_mpid113_cdna_vrs, civic_mpid113_genomic_v
                 "value": 139.0,
             },
             {
-                "name": "expressions",
+                "name": "hgvsDescriptions",
                 "value": [
-                    {"syntax": "hgvs.c", "value": "ENST00000355710.3:c.2753T>C"},
-                    {"syntax": "hgvs.c", "value": "NM_020975.4:c.2753T>C"},
-                    {"syntax": "hgvs.g", "value": "NC_000010.10:g.43617416T>C"},
-                    {"syntax": "hgvs.p", "value": "NP_065681.1:p.Met918Thr"},
-                    {"syntax": "hgvs.g", "value": "NC_000010.11:g.43121968T>C"},
-                    {"syntax": "hgvs.p", "value": "ENSP00000347942.3:p.Met918Thr"},
-                    {
-                        "syntax": "hgvs.c",
-                        "value": "ENST00000355710.8:c.2753T>C",
-                        "extensions": [{"name": "is_mane_select", "value": True}],
-                    },
+                    "ENST00000355710.3:c.2753T>C",
+                    "NM_020975.4:c.2753T>C",
+                    "NC_000010.10:g.43617416T>C",
+                    "NP_065681.1:p.Met918Thr",
+                    "NC_000010.11:g.43121968T>C",
+                    "ENSP00000347942.3:p.Met918Thr",
                 ],
+            },
+            {
+                "name": "maneSelectTranscript",
+                "value": "ENST00000355710.8:c.2753T>C",
             },
         ],
     }
@@ -1350,7 +1345,11 @@ class TestCivicGksMolecularProfile(object):
             if expr == "NC_000010.10:g.43617416T>C":
                 return Allele.model_validate(civic_mpid113_genomic_vrs)
 
-            if expr in ["ENST00000355710.3:c.2753T>C", "NC_000010.11:g.43121968T>C"]:
+            if expr in [
+                "ENST00000355710.3:c.2753T>C",
+                "NC_000010.11:g.43121968T>C",
+                "ENST00000355710.8:c.2753T>C",
+            ]:
                 return None
 
             raise AssertionError(f"Unexpected normalize query: {expr}")
@@ -1369,7 +1368,7 @@ class TestCivicGksMolecularProfile(object):
                 variation_normalizer=variation_normalizer,
             )
 
-        assert mock_normalize.call_count == 5
+        assert mock_normalize.call_count == 6
 
         diff = DeepDiff(
             gks_mp.model_dump(exclude_none=True),

@@ -70,6 +70,7 @@ from ga4gh.va_spec.ccv_2022 import (
 from ga4gh.va_spec.ccv_2022.derived_evidence import derive_onco_evidence_attributes
 from ga4gh.vrs.models import Allele, CopyNumberChange, Expression, Syntax, Variation
 from pydantic import BaseModel
+from setuptools import extension
 
 from civicpy.civic import (
     LINKS_URL,
@@ -371,7 +372,7 @@ class CivicGksMolecularProfile(CategoricalVariant):
         variation_normalizer = resolve_variation_normalizer(variation_normalizer)
 
         aliases, mappings = self._get_aliases_and_mappings(molecular_profile, variant)
-        expressions = self._get_expressions(variant.hgvs_expressions or [])
+        expressions = self._get_expressions(variant)
         constraints, member_syntaxes = self._build_constraints_and_member_syntaxes(
             molecular_profile, expressions, variation_normalizer
         )
@@ -381,7 +382,7 @@ class CivicGksMolecularProfile(CategoricalVariant):
             name=molecular_profile.name,
             description=molecular_profile.description,
             aliases=aliases or None,
-            extensions=self._get_extensions(molecular_profile, variant, expressions),
+            extensions=self._get_extensions(molecular_profile, variant),
             mappings=mappings or None,
             constraints=constraints,
             members=self._build_members(
@@ -498,51 +499,25 @@ class CivicGksMolecularProfile(CategoricalVariant):
         return aliases, mappings
 
     @staticmethod
-    def _get_expressions(hgvs_expressions: list[str]) -> list[Expression]:
-        """Get expressions for a list of HGVS expressions
+    def _get_expressions(variant: GeneVariant) -> list[Expression]:
+        """Get expressions for a variant
 
-        :param hgvs_expressions: HGVS expressions for a gene variant
+        :param variant: Variant associated to molecular profile
         :return: List of GKS expressions
         """
-        expressions = []
 
-        for hgvs_expr in hgvs_expressions:
-            if hgvs_expr == "N/A":
-                continue
-
-            if "p." in hgvs_expr:
-                syntax = Syntax.HGVS_P
-            elif "c." in hgvs_expr:
-                syntax = Syntax.HGVS_C
-            elif "g." in hgvs_expr:
-                syntax = Syntax.HGVS_G
-            else:
-                continue
-
-            expressions.append(Expression(syntax=syntax, value=hgvs_expr))
-        return expressions
-
-    @staticmethod
-    def _get_extensions(
-        molecular_profile: MolecularProfile,
-        variant: GeneVariant,
-        expressions: list[Expression],
-    ) -> list[Extension]:
-        """Get extensions for CIViC molecular profile
-
-        :param molecular_profile: CIViC molecular profile record
-        :param variant: Variant associated to molecular profile
-        :param expressions: List of expressions for the ``variant``
-        :return: List of extensions containing molecular profile score, expressions,
-            and representative for a CIViC molecular profile record.
-        """
-
-        def _get_syntax(expr: str) -> Syntax | None:
+        def get_syntax(expr: str | None) -> Syntax | None:
             """Get syntax for an expression
 
             :param expr: HGVS expression
             :return: Syntax for HGVS expression, if p/c/g expression. Otherwise, None
             """
+            if not expr:
+                return
+
+            if expr == "N/A":
+                return
+
             if "p." in expr:
                 return Syntax.HGVS_P
 
@@ -554,43 +529,50 @@ class CivicGksMolecularProfile(CategoricalVariant):
 
             return
 
-        extensions = [
-            Extension(
-                name="CIViC Molecular Profile Score",
-                value=molecular_profile.molecular_profile_score,
-            )
-        ]
-
-        expressions: list[Expression] = []
-        variant: GeneVariant = molecular_profile.variants[0]
-        for hgvs_expr in [
-            *(variant.hgvs_expressions or []),
-            variant.mane_select_transcript,
-        ]:
-            if not hgvs_expr or hgvs_expr == "N/A":
-                continue
-
-            syntax = _get_syntax(hgvs_expr)
+        expressions = []
+        for expr, is_mane in [
+            (item, False) for item in (variant.hgvs_expressions or [])
+        ] + [(item, True) for item in [variant.mane_select_transcript]]:
+            syntax = get_syntax(expr)
             if not syntax:
                 continue
 
-            expression_extensions = []
-            if hgvs_expr == variant.mane_select_transcript:
-                expression_extensions.append(
-                    Extension(name="is_mane_select", value=True)
-                )
-
-            expression = Expression(
-                syntax=syntax,
-                value=hgvs_expr,
-                extensions=expression_extensions or None,
+            if is_mane:
+                extensions = [Extension(name="isManeSelect", value=True)]
+            else:
+                extensions = None
+            expressions.append(
+                Expression(syntax=syntax, value=expr, extensions=extensions)
             )
 
-            if expression not in expressions:
-                expressions.append(expression)
+        return expressions
 
-        if expressions:
-            extensions.append(Extension(name="expressions", value=expressions))
+    @staticmethod
+    def _get_extensions(
+        molecular_profile: MolecularProfile,
+        variant: GeneVariant,
+    ) -> list[Extension]:
+        """Get extensions for CIViC molecular profile
+
+        :param molecular_profile: CIViC molecular profile record
+        :param variant: Variant associated to molecular profile
+        :param expressions: List of expressions for the ``variant``
+        :return: List of extensions containing molecular profile score,
+            hgvs descriptions, mane select transcript, and representative for a
+            CIViC molecular profile record.
+        """
+        extensions = []
+
+        for ext_name, ext_value in [
+            (
+                "CIViC Molecular Profile Score",
+                molecular_profile.molecular_profile_score,
+            ),
+            ("hgvsDescriptions", variant.hgvs_expressions),
+            ("maneSelectTranscript", variant.mane_select_transcript),
+        ]:
+            if ext_value is not None:
+                extensions.append(Extension(name=ext_name, value=ext_value))
 
         if isinstance(variant.coordinates, Coordinate):
             coords = variant.coordinates
