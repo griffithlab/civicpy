@@ -1226,7 +1226,7 @@ class CivicGksOncogenicAssertion(
             direction=self.get_direction(assertion.assertion_direction),
             classification=classification,
             strength=strength,
-            hasEvidenceLines=self.get_evidence_lines(assertion, proposition),
+            hasEvidenceLines=self.get_evidence_lines(assertion),
             reportedIn=self.get_reported_in(assertion),
         )
 
@@ -1264,12 +1264,12 @@ class CivicGksOncogenicAssertion(
         return classification, strength
 
     def get_evidence_lines(
-        self, assertion: Assertion, proposition: VariantOncogenicityProposition
+        self,
+        assertion: Assertion,
     ) -> list[VariantOncogenicityEvidenceLine]:
         """Get evidence lines for a CIViC assertion
 
         :param assertion: CIViC assertion
-        :param proposition: Proposition for CIViC assertion
         :return: List of CIViC evidence lines
         """
         direction = self.get_direction(assertion.assertion_direction)
