@@ -1272,11 +1272,7 @@ class CivicGksOncogenicAssertion(
         :param proposition: Proposition for CIViC assertion
         :return: List of CIViC evidence lines
         """
-        direction = (
-            Direction.SUPPORTS
-            if assertion.assertion_direction == "SUPPORTS"
-            else Direction.DISPUTES
-        )
+        direction = self.get_direction(assertion.assertion_direction)
 
         evidence_lines = []
         for clingen_code in assertion.clingen_codes or []:
