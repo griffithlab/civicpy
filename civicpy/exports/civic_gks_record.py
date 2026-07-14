@@ -13,6 +13,7 @@ from types import MappingProxyType
 
 from ga4gh.cat_vrs.models import CategoricalVariant
 from ga4gh.core.models import (
+    MembershipOperator,
     Coding,
     ConceptMapping,
     Extension,
@@ -38,7 +39,6 @@ from ga4gh.va_spec.base import (
     DiagnosticPredicate,
     Direction,
     Document,
-    MembershipOperator,
     Method,
     PrognosticPredicate,
     Statement,
@@ -1279,14 +1279,10 @@ class CivicGksOncogenicAssertion(
             evidence_attrs = derive_onco_evidence_attributes(
                 VariantOncogenicityEvidenceLine.Criterion(clingen_code.code)
             )
-            method = CCV_METHOD.model_copy(
-                deep=True, update={"methodType": clingen_code.code}
-            )
             evidence_lines.append(
                 VariantOncogenicityEvidenceLine(
                     directionOfEvidenceProvided=direction,
                     **evidence_attrs.model_dump(),
-                    specifiedBy=method,
                 )
             )
 

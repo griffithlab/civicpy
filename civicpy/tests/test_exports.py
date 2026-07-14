@@ -1001,7 +1001,7 @@ def gks_aid202(gks_aid202_proposition):
                     }
                 },
                 "scoreOfEvidenceProvided": 2,
-                "specifiedBy": _ccv_method("OM1"),
+                "specifiedBy": _ccv_method("functional_domain_location"),
             },
             {
                 "type": "EvidenceLine",
@@ -1019,7 +1019,7 @@ def gks_aid202(gks_aid202_proposition):
                     }
                 },
                 "scoreOfEvidenceProvided": 4,
-                "specifiedBy": _ccv_method("OS2"),
+                "specifiedBy": _ccv_method("functional_assay"),
             },
             {
                 "type": "EvidenceLine",
@@ -1037,7 +1037,7 @@ def gks_aid202(gks_aid202_proposition):
                     }
                 },
                 "scoreOfEvidenceProvided": 1,
-                "specifiedBy": _ccv_method("OP4"),
+                "specifiedBy": _ccv_method("population_frequency"),
             },
             {
                 "type": "EvidenceLine",
@@ -1055,7 +1055,7 @@ def gks_aid202(gks_aid202_proposition):
                     }
                 },
                 "scoreOfEvidenceProvided": 1,
-                "specifiedBy": _ccv_method("OP1"),
+                "specifiedBy": _ccv_method("computational_prediction"),
             },
             {
                 "type": "EvidenceLine",
@@ -1073,7 +1073,7 @@ def gks_aid202(gks_aid202_proposition):
                     }
                 },
                 "scoreOfEvidenceProvided": 1,
-                "specifiedBy": _ccv_method("OP3"),
+                "specifiedBy": _ccv_method("somatic_hotspot_recurrence"),
             },
         ],
     }
