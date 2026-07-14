@@ -21,6 +21,7 @@ from ga4gh.cat_vrs.models import (
 )
 from ga4gh.cat_vrs.relations import LIFTOVER_TO_RELATION, TRANSLATION_OF_RELATION
 from ga4gh.core.models import (
+    MembershipOperator,
     Coding,
     ConceptMapping,
     Extension,
@@ -46,7 +47,6 @@ from ga4gh.va_spec.base import (
     DiagnosticPredicate,
     Direction,
     Document,
-    MembershipOperator,
     Method,
     PrognosticPredicate,
     Statement,
@@ -124,6 +124,25 @@ class CivicEvidenceAssertionType(str, Enum):
     ONCOGENIC = "ONCOGENIC"
 
 
+class CivicSignificance(str, Enum):
+    """Define constraints for significance values
+
+    Not exhaustive. Only supports those that can be represented by GKS.
+    """
+
+    BENIGN = "BENIGN"
+    BETTER_OUTCOME = "BETTER_OUTCOME"
+    LIKELY_BENIGN = "LIKELY_BENIGN"
+    LIKELY_ONCOGENIC = "LIKELY_ONCOGENIC"
+    ONCOGENIC = "ONCOGENIC"
+    POOR_OUTCOME = "POOR_OUTCOME"
+    POSITIVE = "POSITIVE"
+    NEGATIVE = "NEGATIVE"
+    RESISTANCE = "RESISTANCE"
+    SENSITIVITY_RESPONSE = "SENSITIVITYRESPONSE"
+    UNCERTAIN_SIGNIFICANCE = "UNCERTAIN_SIGNIFICANCE"
+
+
 CLINICAL_SIGNIFICANCE_ASSERTION_TYPES = [
     CivicEvidenceAssertionType.PREDICTIVE.value,
     CivicEvidenceAssertionType.PROGNOSTIC.value,
@@ -182,17 +201,17 @@ _IS_ONCOGENIC_FOR_PREDICATE = "isOncogenicFor"
 # CIViC significance to GKS predicate
 CLIN_SIG_TO_PREDICATE = MappingProxyType(
     {
-        "SENSITIVITYRESPONSE": TherapeuticResponsePredicate.SENSITIVITY,
-        "RESISTANCE": TherapeuticResponsePredicate.RESISTANCE,
-        "POOR_OUTCOME": PrognosticPredicate.WORSE_OUTCOME,
-        "BETTER_OUTCOME": PrognosticPredicate.BETTER_OUTCOME,
-        "POSITIVE": DiagnosticPredicate.INCLUSIVE,
-        "NEGATIVE": DiagnosticPredicate.EXCLUSIVE,
-        "BENIGN": _IS_ONCOGENIC_FOR_PREDICATE,
-        "LIKELY_BENIGN": _IS_ONCOGENIC_FOR_PREDICATE,
-        "LIKELY_ONCOGENIC": _IS_ONCOGENIC_FOR_PREDICATE,
-        "ONCOGENIC": _IS_ONCOGENIC_FOR_PREDICATE,
-        "UNCERTAIN_SIGNIFICANCE": _IS_ONCOGENIC_FOR_PREDICATE,
+        CivicSignificance.SENSITIVITY_RESPONSE.value: TherapeuticResponsePredicate.SENSITIVITY,
+        CivicSignificance.RESISTANCE: TherapeuticResponsePredicate.RESISTANCE,
+        CivicSignificance.POOR_OUTCOME: PrognosticPredicate.WORSE_OUTCOME,
+        CivicSignificance.BETTER_OUTCOME: PrognosticPredicate.BETTER_OUTCOME,
+        CivicSignificance.POSITIVE: DiagnosticPredicate.INCLUSIVE,
+        CivicSignificance.NEGATIVE: DiagnosticPredicate.EXCLUSIVE,
+        CivicSignificance.BENIGN: _IS_ONCOGENIC_FOR_PREDICATE,
+        CivicSignificance.LIKELY_BENIGN: _IS_ONCOGENIC_FOR_PREDICATE,
+        CivicSignificance.LIKELY_ONCOGENIC: _IS_ONCOGENIC_FOR_PREDICATE,
+        CivicSignificance.ONCOGENIC: _IS_ONCOGENIC_FOR_PREDICATE,
+        CivicSignificance.UNCERTAIN_SIGNIFICANCE: _IS_ONCOGENIC_FOR_PREDICATE,
     }
 )
 
@@ -1470,7 +1489,7 @@ class CivicGksOncogenicAssertion(
             direction=self.get_direction(assertion.assertion_direction),
             classification=classification,
             strength=strength,
-            hasEvidenceLines=self.get_evidence_lines(assertion, proposition),
+            hasEvidenceLines=self.get_evidence_lines(assertion),
             reportedIn=self.get_reported_in(assertion),
             extensions=self.get_extensions(approval) or None,
         )
@@ -1491,9 +1510,12 @@ class CivicGksOncogenicAssertion(
             )
         )
 
-        if significance in {"LIKELY_BENIGN", "LIKELY_ONCOGENIC"}:
+        if significance in {
+            CivicSignificance.LIKELY_BENIGN,
+            CivicSignificance.LIKELY_ONCOGENIC,
+        }:
             _strength = StrengthCode.LIKELY
-        elif significance in {"BENIGN", "ONCOGENIC"}:
+        elif significance in {CivicSignificance.BENIGN, CivicSignificance.ONCOGENIC}:
             _strength = StrengthCode.DEFINITIVE
 
         if _strength:
@@ -1506,33 +1528,25 @@ class CivicGksOncogenicAssertion(
         return classification, strength
 
     def get_evidence_lines(
-        self, assertion: Assertion, proposition: VariantOncogenicityProposition
+        self,
+        assertion: Assertion,
     ) -> list[VariantOncogenicityEvidenceLine]:
         """Get evidence lines for a CIViC assertion
 
         :param assertion: CIViC assertion
-        :param proposition: Proposition for CIViC assertion
         :return: List of CIViC evidence lines
         """
-        direction = (
-            Direction.SUPPORTS
-            if assertion.assertion_direction == "SUPPORTS"
-            else Direction.DISPUTES
-        )
+        direction = self.get_direction(assertion.assertion_direction)
 
         evidence_lines = []
         for clingen_code in assertion.clingen_codes or []:
             evidence_attrs = derive_onco_evidence_attributes(
                 VariantOncogenicityEvidenceLine.Criterion(clingen_code.code)
             )
-            method = CCV_METHOD.model_copy(
-                deep=True, update={"methodType": clingen_code.code}
-            )
             evidence_lines.append(
                 VariantOncogenicityEvidenceLine(
                     directionOfEvidenceProvided=direction,
                     **evidence_attrs.model_dump(),
-                    specifiedBy=method,
                 )
             )
 
