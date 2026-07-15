@@ -8,6 +8,7 @@
 
 import logging
 import re
+from dataclasses import dataclass
 from enum import Enum
 from types import MappingProxyType
 
@@ -21,11 +22,11 @@ from ga4gh.cat_vrs.models import (
 )
 from ga4gh.cat_vrs.relations import LIFTOVER_TO_RELATION, TRANSLATION_OF_RELATION
 from ga4gh.core.models import (
-    MembershipOperator,
     Coding,
     ConceptMapping,
     Extension,
     MappableConcept,
+    MembershipOperator,
     Relation,
     code,
     iriReference,
@@ -70,7 +71,6 @@ from ga4gh.va_spec.ccv_2022 import (
 from ga4gh.va_spec.ccv_2022.derived_evidence import derive_onco_evidence_attributes
 from ga4gh.vrs.models import Allele, CopyNumberChange, Expression, Syntax, Variation
 from pydantic import BaseModel
-from setuptools import extension
 
 from civicpy.civic import (
     LINKS_URL,
@@ -230,6 +230,24 @@ VARIANT_ORIGIN_TO_ALLELE_ORIGIN = MappingProxyType(
 )
 
 
+class CategoricalVariationType(str, Enum):
+    """Define constraints for Categorical Variation Type values"""
+
+    CATEGORICAL_CNV = "CategoricalCnv"
+    FEATURE_CONTEXT = "FeatureContext"
+    PROTEIN_SEQUENCE_CONSEQUENCE = "ProteinSequenceConsequence"
+    UNDEFINED = "Undefined"
+
+
+@dataclass(frozen=True)
+class CatVrsContext:
+    """Container for Cat VRS constraints and metadata"""
+
+    constraints: list[Constraint]
+    member_syntaxes: list[Syntax]
+    categorical_variation_type: CategoricalVariationType
+
+
 # SNP pattern
 _SNP_RE = re.compile(r"RS\d+")
 
@@ -373,8 +391,28 @@ class CivicGksMolecularProfile(CategoricalVariant):
 
         aliases, mappings = self._get_aliases_and_mappings(molecular_profile, variant)
         expressions = self._get_expressions(variant)
-        constraints, member_syntaxes = self._build_constraints_and_member_syntaxes(
+        extensions = self._get_extensions(molecular_profile, variant)
+
+        cat_vrs_context = self._get_cat_vrs_context(
             molecular_profile, expressions, variation_normalizer
+        )
+        if cat_vrs_context:
+            constraints = cat_vrs_context.constraints
+            categorical_variation_type = cat_vrs_context.categorical_variation_type
+
+            members = self._build_members(
+                expressions, cat_vrs_context.member_syntaxes, variation_normalizer
+            )
+        else:
+            constraints = None
+            members = None
+            categorical_variation_type = CategoricalVariationType.UNDEFINED
+
+        extensions.append(
+            Extension(
+                name="categoricalVariationType",
+                value=categorical_variation_type,
+            )
         )
 
         super().__init__(
@@ -382,12 +420,10 @@ class CivicGksMolecularProfile(CategoricalVariant):
             name=molecular_profile.name,
             description=molecular_profile.description,
             aliases=aliases or None,
-            extensions=self._get_extensions(molecular_profile, variant),
+            extensions=extensions,
             mappings=mappings or None,
             constraints=constraints,
-            members=self._build_members(
-                expressions, member_syntaxes, variation_normalizer
-            ),
+            members=members,
         )
 
     @staticmethod
@@ -627,22 +663,22 @@ class CivicGksMolecularProfile(CategoricalVariant):
         return members
 
     @staticmethod
-    def _build_constraints_and_member_syntaxes(
+    def _get_cat_vrs_context(
         molecular_profile: MolecularProfile,
         expressions: list[Expression],
         variation_normalizer: VariationNormalizerDataProxy,
-    ) -> tuple[list[Constraint], list[Syntax]]:
-        """Build constraints and member syntaxes for Categorical Variant
+    ) -> CatVrsContext | None:
+        """Get context for Categorical Variant
 
         :param molecular_profile: CIViC molecular profile record
         :param expressions: List of expressions for the gene variant
         :param variation_normalizer: Variation Normalizer data proxy
-        :return: Tuple containing the categorical variant constraints and the
-            expression syntaxes that should be included as members.
-        :raises CivicGksRecordError: If Gene Mutation has no mapping for Gene, the
-            Variation Normalizer is unable to normalize the molecular profile, or the
-            Variation Normalizer returns unsupported variation type. Currently, we only
-            support Alleles and Copy Number Changes
+        :return: Context to build Categorical Variant, if the variation
+            normalizer is able to normalize. Otherwise, will return None
+        :raises CivicGksRecordError: If Gene Mutation has no mapping for Gene
+            or if Variation Normalize Variation Normalizer returns unsupported
+            variation type. Currently, we only support Alleles and Copy Number
+            Changes
         """
         member_syntaxes = [Syntax.HGVS_P, Syntax.HGVS_C, Syntax.HGVS_G]
 
@@ -660,20 +696,29 @@ class CivicGksMolecularProfile(CategoricalVariant):
                 msg = f"Unable to retrieve mappings for gene {mp_parsed_name[0].id}"
                 raise CivicGksRecordError(msg)
 
-            return [
+            constraints = [
                 Constraint(
                     root=FeatureContextConstraint(
                         featureContext=MappableConcept(primaryCoding=mappings[0].coding)
                     )
                 )
-            ], member_syntaxes
+            ]
+            return CatVrsContext(
+                constraints=constraints,
+                member_syntaxes=member_syntaxes,
+                categorical_variation_type=CategoricalVariationType.FEATURE_CONTEXT,
+            )
 
         vrs_variation = variation_normalizer.normalize_molecular_profile(
             molecular_profile
         )
         if not vrs_variation:
-            msg = f"Unable to normalize molecular profile to VRS variation. mpid={molecular_profile.id}, name={molecular_profile.name!r}"
-            raise CivicGksRecordError(msg)
+            _logger.warning(
+                "Unable to normalize molecular profile to VRS variation. mpid=%s, name='%s'",
+                molecular_profile.id,
+                molecular_profile.name,
+            )
+            return None
 
         if isinstance(vrs_variation, Allele):
             hgvs_p_syntax = member_syntaxes.pop(0)
@@ -683,17 +728,22 @@ class CivicGksMolecularProfile(CategoricalVariant):
             if expressions:
                 vrs_variation.expressions = protein_expressions
 
-            return [
+            constraints = [
                 Constraint(
                     root=DefiningAlleleConstraint(
                         allele=vrs_variation,
                         relations=[LIFTOVER_TO_RELATION, TRANSLATION_OF_RELATION],
                     )
                 )
-            ], member_syntaxes
+            ]
+            return CatVrsContext(
+                constraints=constraints,
+                member_syntaxes=member_syntaxes,
+                categorical_variation_type=CategoricalVariationType.PROTEIN_SEQUENCE_CONSEQUENCE,
+            )
 
         if isinstance(vrs_variation, CopyNumberChange):
-            return [
+            constraints = [
                 Constraint(
                     root=CopyChangeConstraint(
                         copyChange=vrs_variation.copyChange,
@@ -711,7 +761,13 @@ class CivicGksMolecularProfile(CategoricalVariant):
                         relations=[LIFTOVER_TO_RELATION],
                     )
                 ),
-            ], member_syntaxes
+            ]
+
+            return CatVrsContext(
+                constraints=constraints,
+                member_syntaxes=member_syntaxes,
+                categorical_variation_type=CategoricalVariationType.CATEGORICAL_CNV,
+            )
 
         msg = f"Unsupported VRS variation type returned by Variation Normalizer. mpid={molecular_profile.id}, type={type(vrs_variation).__name__!r}"
         raise CivicGksRecordError(msg)

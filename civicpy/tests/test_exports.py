@@ -1,6 +1,5 @@
 import re
 from copy import deepcopy
-from unittest import mock
 from unittest.mock import Mock, PropertyMock, patch
 
 import pytest
@@ -13,7 +12,6 @@ from ga4gh.va_spec.aac_2017 import (
 from ga4gh.va_spec.base import Condition, ConditionSet, Statement, TherapyGroup
 from ga4gh.va_spec.ccv_2022 import VariantOncogenicityStatement
 from ga4gh.vrs.models import Allele, CopyNumberCount
-from ga4gh.vrs.models import iriReference
 
 from civicpy import civic
 from civicpy.exports.civic_gks_record import (
@@ -323,6 +321,7 @@ def gks_mpid33():
                 ],
             },
             {"name": "maneSelectTranscript", "value": "ENST00000275493.7:c.2573T>G"},
+            {"name": "categoricalVariationType", "value": "ProteinSequenceConsequence"},
         ],
     }
 
@@ -993,8 +992,24 @@ def civic_mpid113(ret_m918t_vrs, civic_mpid113_cdna_vrs, civic_mpid113_genomic_v
                 "name": "maneSelectTranscript",
                 "value": "ENST00000355710.8:c.2753T>C",
             },
+            {"name": "categoricalVariationType", "value": "ProteinSequenceConsequence"},
         ],
     }
+
+
+@pytest.fixture(scope="module")
+def civic_mpid113_undefined(civic_mpid113):
+    """Create test fixture for undefined categorical variant"""
+
+    mp = deepcopy(civic_mpid113)
+    del mp["constraints"]
+    del mp["members"]
+
+    for ext in mp["extensions"]:
+        if ext["name"] == "categoricalVariationType":
+            ext["value"] = "Undefined"
+
+    return mp
 
 
 @pytest.fixture(scope="module")
@@ -1433,6 +1448,16 @@ class TestCivicGksMolecularProfile(object):
             },
         }
 
+        categorical_variation_type = next(
+            (
+                ext.value
+                for ext in gks_mp.extensions
+                if ext.name == "categoricalVariationType"
+            ),
+            None,
+        )
+        assert categorical_variation_type == "FeatureContext"
+
     @patch.object(
         CivicGksGene,
         "get_mappings",
@@ -1455,20 +1480,19 @@ class TestCivicGksMolecularProfile(object):
                 mocked_normalizer,
             )
 
-    def test_build_constraints_normalization_failure(self):
+    def test_build_constraints_normalization_failure(self, civic_mpid113_undefined):
         mp = civic.get_molecular_profile_by_id(113)
 
         variation_normalizer = Mock()
         variation_normalizer.normalize_molecular_profile.return_value = None
 
-        with pytest.raises(
-            CivicGksRecordError,
-            match="Unable to normalize molecular profile to VRS variation. mpid=113, name='RET M918T'",
-        ):
-            CivicGksMolecularProfile(
-                mp,
-                variation_normalizer,
-            )
+        gks_mp = CivicGksMolecularProfile(mp, variation_normalizer)
+        diff = DeepDiff(
+            gks_mp.model_dump(exclude_none=True),
+            civic_mpid113_undefined,
+            ignore_order=True,
+        )
+        assert diff == {}
 
     def test_build_constraints_allele(self, braf_v600e_vrs, mocked_normalizer):
         mp = civic.get_molecular_profile_by_id(12)
@@ -1544,6 +1568,16 @@ class TestCivicGksMolecularProfile(object):
         )
         assert diff == {}
 
+        categorical_variation_type = next(
+            (
+                ext.value
+                for ext in gks_mp.extensions
+                if ext.name == "categoricalVariationType"
+            ),
+            None,
+        )
+        assert categorical_variation_type == "CategoricalCnv"
+
     def test_build_constraints_unsupported_vrs_type(
         self,
     ):
@@ -1564,7 +1598,7 @@ class TestCivicGksMolecularProfile(object):
                 variation_normalizer,
             )
 
-    def test_no_representative_coordiantes(self):
+    def test_no_representative_coordinates(self):
         """Test that empty representative coordinates do not get an extension"""
         gks_mp = CivicGksMolecularProfile(civic.get_molecular_profile_by_id(2261))
         assert gks_mp.extensions
