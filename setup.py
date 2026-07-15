@@ -41,9 +41,8 @@ setup(
         "python-dateutil",
         "deprecation",
         "ga4gh.vrs~=2.4.0-a1",
-        "ga4gh.cat_vrs~=0.8.0-a2",
-        # "ga4gh.va_spec~=0.5.0-a0",
-        "ga4gh.va_spec @ git+https://github.com/ga4gh/va-spec-python.git@f223cf81320302d3e3f3443fcf90130b4e83208f",
+        "ga4gh.cat_vrs~=0.8.0-a1",
+        "ga4gh.va_spec~=0.5.0-a2",
     ],
     extras_require={
         "test": [
