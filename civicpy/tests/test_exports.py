@@ -862,10 +862,11 @@ def civic_mpid113(ret_m918t_vrs, civic_mpid113_cdna_vrs, civic_mpid113_genomic_v
     civic_mpid113_cdna_vrs_copy["expressions"] = [{"syntax": "hgvs.c", "value": hgvs_c}]
 
     civic_mpid113_genomic_vrs_copy = deepcopy(civic_mpid113_genomic_vrs)
-    hgvs_g = "NC_000010.10:g.43617416T>C"
+    hgvs_g = "NC_000010.11:g.43121968T>C"
     civic_mpid113_genomic_vrs_copy["name"] = hgvs_g
     civic_mpid113_genomic_vrs_copy["expressions"] = [
-        {"syntax": "hgvs.g", "value": hgvs_g}
+        {"syntax": "hgvs.g", "value": hgvs_g},
+        {"syntax": "hgvs.g", "value": "NC_000010.10:g.43617416T>C"},
     ]
 
     return {
@@ -1357,12 +1358,11 @@ class TestCivicGksMolecularProfile(object):
             if expr == "NM_020975.4:c.2753T>C":
                 return Allele.model_validate(civic_mpid113_cdna_vrs)
 
-            if expr == "NC_000010.10:g.43617416T>C":
+            if expr in ["NC_000010.10:g.43617416T>C", "NC_000010.11:g.43121968T>C"]:
                 return Allele.model_validate(civic_mpid113_genomic_vrs)
 
             if expr in [
                 "ENST00000355710.3:c.2753T>C",
-                "NC_000010.11:g.43121968T>C",
                 "ENST00000355710.8:c.2753T>C",
             ]:
                 return None

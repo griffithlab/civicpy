@@ -640,27 +640,41 @@ class CivicGksMolecularProfile(CategoricalVariant):
         member_syntaxes: list[Syntax],
         variation_normalizer: VariationNormalizerDataProxy,
     ) -> list[Variation]:
-        """Build members from list of expressions
+        """Build unique members from list of expressions
+
+        If multiple expressions normalize to the same VRS variation, they're
+        merged into a single VRS variation. All expressions are retained and
+        the descending expression is used as the name.
 
         :param expressions: List of expressions for the gene variant
         :param member_syntaxes: Syntaxes that members will have
         :param variation_normalizer: Variation Normalizer data proxy
         :return: List of members
         """
-        members = []
+        members_by_id = {}
+
         for expression in expressions:
             if expression.syntax not in member_syntaxes:
                 continue
 
             hgvs_expr = expression.value
-
             vrs_variation = variation_normalizer.normalize(hgvs_expr)
 
-            if vrs_variation:
+            if not vrs_variation:
+                continue
+
+            variation_id = vrs_variation.id
+
+            if variation_id in members_by_id:
+                variation = members_by_id[variation_id]
+                variation.root.expressions.append(expression)
+                variation.root.name = max(variation.root.name, hgvs_expr)
+            else:
                 vrs_variation.name = hgvs_expr
                 vrs_variation.expressions = [expression]
-                members.append(Variation(root=vrs_variation))
-        return members
+                members_by_id[variation_id] = Variation(root=vrs_variation)
+
+        return list(members_by_id.values())
 
     @staticmethod
     def _get_cat_vrs_context(
