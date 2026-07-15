@@ -958,6 +958,7 @@ def civic_mpid113(ret_m918t_vrs, civic_mpid113_cdna_vrs, civic_mpid113_genomic_v
         "members": [
             civic_mpid113_cdna_vrs_copy,
             civic_mpid113_genomic_vrs_copy,
+            ret_m918t_vrs_copy,
         ],
         "extensions": [
             {

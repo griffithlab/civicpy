@@ -244,6 +244,7 @@ class CatVrsContext:
     """Container for Cat VRS constraints and metadata"""
 
     constraints: list[Constraint]
+    constraint_vrs_variation: Variation | None
     member_syntaxes: list[Syntax]
     categorical_variation_type: CategoricalVariationType
 
@@ -399,9 +400,13 @@ class CivicGksMolecularProfile(CategoricalVariant):
         if cat_vrs_context:
             constraints = cat_vrs_context.constraints
             categorical_variation_type = cat_vrs_context.categorical_variation_type
+            constraint_vrs_variation = cat_vrs_context.constraint_vrs_variation
 
             members = self._build_members(
-                expressions, cat_vrs_context.member_syntaxes, variation_normalizer
+                expressions,
+                cat_vrs_context.member_syntaxes,
+                constraint_vrs_variation,
+                variation_normalizer,
             )
         else:
             constraints = None
@@ -638,16 +643,20 @@ class CivicGksMolecularProfile(CategoricalVariant):
     def _build_members(
         expressions: list[Expression],
         member_syntaxes: list[Syntax],
+        constraint_vrs_variation: Variation | None,
         variation_normalizer: VariationNormalizerDataProxy,
     ) -> list[Variation]:
-        """Build unique members from list of expressions
+        """Build unique members from list of expressions.
 
         If multiple expressions normalize to the same VRS variation, they're
         merged into a single VRS variation. All expressions are retained and
         the descending expression is used as the name.
 
+        Constraints VRS Variation will be included in members.
+
         :param expressions: List of expressions for the gene variant
         :param member_syntaxes: Syntaxes that members will have
+        :param constraint_vrs_variation: VRS Variation found in constraint
         :param variation_normalizer: Variation Normalizer data proxy
         :return: List of members
         """
@@ -674,7 +683,11 @@ class CivicGksMolecularProfile(CategoricalVariant):
                 vrs_variation.expressions = [expression]
                 members_by_id[variation_id] = Variation(root=vrs_variation)
 
-        return list(members_by_id.values())
+        members = list(members_by_id.values())
+        if constraint_vrs_variation:
+            members.append(constraint_vrs_variation)
+
+        return members
 
     @staticmethod
     def _get_cat_vrs_context(
@@ -721,6 +734,7 @@ class CivicGksMolecularProfile(CategoricalVariant):
                 constraints=constraints,
                 member_syntaxes=member_syntaxes,
                 categorical_variation_type=CategoricalVariationType.FEATURE_CONTEXT,
+                constraint_vrs_variation=None,
             )
 
         vrs_variation = variation_normalizer.normalize_molecular_profile(
@@ -754,6 +768,7 @@ class CivicGksMolecularProfile(CategoricalVariant):
                 constraints=constraints,
                 member_syntaxes=member_syntaxes,
                 categorical_variation_type=CategoricalVariationType.PROTEIN_SEQUENCE_CONSEQUENCE,
+                constraint_vrs_variation=Variation(root=vrs_variation),
             )
 
         if isinstance(vrs_variation, CopyNumberChange):
@@ -781,6 +796,7 @@ class CivicGksMolecularProfile(CategoricalVariant):
                 constraints=constraints,
                 member_syntaxes=member_syntaxes,
                 categorical_variation_type=CategoricalVariationType.CATEGORICAL_CNV,
+                constraint_vrs_variation=Variation(root=vrs_variation),
             )
 
         msg = f"Unsupported VRS variation type returned by Variation Normalizer. mpid={molecular_profile.id}, type={type(vrs_variation).__name__!r}"
