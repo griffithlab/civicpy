@@ -13,11 +13,11 @@ from types import MappingProxyType
 
 from ga4gh.cat_vrs.models import CategoricalVariant
 from ga4gh.core.models import (
-    MembershipOperator,
     Coding,
     ConceptMapping,
     Extension,
     MappableConcept,
+    MembershipOperator,
     Relation,
     code,
     iriReference,
@@ -1005,18 +1005,31 @@ class _CivicGksAssertionMixin:
     def get_reported_in(assertion: Assertion) -> list[iriReference | Document]:
         """Get reported in information for an assertion
 
+        If multiple evidence items link to same source, will merge the source.
+
         :param assertion: CIViC assertion record
         :return: List of CIViC links to records which the assertion is reported in
         """
         reported_in: list[iriReference | Document] = [
             iriReference(f"{LINKS_URL}/assertion/{assertion.id}")
         ]
+        civic_gks_sources = {}
         for evidence_item in assertion.evidence_items or []:
-            civic_gks_source = CivicGksSource(
-                evidence_item.source,
-                urls=[f"{LINKS_URL}/evidence/{evidence_item.id}"],
-            )
-            reported_in.append(Document.model_validate(civic_gks_source))
+            source = evidence_item.source
+            source_id = source.id
+            evidence_item_url = f"{LINKS_URL}/evidence/{evidence_item.id}"
+
+            if source_id in civic_gks_sources:
+                civic_gks_sources[source_id].urls.append(evidence_item_url)
+            else:
+                civic_gks_sources[source_id] = Document.model_validate(
+                    CivicGksSource(
+                        source,
+                        urls=[evidence_item_url],
+                    )
+                )
+        reported_in.extend(list(civic_gks_sources.values()))
+
         return reported_in
 
 

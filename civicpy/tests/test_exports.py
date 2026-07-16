@@ -905,18 +905,7 @@ def gks_aid202(gks_aid202_proposition):
                     "https://civicdb.org/links/evidence/74",
                     "https://civicdb.org/links/source/44",
                     "http://www.ncbi.nlm.nih.gov/pubmed/18073307",
-                ],
-                "pmid": "18073307",
-            },
-            {
-                "id": "civic.sid:44",
-                "type": "Document",
-                "name": "Elisei et al., 2008",
-                "title": "Prognostic significance of somatic RET oncogene mutations in sporadic medullary thyroid cancer: a 10-year follow-up study.",
-                "urls": [
                     "https://civicdb.org/links/evidence/12800",
-                    "https://civicdb.org/links/source/44",
-                    "http://www.ncbi.nlm.nih.gov/pubmed/18073307",
                 ],
                 "pmid": "18073307",
             },
