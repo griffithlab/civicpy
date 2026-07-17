@@ -110,6 +110,10 @@ def create_gks_json(
     * Oncogenicity -> oncogenic assertion
     Therefore, you must create separate GKS JSON for each submission type
 
+    ClinVar only supports submitting records of the same submission type for a
+    given assertion criteria:
+    * Clinical Impact -> diagnostic, prognostic, or predictive assertion
+
     :param organization_id: The CIViC organization ID that approved the assertion(s) for submission to ClinVar
     :param submission_type: The ClinVar submission type to generate GKS JSON for.
         Defaults to clinical impact.
