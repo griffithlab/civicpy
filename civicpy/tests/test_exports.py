@@ -2,7 +2,7 @@ import re
 from copy import deepcopy
 from unittest.mock import PropertyMock, patch
 
-from ga4gh.vrs.models import iriReference
+from ga4gh.core.models import iriReference
 import pytest
 from deepdiff import DeepDiff
 from ga4gh.va_spec.aac_2017 import (
@@ -312,7 +312,7 @@ def gks_gid19():
                     "NISBD2",
                     "PIG61",
                     "mENA",
-                    "NNCIS"
+                    "NNCIS",
                 ],
             },
         ],

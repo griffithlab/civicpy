@@ -15,6 +15,7 @@ from ga4gh.core.models import (
     ConceptMapping,
     Extension,
     MappableConcept,
+    MembershipOperator,
     Relation,
     iriReference,
 )
@@ -34,7 +35,6 @@ from ga4gh.va_spec.base import (
     DiagnosticPredicate,
     Direction,
     Document,
-    MembershipOperator,
     Method,
     PrognosticPredicate,
     Statement,
