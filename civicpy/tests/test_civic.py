@@ -1203,12 +1203,15 @@ def test_is_valid_for_gks_warnings_assertion(caplog):
     assert not not_accepted.is_valid_for_gks_json(emit_warnings=True)
     assert "Assertion 117 does not have 'accepted' status. Skipping" in caplog.text
 
-    oncogenic_fusion = civic.get_assertion_by_id(101)
-    assert not oncogenic_fusion.is_valid_for_gks_json(emit_warnings=True)
+    predisposing_assertion = civic.get_assertion_by_id(17)
+    assert not predisposing_assertion.is_valid_for_gks_json(emit_warnings=True)
     assert (
-        "Assertion 101 type is not one of: 'DIAGNOSTIC', 'PREDICTIVE', or 'PROGNOSTIC'. Skipping"
+        "Assertion 17 type is not one of: 'DIAGNOSTIC', 'PREDICTIVE', 'PROGNOSTIC', or 'ONCOGENIC'. Skipping"
         in caplog.text
     )
+
+    oncogenic_fusion = civic.get_assertion_by_id(101)
+    assert not oncogenic_fusion.is_valid_for_gks_json(emit_warnings=True)
     assert "Assertion 101 variant is not a ``GeneVariant``. Skipping" in caplog.text
 
     complex_mp = civic.get_assertion_by_id(88)
@@ -1220,10 +1223,6 @@ def test_is_valid_for_gks_warnings_evidence(caplog):
     """Test that is_valid_for_gks_json works correctly for evidence items"""
     not_accepted_oncogenic_fusion = civic.get_evidence_by_id(6936)
     assert not not_accepted_oncogenic_fusion.is_valid_for_gks_json(emit_warnings=True)
-    assert (
-        "Evidence 6936 type is not one of: 'DIAGNOSTIC', 'PREDICTIVE', or 'PROGNOSTIC'. Skipping"
-        in caplog.text
-    )
     assert "Evidence 6936 variant is not a ``GeneVariant``. Skipping" in caplog.text
     assert "Evidence 6936 does not have 'accepted' status. Skipping" in caplog.text
 

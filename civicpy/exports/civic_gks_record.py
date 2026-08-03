@@ -2,6 +2,8 @@
 
 * CIViC Predictive, Prognostic, and Diagnostic Assertions map to Variant
   Clinical Significance Statements that follow the AMP/ASCO/CAP 2017 guidelines
+* CIViC Oncogenic Assertions map to Variant Oncogenicity Statements that follow
+  the ClinGen/CGC/VICC Oncogenicity 2022 guidelines
 """
 
 import logging
@@ -17,6 +19,7 @@ from ga4gh.core.models import (
     MappableConcept,
     MembershipOperator,
     Relation,
+    code,
     iriReference,
 )
 from ga4gh.va_spec.aac_2017 import (
@@ -30,6 +33,7 @@ from ga4gh.va_spec.aac_2017 import (
 )
 from ga4gh.va_spec.base import (
     Agent,
+    CcvClassification,
     ConditionSet,
     Contribution,
     DiagnosticPredicate,
@@ -38,14 +42,24 @@ from ga4gh.va_spec.base import (
     Method,
     PrognosticPredicate,
     Statement,
+    StrengthCode,
     System,
     TherapeuticResponsePredicate,
     TherapyGroup,
     VariantClinicalSignificanceProposition,
     VariantDiagnosticProposition,
+    VariantOncogenicityProposition,
     VariantPrognosticProposition,
     VariantTherapeuticResponseProposition,
 )
+from ga4gh.va_spec.ccv_2022 import (
+    METHOD as CCV_METHOD,
+)
+from ga4gh.va_spec.ccv_2022 import (
+    VariantOncogenicityEvidenceLine,
+    VariantOncogenicityStatement,
+)
+from ga4gh.va_spec.ccv_2022.derived_evidence import derive_onco_evidence_attributes
 from ga4gh.vrs.models import Expression, Syntax
 from pydantic import BaseModel
 
@@ -95,6 +109,29 @@ class CivicEvidenceAssertionType(str, Enum):
     PREDICTIVE = "PREDICTIVE"
     PROGNOSTIC = "PROGNOSTIC"
     DIAGNOSTIC = "DIAGNOSTIC"
+    ONCOGENIC = "ONCOGENIC"
+
+
+class CivicSignificance(str, Enum):
+    """Define constraints for significance values
+
+    Not exhaustive. Only supports those that can be represented by GKS.
+    """
+
+    # Oncogenicity
+    BENIGN = "BENIGN"
+    LIKELY_BENIGN = "LIKELY_BENIGN"
+    LIKELY_ONCOGENIC = "LIKELY_ONCOGENIC"
+    ONCOGENIC = "ONCOGENIC"
+    UNCERTAIN_SIGNIFICANCE = "UNCERTAIN_SIGNIFICANCE"
+
+    # Clinical Significance / impact
+    BETTER_OUTCOME = "BETTER_OUTCOME"
+    POOR_OUTCOME = "POOR_OUTCOME"
+    POSITIVE = "POSITIVE"
+    NEGATIVE = "NEGATIVE"
+    RESISTANCE = "RESISTANCE"
+    SENSITIVITY_RESPONSE = "SENSITIVITYRESPONSE"
 
 
 CLINICAL_SIGNIFICANCE_ASSERTION_TYPES = [
@@ -102,17 +139,20 @@ CLINICAL_SIGNIFICANCE_ASSERTION_TYPES = [
     CivicEvidenceAssertionType.PROGNOSTIC.value,
     CivicEvidenceAssertionType.DIAGNOSTIC.value,
 ]
+ONCOGENIC_ASSERTION_TYPES = [CivicEvidenceAssertionType.ONCOGENIC.value]
 
 
 class ClinVarSubmissionType(str, Enum):
     """Define supported submission types to ClinVar"""
 
     CLINICAL_IMPACT = "clinical_impact"
+    ONCOGENICITY = "oncogenicity"
 
 
 ASSERTION_TYPES_BY_CLINVAR_SUBMISSION_TYPE = MappingProxyType(
     {
         ClinVarSubmissionType.CLINICAL_IMPACT: CLINICAL_SIGNIFICANCE_ASSERTION_TYPES,
+        ClinVarSubmissionType.ONCOGENICITY: ONCOGENIC_ASSERTION_TYPES,
     }
 )
 
@@ -148,16 +188,21 @@ CIVIC_EVIDENCE_LEVEL_TO_NAME = MappingProxyType(
     }
 )
 
-
+_IS_ONCOGENIC_FOR_PREDICATE = "isOncogenicFor"
 # CIViC significance to GKS predicate
 CLIN_SIG_TO_PREDICATE = MappingProxyType(
     {
-        "SENSITIVITYRESPONSE": TherapeuticResponsePredicate.SENSITIVITY,
-        "RESISTANCE": TherapeuticResponsePredicate.RESISTANCE,
-        "POOR_OUTCOME": PrognosticPredicate.WORSE_OUTCOME,
-        "BETTER_OUTCOME": PrognosticPredicate.BETTER_OUTCOME,
-        "POSITIVE": DiagnosticPredicate.INCLUSIVE,
-        "NEGATIVE": DiagnosticPredicate.EXCLUSIVE,
+        CivicSignificance.SENSITIVITY_RESPONSE.value: TherapeuticResponsePredicate.SENSITIVITY,
+        CivicSignificance.RESISTANCE: TherapeuticResponsePredicate.RESISTANCE,
+        CivicSignificance.POOR_OUTCOME: PrognosticPredicate.WORSE_OUTCOME,
+        CivicSignificance.BETTER_OUTCOME: PrognosticPredicate.BETTER_OUTCOME,
+        CivicSignificance.POSITIVE: DiagnosticPredicate.INCLUSIVE,
+        CivicSignificance.NEGATIVE: DiagnosticPredicate.EXCLUSIVE,
+        CivicSignificance.BENIGN: _IS_ONCOGENIC_FOR_PREDICATE,
+        CivicSignificance.LIKELY_BENIGN: _IS_ONCOGENIC_FOR_PREDICATE,
+        CivicSignificance.LIKELY_ONCOGENIC: _IS_ONCOGENIC_FOR_PREDICATE,
+        CivicSignificance.ONCOGENIC: _IS_ONCOGENIC_FOR_PREDICATE,
+        CivicSignificance.UNCERTAIN_SIGNIFICANCE: _IS_ONCOGENIC_FOR_PREDICATE,
     }
 )
 
@@ -681,7 +726,11 @@ class _CivicGksEvidenceAssertionMixin:
     def get_predicate(
         record: Evidence | Assertion,
     ) -> (
-        PrognosticPredicate | DiagnosticPredicate | TherapeuticResponsePredicate | None
+        PrognosticPredicate
+        | DiagnosticPredicate
+        | TherapeuticResponsePredicate
+        | str
+        | None
     ):
         """Get GKS predicate
 
@@ -757,10 +806,14 @@ class _CivicGksEvidenceAssertionMixin:
             "alleleOriginQualifier": self.get_allele_origin_qualifier(record),
             "predicate": self.get_predicate(record)
             if not is_clinical_significance_prop
-            else VariantClinicalSignificanceProposition.model_fields["predicate"].default,
+            else VariantClinicalSignificanceProposition.model_fields[
+                "predicate"
+            ].default,
         }
 
-        if (
+        if record_type == CivicEvidenceAssertionType.ONCOGENIC:
+            condition_key = "objectTumorType"
+        elif (
             is_clinical_significance_prop
             or record_type != CivicEvidenceAssertionType.PREDICTIVE
         ):
@@ -955,18 +1008,31 @@ class _CivicGksAssertionMixin:
     def get_reported_in(assertion: Assertion) -> list[iriReference | Document]:
         """Get reported in information for an assertion
 
+        If multiple evidence items link to same source, will merge the source.
+
         :param assertion: CIViC assertion record
         :return: List of CIViC links to records which the assertion is reported in
         """
         reported_in: list[iriReference | Document] = [
             iriReference(f"{LINKS_URL}/assertion/{assertion.id}")
         ]
+        civic_gks_sources = {}
         for evidence_item in assertion.evidence_items or []:
-            civic_gks_source = CivicGksSource(
-                evidence_item.source,
-                urls=[f"{LINKS_URL}/evidence/{evidence_item.id}"],
-            )
-            reported_in.append(Document.model_validate(civic_gks_source))
+            source = evidence_item.source
+            source_id = source.id
+            evidence_item_url = f"{LINKS_URL}/evidence/{evidence_item.id}"
+
+            if source_id in civic_gks_sources:
+                civic_gks_sources[source_id].urls.append(evidence_item_url)
+            else:
+                civic_gks_sources[source_id] = Document.model_validate(
+                    CivicGksSource(
+                        source,
+                        urls=[evidence_item_url],
+                    )
+                )
+        reported_in.extend(list(civic_gks_sources.values()))
+
         return reported_in
 
 
@@ -1084,11 +1150,7 @@ class CivicGksClinSigAssertion(
         :return: List of CIViC evidence lines
         :raise NotImplementedError: If evidence line type not supported
         """
-        direction = (
-            Direction.SUPPORTS
-            if assertion.assertion_direction == "SUPPORTS"
-            else Direction.DISPUTES
-        )
+        direction = self.get_direction(assertion.assertion_direction)
 
         evidence_items: list[CivicGksEvidence] = []
         for evidence_item in assertion.evidence_items:
@@ -1142,11 +1204,123 @@ class CivicGksClinSigAssertion(
         return VariantClinicalSignificanceProposition(**params)
 
 
+class CivicGksOncogenicAssertion(
+    VariantOncogenicityStatement,
+    _CivicGksAssertionMixin,
+    _CivicGksEvidenceAssertionMixin,
+):
+    """Class for CIViC oncogenic assertion record represented as GKS"""
+
+    def __init__(self, assertion: Assertion, approval: Approval | None = None) -> None:
+        """Initialize CivicGksOncogenicAssertion class
+
+        :param assertion: CIViC assertion record
+        :param approval: CIViC approval for the assertion, defaults to None
+        :raises CivicGksRecordError: If CIViC assertion is not able to be represented as
+            GKS object
+        """
+        if assertion.assertion_type not in ONCOGENIC_ASSERTION_TYPES:
+            err_msg = f"Assertion type must be one of {ONCOGENIC_ASSERTION_TYPES}"
+            raise CivicGksRecordError(err_msg)
+
+        if not assertion.is_valid_for_gks_json(emit_warnings=True):
+            err_msg = "Assertion is not valid for GKS."
+            raise CivicGksRecordError(err_msg)
+
+        contributions = self.get_contributions(approval) if approval else None
+        proposition = self.get_proposition(assertion)
+        classification, strength = self.get_classification_strength(
+            assertion.significance
+        )
+
+        super().__init__(
+            id=f"civic.aid:{assertion.id}",
+            contributions=contributions,
+            description=assertion.description,
+            specifiedBy=CCV_METHOD,
+            proposition=proposition,
+            direction=self.get_direction(assertion.assertion_direction),
+            classification=classification,
+            strength=strength,
+            hasEvidenceLines=self.get_evidence_lines(assertion),
+            reportedIn=self.get_reported_in(assertion),
+        )
+
+    def get_classification_strength(
+        self, significance
+    ) -> tuple[MappableConcept, MappableConcept | None]:
+        """Get classification and strength
+
+        :param significance: Assertion's significance
+        :return: Classification and strength, if found
+        """
+        _strength = None
+
+        classification = MappableConcept(
+            primaryCoding=Coding(
+                code=code(CcvClassification[significance]), system=System.CCV
+            )
+        )
+
+        if significance in {
+            CivicSignificance.LIKELY_BENIGN,
+            CivicSignificance.LIKELY_ONCOGENIC,
+        }:
+            _strength = StrengthCode.LIKELY
+        elif significance in {CivicSignificance.BENIGN, CivicSignificance.ONCOGENIC}:
+            _strength = StrengthCode.DEFINITIVE
+
+        if _strength:
+            strength = MappableConcept(
+                primaryCoding=Coding(code=code(_strength.value), system=System.CCV)
+            )
+        else:
+            strength = None
+
+        return classification, strength
+
+    def get_evidence_lines(
+        self,
+        assertion: Assertion,
+    ) -> list[VariantOncogenicityEvidenceLine]:
+        """Get evidence lines for a CIViC assertion
+
+        :param assertion: CIViC assertion
+        :return: List of CIViC evidence lines
+        """
+        direction = self.get_direction(assertion.assertion_direction)
+
+        evidence_lines = []
+        for clingen_code in assertion.clingen_codes or []:
+            evidence_attrs = derive_onco_evidence_attributes(
+                VariantOncogenicityEvidenceLine.Criterion(clingen_code.code)
+            )
+            evidence_lines.append(
+                VariantOncogenicityEvidenceLine(
+                    directionOfEvidenceProvided=direction,
+                    **evidence_attrs.model_dump(),
+                )
+            )
+
+        return evidence_lines
+
+    def get_proposition(self, assertion: Assertion) -> VariantOncogenicityProposition:
+        """Get GKS proposition
+
+        :param assertion: CIViC assertion record
+        :return: GKS proposition
+        """
+        params = self._get_proposition_params(
+            assertion, assertion.assertion_type, is_clinical_significance_prop=False
+        )
+        return VariantOncogenicityProposition(**params)
+
+
 def create_gks_record_from_assertion(
     assertion: Assertion,
     approval: Approval | None = None,
     submission_type_filter: ClinVarSubmissionType | None = None,
-) -> CivicGksClinSigAssertion:
+) -> CivicGksClinSigAssertion | CivicGksOncogenicAssertion:
     """Create GKS Record from CIViC Assertion
 
     :param assertion: CIViC assertion record
@@ -1155,7 +1329,7 @@ def create_gks_record_from_assertion(
         restrict which assertion types may be translated
     :raises NotImplementedError: If GKS Record translation is not yet supported.
         Currently, only the following assertion types are supported: DIAGNOSTIC,
-        PREDICTIVE, and PROGNOSTIC.
+        PREDICTIVE, PROGNOSTIC, and ONCOGENIC.
         Or if the assertion type is excluded by the provided ClinVar submission type
             filter.
     :return: GKS Assertion Record object
@@ -1172,6 +1346,9 @@ def create_gks_record_from_assertion(
 
     if assertion_type in CLINICAL_SIGNIFICANCE_ASSERTION_TYPES:
         return CivicGksClinSigAssertion(assertion, approval=approval)
+
+    if assertion_type in ONCOGENIC_ASSERTION_TYPES:
+        return CivicGksOncogenicAssertion(assertion, approval=approval)
 
     err_msg = f"Assertion type {assertion_type} is not currently supported"
     raise NotImplementedError(err_msg)

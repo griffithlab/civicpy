@@ -42,7 +42,7 @@ setup(
         "deprecation",
         "ga4gh.vrs~=2.4.0-a1",
         "ga4gh.cat_vrs~=0.8.0-a1",
-        "ga4gh.va_spec~=0.5.0-a0",
+        "ga4gh.va_spec~=0.5.0-a2",
     ],
     extras_require={
         "test": [
