@@ -1657,7 +1657,8 @@ class TestCivicGksClinSigAssertion(object):
         """Test that combination therapy works as expected"""
         record = CivicGksClinSigAssertion(aid7, variation_normalizer=mocked_normalizer)
         assert isinstance(record, VariantClinicalSignificanceStatement)
-        assert len(record.hasEvidenceLines) >= 1
+        assert len(record.hasEvidenceLines) == 1
+        assert len(record.hasEvidenceLines[0].hasEvidenceItems) == 4
         therapy = record.hasEvidenceLines[0].targetProposition.objectTherapeutic.root
         assert isinstance(therapy, TherapyGroup)
         assert therapy.membershipOperator == "AND"
@@ -1720,7 +1721,7 @@ class TestCivicGksClinSigAssertion(object):
         record = CivicGksClinSigAssertion(aid20, variation_normalizer=mocked_normalizer)
         assert isinstance(record, VariantClinicalSignificanceStatement)
         assert len(record.hasEvidenceLines) == 1
-        assert len(record.hasEvidenceLines[0].hasEvidenceItems) >= 1
+        assert len(record.hasEvidenceLines[0].hasEvidenceItems) == 6
         assert (
             record.hasEvidenceLines[0].targetProposition.predicate
             == "associatedWithWorseOutcomeFor"
@@ -1781,7 +1782,7 @@ class TestCivicGksDiagnosticAssertion(object):
         record = CivicGksClinSigAssertion(aid9, variation_normalizer=mocked_normalizer)
         assert isinstance(record, VariantClinicalSignificanceStatement)
         assert len(record.hasEvidenceLines) == 1
-        assert len(record.hasEvidenceLines[0].hasEvidenceItems) >= 1
+        assert len(record.hasEvidenceLines[0].hasEvidenceItems) == 2
         assert (
             record.hasEvidenceLines[0].targetProposition.predicate
             == "isDiagnosticInclusionCriterionFor"

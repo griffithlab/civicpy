@@ -1472,7 +1472,9 @@ class CivicGksClinSigAssertion(
         evidence_items: list[CivicGksEvidence] = []
         for evidence_item in assertion.evidence_items:
             try:
-                evidence_items.append(CivicGksEvidence(evidence_item))
+                evidence_items.append(
+                    CivicGksEvidence(evidence_item, variation_normalizer)
+                )
             except CivicGksRecordError as e:
                 _logger.exception(
                     "Error translating %s to CivicGksEvidence: %s",
