@@ -5,6 +5,8 @@ import logging
 from civicpy import civic
 from civicpy.__env__ import LOCAL_CACHE_PATH
 from civicpy.exports.civic_gks_record import (
+    CivicGksRecordError,
+    CivicGksOncogenicAssertion,
     CivicGksClinSigAssertion,
     CivicGksOncogenicAssertion,
     CivicGksRecordError,

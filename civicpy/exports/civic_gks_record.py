@@ -131,17 +131,20 @@ class CivicSignificance(str, Enum):
     Not exhaustive. Only supports those that can be represented by GKS.
     """
 
+    # Oncogenicity
     BENIGN = "BENIGN"
-    BETTER_OUTCOME = "BETTER_OUTCOME"
     LIKELY_BENIGN = "LIKELY_BENIGN"
     LIKELY_ONCOGENIC = "LIKELY_ONCOGENIC"
     ONCOGENIC = "ONCOGENIC"
+    UNCERTAIN_SIGNIFICANCE = "UNCERTAIN_SIGNIFICANCE"
+
+    # Clinical Significance / impact
+    BETTER_OUTCOME = "BETTER_OUTCOME"
     POOR_OUTCOME = "POOR_OUTCOME"
     POSITIVE = "POSITIVE"
     NEGATIVE = "NEGATIVE"
     RESISTANCE = "RESISTANCE"
     SENSITIVITY_RESPONSE = "SENSITIVITYRESPONSE"
-    UNCERTAIN_SIGNIFICANCE = "UNCERTAIN_SIGNIFICANCE"
 
 
 CLINICAL_SIGNIFICANCE_ASSERTION_TYPES = [
@@ -1572,7 +1575,6 @@ class CivicGksOncogenicAssertion(
             strength=strength,
             hasEvidenceLines=self.get_evidence_lines(assertion),
             reportedIn=self.get_reported_in(assertion),
-            extensions=self.get_extensions(approval) or None,
         )
 
     def get_classification_strength(
@@ -1683,6 +1685,11 @@ def create_gks_record_from_assertion(
 
     if assertion_type in CLINICAL_SIGNIFICANCE_ASSERTION_TYPES:
         return CivicGksClinSigAssertion(
+            assertion, approval=approval, variation_normalizer=variation_normalizer
+        )
+
+    if assertion_type in ONCOGENIC_ASSERTION_TYPES:
+        return CivicGksOncogenicAssertion(
             assertion, approval=approval, variation_normalizer=variation_normalizer
         )
 
