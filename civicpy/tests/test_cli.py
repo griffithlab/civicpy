@@ -1,7 +1,7 @@
 from datetime import datetime
 from pathlib import Path
 import pytest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 from civicpy import cli, civic
 import tempfile
 import json
@@ -17,6 +17,15 @@ def check_metadata(metadata: dict):
 
     created_at = metadata["created_at"]
     assert datetime.strptime(created_at, "%Y-%m-%d")
+
+
+@pytest.fixture(scope="module")
+def mocked_normalizer(braf_v600e_vrs):
+    """Mock the variation normalizer for GKS JSON CLI tests."""
+    variation_normalizer = Mock()
+    variation_normalizer.normalize.return_value = None
+    variation_normalizer.normalize_molecular_profile.return_value = braf_v600e_vrs
+    return variation_normalizer
 
 
 class TestCli(object):
@@ -36,7 +45,9 @@ class TestCli(object):
 
     @patch("civicpy.civic.get_all_approvals_ready_for_clinvar_submission_for_org")
     @patch("civicpy.civic.get_assertion_by_id", wraps=civic.get_assertion_by_id)
-    def test_create_gks_json_assertions_found(self, mock_assertion, mock_approvals):
+    def test_create_gks_json_assertions_found(
+        self, mock_assertion, mock_approvals, mocked_normalizer
+    ):
         """Test that CLI create_gks_json works as expected when assertions are ready for clinvar submission"""
         mock_assertion.return_value = civic.get_assertion_by_id(6)
         mock_approvals.return_value = [
@@ -54,7 +65,13 @@ class TestCli(object):
 
         with tempfile.NamedTemporaryFile("w+", suffix=".json", delete=True) as tmp_file:
             try:
-                cli.create_gks_json(["--organization-id", 1, "-o", Path(tmp_file.name)])
+                with patch(
+                    "civicpy.cli.VariationNormalizerRestDataProxy",
+                    return_value=mocked_normalizer,
+                ):
+                    cli.create_gks_json(
+                        ["--organization-id", 1, "-o", Path(tmp_file.name)]
+                    )
             except SystemExit as e:
                 assert e.code == 0
 
@@ -70,7 +87,9 @@ class TestCli(object):
                 assert gks_output["errors"] == []
 
     @patch("civicpy.civic.get_all_approvals_ready_for_clinvar_submission_for_org")
-    def test_create_gks_json_assertions_not_valid(self, mock_approvals):
+    def test_create_gks_json_assertions_not_valid(
+        self, mock_approvals, mocked_normalizer
+    ):
         """Test that CLI create_gks_json works as expected when assertion is not valid for GKS JSON"""
         mock_approvals.return_value = [
             civic.Approval(
@@ -97,7 +116,13 @@ class TestCli(object):
 
         with tempfile.NamedTemporaryFile("w+", suffix=".json", delete=True) as tmp_file:
             try:
-                cli.create_gks_json(["--organization-id", 1, "-o", Path(tmp_file.name)])
+                with patch(
+                    "civicpy.cli.VariationNormalizerRestDataProxy",
+                    return_value=mocked_normalizer,
+                ):
+                    cli.create_gks_json(
+                        ["--organization-id", 1, "-o", Path(tmp_file.name)]
+                    )
             except SystemExit as e:
                 assert e.code == 0
 
