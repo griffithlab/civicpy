@@ -130,7 +130,7 @@ def gks_contributions():
                 "type": "Agent",
                 "name": "CIViC",
                 "description": "The CIViC Organization (formerly “The McDonnell Genome Institute” CIViC organization) comprises the founders, developers, editors, curators, and administrators who build and maintain the knowledgebase, based at Washington University in St. Louis. This group is dedicated to ensuring that high-quality cancer variant interpretations are broadly accessible for precision oncology. One of their main roles is evaluating and synthesizing crowdsourced community contributions into formal clinical Assertions. Once these Assertions meet the strict criteria of the CIViC standard operating procedure, core approval members approve them for 1-star submission to the ClinVar CIViC organization.",
-                "extensions": [{"name": "is_approved_vcep", "value": False}],
+                "extensions": [{"name": "isApprovedVcep", "value": False}],
             },
             "activityType": "approval.last_reviewed",
             "date": "2026-04-24",
@@ -270,7 +270,7 @@ def gks_mpid33():
                     "extensions": [
                         {"name": "subtype", "value": "gene_variant"},
                         {
-                            "name": "variant_types",
+                            "name": "variantTypes",
                             "value": [
                                 {
                                     "coding": {
@@ -290,7 +290,7 @@ def gks_mpid33():
         ],
         "extensions": [
             {
-                "name": "CIViC representative coordinate",
+                "name": "representativeVariantCoordinates",
                 "value": {
                     "chromosome": "7",
                     "start": 55259515,
@@ -304,7 +304,7 @@ def gks_mpid33():
                 },
             },
             {
-                "name": "CIViC Molecular Profile Score",
+                "name": "molecularProfileScore",
                 "value": 379.0,
             },
             {
@@ -935,7 +935,7 @@ def civic_mpid113(ret_m918t_vrs, civic_mpid113_cdna_vrs, civic_mpid113_genomic_v
                     "extensions": [
                         {"name": "subtype", "value": "gene_variant"},
                         {
-                            "name": "variant_types",
+                            "name": "variantTypes",
                             "value": [
                                 {
                                     "coding": {
@@ -960,7 +960,7 @@ def civic_mpid113(ret_m918t_vrs, civic_mpid113_cdna_vrs, civic_mpid113_genomic_v
         ],
         "extensions": [
             {
-                "name": "CIViC representative coordinate",
+                "name": "representativeVariantCoordinates",
                 "value": {
                     "chromosome": "10",
                     "start": 43617416,
@@ -974,7 +974,7 @@ def civic_mpid113(ret_m918t_vrs, civic_mpid113_cdna_vrs, civic_mpid113_genomic_v
                 },
             },
             {
-                "name": "CIViC Molecular Profile Score",
+                "name": "molecularProfileScore",
                 "value": 139.0,
             },
             {
@@ -1633,7 +1633,7 @@ class TestCivicGksMolecularProfile(object):
             (
                 ext
                 for ext in gks_mp.extensions
-                if ext.name == "CIViC representative coordinate"
+                if ext.name == "representativeVariantCoordinates"
             ),
             None,
         )
@@ -2070,7 +2070,7 @@ class TestCivicGksRecord(object):
         )
         assert isinstance(record, VariantClinicalSignificanceStatement)
         assert [ext.model_dump(exclude_none=True) for ext in record.extensions] == [
-            {"name": "clinvar_accession", "value": "SCV007542591"}
+            {"name": "clinvarAccession", "value": "SCV007542591"}
         ]
 
     def test_assertion_invalid(self, aid117, mocked_normalizer):
