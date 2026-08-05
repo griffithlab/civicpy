@@ -11,7 +11,7 @@ and :mod:`civic_vcf_record` modules in the civicpy.exports namespace::
     >>>from civicpy.exports.civic_vcf_writer import CivicVcfWriter
     >>>from civicpy.exports.civic_vcf_record import CivicVcfRecord
 
-CIViCPy also supports exporting of CIViC assertion records to JSON files, where
+CIViCpy also supports exporting of CIViC assertion records to JSON files, where
 assertions are represented as Global Alliance for Genomics and Health (GA4GH) Genomic
 Knowledge Standards (GKS) objects. GKS JSON exports are maintained via the
 :mod:`civic_gks_writer` and :mod:`civic_gks_record` modules in the civicpy.exports
@@ -220,6 +220,21 @@ In order to verify whether an assertion can be converted to a CivicGksClinSigAss
 or CivicGksOncogenicAssertion object, the convenience method ``is_valid_for_gks_json``
 can be called on a :class:`civic.Assertion` object.
 
+.. important::
+
+   GKS JSON export uses the `VICC Variation Normalizer
+   <https://github.com/cancervariants/variation-normalization/>`_ to build
+   categorical variants. The CLI and default Python integration use its REST API,
+   which requires a running service.
+
+   The recommended setup is the `Docker installation
+   <https://github.com/cancervariants/variation-normalization/#docker-installation-preferred>`_.
+   By default, CIViCpy expects the service to be available at
+   ``http://127.0.0.1:8000/variation``. To use a different endpoint, set the
+   ``CIVICPY_VARIATION_NORMALIZER_URL`` environment variable.
+   Python callers may instead pass a custom ``VariationNormalizerDataProxy`` backed
+   by the VICC Variation Normalizer Python API.
+
 CivicGksClinSigAssertion
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -228,7 +243,7 @@ CivicGksClinSigAssertion
    :show-inheritance:
 
 CivicGksOncogenicAssertion
-~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. autoclass:: civicpy.exports.civic_gks_record.CivicGksOncogenicAssertion
    :members:
@@ -274,6 +289,11 @@ VariationNormalizerRESTDataProxy
 Examples
 ~~~~~~~~
 
+When generating multiple GKS records, create one variation normalizer data proxy
+and pass it to each call. If the argument is omitted, each independently constructed
+top-level GKS record creates its own default REST proxy. Both examples below reuse a
+single proxy for the complete export operation.
+
 Here's an example of how to export all assertions to GKS JSON::
 
     from pathlib import Path
@@ -284,13 +304,20 @@ Here's an example of how to export all assertions to GKS JSON::
         create_gks_record_from_assertion,
     )
     from civicpy.exports.civic_gks_writer import CivicGksWriter
+    from civicpy.exports.variation_normalizer import VariationNormalizerRESTDataProxy
 
     records = []
+    variation_normalizer = VariationNormalizerRESTDataProxy(
+        base_url="http://127.0.0.1:8001/variation"
+    )
 
     for assertion in civic.get_all_assertions():
         if assertion.is_valid_for_gks_json():
             try:
-                gks_record = create_gks_record_from_assertion(assertion)
+                gks_record = create_gks_record_from_assertion(
+                    assertion,
+                    variation_normalizer=variation_normalizer,
+                )
             except CivicGksRecordError:
                 continue
             else:
@@ -305,20 +332,28 @@ ready for submission to ClinVar.::
 
     from civicpy import civic
     from civicpy.exports.civic_gks_record import (
-      CivicGksRecordError,
-      create_gks_record_from_assertion,
+        CivicGksRecordError,
+        create_gks_record_from_assertion,
     )
     from civicpy.exports.civic_gks_writer import CivicGksWriter
+    from civicpy.exports.variation_normalizer import VariationNormalizerRESTDataProxy
 
     records = []
     organization_id = 1
+    variation_normalizer = VariationNormalizerRESTDataProxy(
+        base_url="http://127.0.0.1:8001/variation"
+    )
 
     for approval in civic.get_all_approvals_ready_for_clinvar_submission_for_org(organization_id):
         assertion = approval.assertion
 
         if assertion.is_valid_for_gks_json():
             try:
-                gks_record = create_gks_record_from_assertion(assertion, approval=approval)
+                gks_record = create_gks_record_from_assertion(
+                    assertion,
+                    variation_normalizer=variation_normalizer,
+                    approval=approval,
+                )
             except CivicGksRecordError:
                 continue
             else:
