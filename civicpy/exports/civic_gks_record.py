@@ -8,9 +8,11 @@
 
 import logging
 import re
+from collections.abc import Sequence
 from dataclasses import dataclass
 from enum import Enum
 from types import MappingProxyType
+from typing import TypeAlias
 
 from ga4gh.cat_vrs.models import (
     CategoricalVariant,
@@ -87,6 +89,8 @@ from civicpy.civic import (
     Source,
     Therapy,
 )
+from civicpy.exports.civic_gks_constants import CivicGksCuriePrefix
+from civicpy.exports.civic_gks_identifier import CivicGksAlleleOriginQualifier
 from civicpy.exports.variation_normalizer import (
     VariationNormalizerDataProxy,
     VariationNormalizerRESTDataProxy,
@@ -95,6 +99,11 @@ from civicpy.exports.variation_normalizer import (
 _logger = logging.getLogger(__name__)
 
 PUBMED_URL = "https://pubmed.ncbi.nlm.nih.gov"
+_CLINVAR_ACCESSION_EXTENSION_NAME = "clinvarAccession"
+_CLINVAR_ACCESSIONS_EXTENSION_NAME = "clinvarAccessions"
+
+# Keep accepting one approval while bundles add support for multiple approvals.
+_ApprovalInput: TypeAlias = Approval | Sequence[Approval] | None
 
 
 class CivicGksRecordError(Exception):
@@ -281,7 +290,7 @@ class CivicGksSop(Method):
     def __init__(self) -> None:
         """Initialize CivicGksSop class"""
         super().__init__(
-            id="civic.method:2019",
+            id=f"{CivicGksCuriePrefix.METHOD.value}:2019",
             name="CIViC Curation SOP (2019)",
             reportedIn=Document(
                 id="pmid:31779674",
@@ -311,7 +320,7 @@ class CivicGksGene(MappableConcept):
         :param gene: CIViC gene record
         """
         super().__init__(
-            id=f"civic.gid:{gene.id}",
+            id=f"{CivicGksCuriePrefix.GENE.value}:{gene.id}",
             conceptType="Gene",
             name=gene.name,
             mappings=self.get_mappings(gene),
@@ -448,7 +457,7 @@ class CivicGksMolecularProfile(CategoricalVariant):
         )
 
         super().__init__(
-            id=f"civic.mpid:{molecular_profile.id}",
+            id=f"{CivicGksCuriePrefix.MOLECULAR_PROFILE.value}:{molecular_profile.id}",
             name=molecular_profile.name,
             description=molecular_profile.description,
             aliases=aliases or None,
@@ -507,7 +516,7 @@ class CivicGksMolecularProfile(CategoricalVariant):
         mappings = [
             ConceptMapping(
                 coding=Coding(
-                    id=f"civic.mpid:{molecular_profile.id}",
+                    id=f"{CivicGksCuriePrefix.MOLECULAR_PROFILE.value}:{molecular_profile.id}",
                     code=str(molecular_profile.id),
                     system=f"{LINKS_URL}/molecular_profile/",
                 ),
@@ -862,7 +871,7 @@ class CivicGksDisease(MappableConcept):
         :param disease: CIViC disease record
         """
         super().__init__(
-            id=f"civic.did:{disease.id}",
+            id=f"{CivicGksCuriePrefix.DISEASE.value}:{disease.id}",
             conceptType="Disease",
             name=disease.name,
             mappings=self.get_mappings(disease),
@@ -904,7 +913,7 @@ class CivicGksPhenotype(MappableConcept):
         """
 
         super().__init__(
-            id=f"civic.{phenotype.type}:{phenotype.id}",
+            id=f"{CivicGksCuriePrefix.PHENOTYPE.value}:{phenotype.id}",
             conceptType=phenotype.type.capitalize(),
             name=phenotype.name,
             mappings=self.get_mappings(phenotype),
@@ -942,7 +951,7 @@ class CivicGksTherapy(MappableConcept):
         :param therapy: CIViC therapy record
         """
         super().__init__(
-            id=f"civic.tid:{therapy.id}",
+            id=f"{CivicGksCuriePrefix.THERAPY.value}:{therapy.id}",
             name=therapy.name,
             conceptType="Therapy",
             mappings=self.get_mappings(therapy),
@@ -1021,15 +1030,19 @@ class _CivicGksEvidenceAssertionMixin:
     """Mixin for CIViC Evidence and Assertions"""
 
     @staticmethod
-    def get_allele_origin_qualifier(record: Evidence | Assertion) -> MappableConcept:
-        """Get GKS allele origin qualifier
+    def get_allele_origin_qualifier(
+        record: Evidence | Assertion,
+    ) -> CivicGksAlleleOriginQualifier:
+        """Create the mapped allele origin concept for a CIViC record.
 
-        :param record: CIViC assertion or evidence item
-        :return: Allele origin qualifier
+        The qualifier's name and mappings define its computed bundle identity.
+
+        :param record: CIViC assertion or evidence item.
+        :return: Mapped allele origin qualifier.
         """
         variant_origin = record.variant_origin
 
-        return MappableConcept(
+        return CivicGksAlleleOriginQualifier(
             name=VARIANT_ORIGIN_TO_ALLELE_ORIGIN[variant_origin],
             mappings=[
                 ConceptMapping(
@@ -1235,7 +1248,7 @@ class CivicGksSource(Document):
             source_urls.append(f"https://www.ncbi.nlm.nih.gov/pmc/articles/{pmc_id}")
 
         super().__init__(
-            id=f"civic.sid:{source.id}",
+            id=f"{CivicGksCuriePrefix.SOURCE.value}:{source.id}",
             name=source.citation,
             title=source.title,
             pmid=pmid,
@@ -1298,7 +1311,7 @@ class CivicGksEvidence(Statement, _CivicGksEvidenceAssertionMixin):
         variation_normalizer = resolve_variation_normalizer(variation_normalizer)
 
         super().__init__(
-            id=f"civic.eid:{evidence_item.id}",
+            id=f"{CivicGksCuriePrefix.EVIDENCE.value}:{evidence_item.id}",
             description=evidence_item.description,
             specifiedBy=CivicGksSop(),
             proposition=self.get_target_proposition(
@@ -1321,46 +1334,97 @@ class _CivicGksAssertionMixin:
     """Mixin for CIViC Assertions"""
 
     @staticmethod
-    def get_contributions(approval: Approval) -> list[Contribution]:
-        """Get contributions for an approval
+    def _normalize_approvals(approval: _ApprovalInput) -> tuple[Approval, ...]:
+        """Normalize one or more approvals into a stable tuple.
 
-        :param approval: Approval for assertion
-        :return: List of contributions, with one item containing when the approval was
-            last reviewed an organization.
-            Will include an ``isApprovedVcep`` extension.
+        :param approval: One approval, multiple approvals, or ``None``.
+        :return: Approvals sorted by organization and approval identifier.
         """
-        organization: Organization = approval.organization
-        return [
-            Contribution(
-                activityType=f"{approval.type}.last_reviewed",
-                date=approval.last_reviewed.split("T", 1)[0],
-                contributor=Agent(
-                    id=f"civic.{organization.type}:{organization.id}",
-                    name=organization.name,
-                    description=organization.description,
-                    extensions=[
-                        Extension(
-                            name="isApprovedVcep", value=organization.is_approved_vcep
-                        )
-                    ],
-                ),
-            )
-        ]
+        if approval is None:
+            return ()
+        approvals = (approval,) if isinstance(approval, Approval) else tuple(approval)
+        return tuple(
+            sorted(approvals, key=lambda item: (item.organization_id, item.id))
+        )
 
     @staticmethod
-    def get_extensions(approval: Approval | None) -> list[Extension]:
-        """Get extensions for an assertion
+    def _create_clinvar_accession_extension(
+        accession: str | list[str],
+    ) -> Extension:
+        """Create a singular or plural ClinVar accession extension.
 
-        :param approval: Approval for assertion, if exists
-        :return: List of extensions for an assertion. This will contain a
-            single record, `clinvar_accession` if one exists
+        One accession uses ``clinvarAccession``; multiple use
+        ``clinvarAccessions``.
+
+        :param accession: One ClinVar accession or multiple unique accessions.
+        :return: Extension whose name and value cardinality agree.
         """
-        extensions = []
-        if approval and approval.clinvar_accession:
-            extensions.append(
-                Extension(name="clinvarAccession", value=approval.clinvar_accession)
+        extension_name = (
+            _CLINVAR_ACCESSIONS_EXTENSION_NAME
+            if isinstance(accession, list)
+            else _CLINVAR_ACCESSION_EXTENSION_NAME
+        )
+        return Extension(name=extension_name, value=accession)
+
+    @classmethod
+    def get_contributions(cls, approvals: Sequence[Approval]) -> list[Contribution]:
+        """Create one contribution for each approval of an assertion.
+
+        :param approvals: Approvals associated with one assertion.
+        :return: Contributions recording when each organization last reviewed
+            its approval, including the organization's ``isApprovedVcep`` value.
+        """
+        contributions: list[Contribution] = []
+        for approval in approvals:
+            organization: Organization = approval.organization
+            contributions.append(
+                Contribution(
+                    activityType=f"{approval.type}.last_reviewed",
+                    date=approval.last_reviewed.split("T", 1)[0],
+                    extensions=(
+                        [
+                            cls._create_clinvar_accession_extension(
+                                approval.clinvar_accession
+                            )
+                        ]
+                        if approval.clinvar_accession
+                        else None
+                    ),
+                    contributor=Agent(
+                        id=f"{CivicGksCuriePrefix.ORGANIZATION.value}:{organization.id}",
+                        name=organization.name,
+                        description=organization.description,
+                        extensions=[
+                            Extension(
+                                name="isApprovedVcep",
+                                value=organization.is_approved_vcep,
+                            )
+                        ],
+                    ),
+                )
             )
-        return extensions
+        return contributions
+
+    @classmethod
+    def get_extensions(cls, approvals: Sequence[Approval]) -> list[Extension]:
+        """Get unique ClinVar accession extensions from assertion approvals.
+
+        :param approvals: Approvals associated with one assertion.
+        :return: One singular or plural ClinVar accession extension.
+        """
+        accessions = sorted(
+            {
+                approval.clinvar_accession
+                for approval in approvals
+                if approval.clinvar_accession
+            }
+        )
+        if not accessions:
+            return []
+        extension_value: str | list[str] = (
+            accessions[0] if len(accessions) == 1 else accessions
+        )
+        return [cls._create_clinvar_accession_extension(extension_value)]
 
     @staticmethod
     def get_reported_in(assertion: Assertion) -> list[iriReference]:
@@ -1411,13 +1475,13 @@ class CivicGksClinSigAssertion(
     def __init__(
         self,
         assertion: Assertion,
-        approval: Approval | None = None,
+        approval: _ApprovalInput = None,
         variation_normalizer: VariationNormalizerDataProxy | None = None,
     ) -> None:
         """Initialize CivicGksClinSigAssertion class
 
         :param assertion: CIViC assertion record
-        :param approval: CIViC approval for the assertion, defaults to None
+        :param approval: One or more CIViC approvals for the assertion.
         :param variation_normalizer: Variation Normalizer data proxy
         :raises CivicGksRecordError: If CIViC assertion is not able to be represented as
             GKS object
@@ -1435,11 +1499,12 @@ class CivicGksClinSigAssertion(
         classification, strength, level = self.get_classification_strength_level(
             assertion.amp_level
         )
-        contributions = self.get_contributions(approval) if approval else None
+        approvals = self._normalize_approvals(approval)
+        contributions = self.get_contributions(approvals) or None
         variation_normalizer = resolve_variation_normalizer(variation_normalizer)
 
         super().__init__(
-            id=f"civic.aid:{assertion.id}",
+            id=f"{CivicGksCuriePrefix.ASSERTION.value}:{assertion.id}",
             contributions=contributions,
             description=assertion.description,
             specifiedBy=CivicGksSop(),
@@ -1451,7 +1516,7 @@ class CivicGksClinSigAssertion(
                 assertion, level, variation_normalizer
             ),
             reportedIn=self.get_reported_in(assertion),
-            extensions=self.get_extensions(approval) or None,
+            extensions=self.get_extensions(approvals) or None,
         )
 
     def get_classification_strength_level(
@@ -1583,13 +1648,13 @@ class CivicGksOncogenicAssertion(
     def __init__(
         self,
         assertion: Assertion,
-        approval: Approval | None = None,
+        approval: _ApprovalInput = None,
         variation_normalizer: VariationNormalizerDataProxy | None = None,
     ) -> None:
         """Initialize CivicGksOncogenicAssertion class
 
         :param assertion: CIViC assertion record
-        :param approval: CIViC approval for the assertion, defaults to None
+        :param approval: One or more CIViC approvals for the assertion.
         :param variation_normalizer: Variation Normalizer data proxy
         :raises CivicGksRecordError: If CIViC assertion is not able to be represented as
             GKS object
@@ -1604,14 +1669,15 @@ class CivicGksOncogenicAssertion(
 
         variation_normalizer = resolve_variation_normalizer(variation_normalizer)
 
-        contributions = self.get_contributions(approval) if approval else None
+        approvals = self._normalize_approvals(approval)
+        contributions = self.get_contributions(approvals) or None
         proposition = self.get_proposition(assertion, variation_normalizer)
         classification, strength = self.get_classification_strength(
             assertion.significance
         )
 
         super().__init__(
-            id=f"civic.aid:{assertion.id}",
+            id=f"{CivicGksCuriePrefix.ASSERTION.value}:{assertion.id}",
             contributions=contributions,
             description=assertion.description,
             specifiedBy=CCV_METHOD,
@@ -1656,8 +1722,9 @@ class CivicGksOncogenicAssertion(
 
         return classification, strength
 
+    @classmethod
     def get_evidence_lines(
-        self,
+        cls,
         assertion: Assertion,
     ) -> list[VariantOncogenicityEvidenceLine]:
         """Get evidence lines for a CIViC assertion
@@ -1665,22 +1732,21 @@ class CivicGksOncogenicAssertion(
         :param assertion: CIViC assertion
         :return: List of CIViC evidence lines
         """
-        direction = self.get_direction(assertion.assertion_direction)
+        direction = cls.get_direction(assertion.assertion_direction)
 
         evidence_lines = []
         for clingen_code in assertion.clingen_codes or []:
-            evidence_attrs = derive_onco_evidence_attributes(
-                VariantOncogenicityEvidenceLine.Criterion(clingen_code.code)
-            )
+            evidence_attrs = derive_onco_evidence_attributes(clingen_code.code)
             evidence_lines.append(
                 VariantOncogenicityEvidenceLine(
                     directionOfEvidenceProvided=direction,
-                    **evidence_attrs.model_dump(),
+                    **evidence_attrs.model_dump(
+                        exclude={"directionOfEvidenceProvided"}
+                    ),
                 )
             )
 
         return evidence_lines
-
     def get_proposition(
         self, assertion: Assertion, variation_normalizer: VariationNormalizerDataProxy
     ) -> VariantOncogenicityProposition:
@@ -1701,23 +1767,21 @@ class CivicGksOncogenicAssertion(
 
 def create_gks_record_from_assertion(
     assertion: Assertion,
-    approval: Approval | None = None,
+    approval: _ApprovalInput = None,
     submission_type_filter: ClinVarSubmissionType | None = None,
     variation_normalizer: VariationNormalizerDataProxy | None = None,
 ) -> CivicGksClinSigAssertion | CivicGksOncogenicAssertion:
-    """Create GKS Record from CIViC Assertion
+    """Transform a CIViC Assertion into a supported VA-Spec GKS Statement.
 
-    :param assertion: CIViC assertion record
-    :param approval: CIViC approval for the assertion, defaults to None
+    :param assertion: CIViC Assertion to transform.
+    :param approval: One or more CIViC approvals for the assertion.
     :param submission_type_filter: Optional ClinVar submission type used to
-        restrict which assertion types may be translated
-    :param variation_normalizer: Variation Normalizer data proxy
-    :raises NotImplementedError: If GKS Record translation is not yet supported.
-        Currently, only the following assertion types are supported: DIAGNOSTIC,
-        PREDICTIVE, PROGNOSTIC, and ONCOGENIC.
-        Or if the assertion type is excluded by the provided ClinVar submission type
-            filter.
-    :return: GKS Assertion Record object
+        restrict which Assertion types may be translated.
+    :param variation_normalizer: Variation Normalizer data proxy.
+    :raises NotImplementedError: If the Assertion type is unsupported or excluded
+        by ``submission_type_filter``. Supported types are ``DIAGNOSTIC``,
+        ``PREDICTIVE``, ``PROGNOSTIC``, and ``ONCOGENIC``.
+    :return: A clinical-significance or oncogenicity GKS Statement.
     """
     assertion_type = assertion.assertion_type
 

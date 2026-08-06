@@ -1,115 +1,101 @@
-"""Module for writing CIViC GKS representation to JSON"""
+"""Write CIViC GKS assertions as dereferenced or referenced JSON.
+
+This module owns the dereferenced output model and the file-writing entry point.
+It delegates referenced document construction to
+:mod:`civicpy.exports.civic_gks_bundle_builder` and uses the bundle models from
+:mod:`civicpy.exports.civic_gks_bundle`.
+"""
 
 import datetime
-from importlib.metadata import PackageNotFoundError, version
 import json
 from pathlib import Path
 from typing import Any
 
 from pydantic import BaseModel, Field
 
-from civicpy.exports.civic_gks_record import (
-    CivicGksClinSigAssertion,
-    CivicGksOncogenicAssertion,
+from civicpy.exports.civic_gks_bundle import (
+    GksBundleOutput,
+)
+from civicpy.exports.civic_gks_bundle_builder import build_gks_bundle
+from civicpy.exports.civic_gks_output import (
+    GksAssertionError,
+    GksOutputMetadata,
+    GksRecord,
 )
 
 
-def get_pkg_version(name: str) -> str:
-    """Get package version
+def _serialize_json_default(value: Any) -> str:
+    """Serialize datetime values consistently in GKS JSON documents.
 
-    :param name: Name of package to get version for
-    :return: Version for package, if found. Otherwise, unknown.
+    :param value: Value passed to :func:`json.dump` that needs serialization.
+    :raises TypeError: If ``value`` is not a supported datetime object.
+    :return: An ISO-8601 calendar date.
     """
-    try:
-        return version(name)
-    except PackageNotFoundError:
-        return "unknown"
-
-
-class GksOutputMetadata(BaseModel):
-    """Define model for GKS JSON Output Metadata"""
-
-    va_spec_python_version: str = Field(
-        description="VA-Spec Python version. This can be used to derive the corresponding VA-Spec version.",
-        default_factory=lambda: get_pkg_version("ga4gh.va_spec"),
-    )
-    created_at: str
-
-
-class GksAssertionError(BaseModel):
-    """Define model for representing assertion errors when translating to GKS"""
-
-    assertion_id: int
-    message: str
+    if isinstance(value, datetime.datetime):
+        return value.date().isoformat()
+    raise TypeError(f"Object of type {type(value)} is not JSON serializable")
 
 
 class GksOutput(BaseModel):
-    """Define model for representing GKS JSON output"""
+    """Dereferenced export with each assertion's related objects inline."""
 
-    gks_records: list[CivicGksClinSigAssertion | CivicGksOncogenicAssertion]
+    gks_records: list[GksRecord]
     metadata: GksOutputMetadata
-    failed_assertion_ids: list[int] = []
-    errors: list[GksAssertionError] = []
+    failed_assertion_ids: list[int]
+    errors: list[GksAssertionError]
 
 
 class CivicGksWriter:
-    """Class for writing CIViC GKS assertions to JSON file
+    """Write validated CIViC GKS assertions to a JSON document.
 
-    :param filepath: The output file path to write the JSON file to
-    :raises ValueError: If ``filepath`` does not have `.json` suffix
-    :param gks_records: List CIViC assertions represented as GKS objects
+    ``bundle=False`` writes the default dereferenced format, with related objects
+    inlined in each assertion. ``bundle=True`` references shared GKS objects from
+    keyed collections with JSON Pointers.
     """
 
     def __init__(
         self,
         filepath: Path,
-        gks_records: list[CivicGksClinSigAssertion | CivicGksOncogenicAssertion],
+        gks_records: list[GksRecord],
         errors: list[GksAssertionError] | None = None,
-    ):
-        """Initialize CivicGksWriter class
+        bundle: bool = False,
+    ) -> None:
+        """Write CIViC GKS Statements to a dereferenced or bundled JSON file.
 
-        :param filepath: The output file path to write the JSON file to
-        :param gks_records: List CIViC assertions represented as GKS objects
-        :raises ValueError: If ``filepath`` does not have `.json` suffix
+        :param filepath: Destination JSON filepath.
+        :param gks_records: VA-Spec GKS Statements translated from CIViC
+            Assertions.
+        :param errors: Assertions that could not be represented in the export.
+        :param bundle: If ``True``, write the referenced GKS Bundle Format;
+            otherwise write the default dereferenced format.
+        :raises ValueError: If ``filepath`` does not use the ``.json`` suffix.
         """
-
-        def _default(obj: Any) -> str:
-            """Converting datetime objects to ISO-formatted dates (YYYY-MM-DD)
-
-            :param obj: Python object to serialize
-            :raises TypeError: If an unsupported type
-            :return: JSON string where datetime objects appear as YYYY-MM-DD
-            """
-            if isinstance(obj, datetime.datetime):
-                return obj.isoformat().split("T", 1)[0]
-
-            err_msg = f"Object of type {type(obj)} is not JSON serializable"
-            raise TypeError(err_msg)
-
         if filepath.suffix.lower() != ".json":
-            err_msg = "Output file path must end in '.json'."
-            raise ValueError(err_msg)
+            raise ValueError("Output file path must end in '.json'.")
 
         metadata = GksOutputMetadata(
-            created_at=str(
-                datetime.datetime.now(tz=datetime.timezone.utc).strftime("%Y-%m-%d")
+            created_at=datetime.datetime.now(tz=datetime.timezone.utc).strftime(
+                "%Y-%m-%d"
             )
         )
+        export_errors = errors or []
 
-        if errors:
-            failed_assertion_ids = [err.assertion_id for err in errors]
+        if bundle:
+            output: GksBundleOutput | GksOutput = build_gks_bundle(
+                gks_records, metadata, export_errors
+            )
         else:
-            errors = []
-            failed_assertion_ids = []
+            output = GksOutput(
+                gks_records=gks_records,
+                metadata=metadata,
+                failed_assertion_ids=[error.assertion_id for error in export_errors],
+                errors=export_errors,
+            )
 
-        output = GksOutput(
-            gks_records=gks_records,
-            metadata=metadata,
-            failed_assertion_ids=failed_assertion_ids,
-            errors=errors,
-        )
-
-        with filepath.open("w+") as wf:
+        with filepath.open("w", encoding="utf-8") as write_file:
             json.dump(
-                output.model_dump(exclude_none=True), wf, indent=2, default=_default
+                output.model_dump(exclude_none=True),
+                write_file,
+                indent=2,
+                default=_serialize_json_default,
             )

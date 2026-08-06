@@ -11,11 +11,11 @@ and :mod:`civic_vcf_record` modules in the civicpy.exports namespace::
     >>>from civicpy.exports.civic_vcf_writer import CivicVcfWriter
     >>>from civicpy.exports.civic_vcf_record import CivicVcfRecord
 
-CIViCpy also supports exporting of CIViC assertion records to JSON files, where
-assertions are represented as Global Alliance for Genomics and Health (GA4GH) Genomic
-Knowledge Standards (GKS) objects. GKS JSON exports are maintained via the
-:mod:`civic_gks_writer` and :mod:`civic_gks_record` modules in the civicpy.exports
-namespace::
+CIViCpy can also export CIViC Assertions as Global Alliance for Genomics and
+Health (GA4GH) Genomic Knowledge Standards (GKS) JSON. The
+:mod:`civic_gks_record` module builds GKS records, while
+:mod:`civic_gks_writer` writes dereferenced GKS JSON or referenced GKS Bundle
+JSON::
 
     >>>from civicpy.exports.civic_gks_writer import CivicGksWriter
     >>>from civicpy.exports.civic_gks_record import CivicGksClinSigAssertion, CivicGksOncogenicAssertion
@@ -211,14 +211,182 @@ Here's an example of how to export all variants from CIViC to VCF::
 GKS JSON
 --------
 
-GKS JSON files are written using the :class:`civicpy.exports.civic_gks_writer.CivicGksWriter`
-class to which you add :class:`civicpy.exports.civic_gks_record.CivicGksClinSigAssertion`
-or :class:`civicpy.exports.civic_gks_record.CivicGksOncogenicAssertion` during
-initialization.
+Use :class:`civicpy.exports.civic_gks_writer.CivicGksWriter` to write
+:class:`civicpy.exports.civic_gks_record.CivicGksClinSigAssertion` and
+:class:`civicpy.exports.civic_gks_record.CivicGksOncogenicAssertion` records.
 
-In order to verify whether an assertion can be converted to a CivicGksClinSigAssertion
-or CivicGksOncogenicAssertion object, the convenience method ``is_valid_for_gks_json``
-can be called on a :class:`civic.Assertion` object.
+``CivicGksWriter`` supports two relationship representations:
+
+* ``bundle=False`` (the default) writes **dereferenced GKS JSON**. Related GKS
+  objects are included in each Assertion record.
+* ``bundle=True`` writes **referenced GKS Bundle JSON**. Shared objects appear
+  in keyed root collections and relationships use JSON Pointers such as
+  ``#/categoricalVariant/civic.mpid:33``.
+
+.. important::
+
+   The CIViC GKS Bundle Format is experimental in ``0.1.0``. Check
+   ``bundle_format_version`` when reading a bundle.
+
+Choose the format when creating the writer::
+
+    # Dereferenced GKS JSON (the default)
+    CivicGksWriter(Path("civic-gks-inline.json"), records)
+
+    # Referenced GKS Bundle JSON
+    CivicGksWriter(Path("civic-gks-bundle.json"), records, bundle=True)
+
+The CLI uses separate commands because each format selects Assertions
+differently::
+
+    # One ClinVar-ready submission type as dereferenced GKS JSON
+    civicpy create-gks-json --organization-id 1 --submission-type clinical_impact -o civic-gks.json
+
+    # Both supported Statement types as referenced GKS Bundle JSON
+    civicpy create-gks-bundle -o civic-gks-bundle.json
+
+``create-gks-json`` writes ClinVar-ready Assertions approved by the specified
+CIViC organization. ``--submission-type`` is required because the ClinVar
+Submission API accepts one submission type at a time.
+
+``create-gks-bundle`` writes all accepted clinical significance and
+oncogenicity Assertions, even when they are not ready for ClinVar. It also
+includes accepted Approvals and their organizations when available. Each
+contribution stores its organization's ``clinvarAccession`` when one is
+available. A Statement uses ``clinvarAccession`` for one accession and
+``clinvarAccessions`` for multiple unique accessions.
+
+Use ``--organization-id`` to include only Assertions approved by one
+organization::
+
+    civicpy create-gks-bundle --organization-id 1 -o civic-gks-bundle.json
+
+What's in a GKS Bundle
+~~~~~~~~~~~~~~~~~~~~~~
+
+A bundle is one JSON object with keyed root collections. Shared variations,
+genes, documents, and propositions are stored once and linked with local JSON
+Pointers.
+
+The ``metadata`` identifies the bundle format and version.
+``statistics.collections`` gives the size of every collection. Collections
+that can contain several object types also include counts by type.
+
+The root collections are:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 25 75
+
+   * - Collection
+     - Contents
+   * - ``sequenceReference``
+     - VRS sequence references, keyed by ``refgetAccession``.
+   * - ``location``
+     - Reusable VRS locations, including sequence locations.
+   * - ``molecularVariation``
+     - Reusable VRS alleles, copy-number changes, and copy-number counts.
+   * - ``categoricalVariant``
+     - CIViC molecular profiles represented as GKS categorical variants.
+   * - ``gene``, ``condition``, and ``conditionSet``
+     - Gene, disease, and phenotype concepts used by propositions, plus grouped
+       conditions.
+   * - ``therapy`` and ``therapyGroup``
+     - Individual therapies and multi-therapy groups referenced by clinical
+       significance propositions.
+   * - ``alleleOriginQualifier``
+     - Allele origin concepts referenced by propositions. Existing external IRI
+       references remain unchanged.
+   * - ``document``, ``method``, and ``agent``
+     - Sources and provenance objects, including the PMID-identified CIViC SOP
+       and CCV framework documents.
+   * - ``proposition``
+     - Assertion propositions and evidence-line target propositions.
+   * - ``statement``
+     - CIViC Assertion and Evidence Statements, distinguished by their
+       ``civic.aid:`` and ``civic.eid:`` identifiers.
+
+Objects with source IDs keep them. Condition sets, therapy groups, allele origin
+qualifiers, and propositions without source IDs receive ``civic.gks``
+identifiers computed from their identifying fields.
+Descriptive changes, such as renaming a therapy or changing an alias, do not
+change an enclosing group's identifier. Member and mapping order also does not
+affect an identifier. Other value objects without stable identities remain
+inline.
+
+.. note::
+
+   The GKS Bundle Format currently uses JSON Pointers in agent and
+   proposition fields that VA-Spec does not type as ``iriReference``. Resolve
+   these fields according to the GKS Bundle Format.
+
+``SequenceReference`` is the only collection whose values do not carry an ``id``
+field; its collection key and ``refgetAccession`` must match.
+
+Applications can compute these IDs without creating a bundle. The function
+accepts supported Pydantic GKS objects and does not modify them::
+
+    from civicpy.exports.civic_gks_identifier import compute_civic_gks_identifier
+
+    therapy_group_id = compute_civic_gks_identifier(therapy_group)
+
+If records contain different representations of the same object, the bundle
+keeps the first and logs a warning. Statements and collection keys are sorted so
+the result is deterministic.
+
+This excerpt uses computed ``civic.gks`` identifiers from the test data and
+shows only the ``statement`` and ``proposition`` collections so the links are
+easy to see::
+
+    {
+      "proposition": {
+        "civic.gks:PR.-AKWXtNluL_XZYk5cDaaV7bKw6fKlPmD": {
+          "id": "civic.gks:PR.-AKWXtNluL_XZYk5cDaaV7bKw6fKlPmD",
+          "type": "VariantClinicalSignificanceProposition",
+          "subjectVariant": "#/categoricalVariant/civic.mpid:33",
+          "geneContextQualifier": "#/gene/civic.gid:19",
+          "predicate": "hasClinicalSignificanceFor",
+          "objectCondition": "#/condition/civic.did:8"
+        },
+        "civic.gks:PR.lzu38uLu_bvAPfb7Jo_ol8741OJaSdnu": {
+          "id": "civic.gks:PR.lzu38uLu_bvAPfb7Jo_ol8741OJaSdnu",
+          "type": "VariantTherapeuticResponseProposition",
+          "subjectVariant": "#/categoricalVariant/civic.mpid:33",
+          "predicate": "predictsSensitivityTo",
+          "objectTherapeutic": "#/therapy/civic.tid:146"
+        }
+      },
+      "statement": {
+        "civic.aid:6": {
+          "id": "civic.aid:6",
+          "type": "Statement",
+          "proposition": "#/proposition/civic.gks:PR.-AKWXtNluL_XZYk5cDaaV7bKw6fKlPmD",
+          "hasEvidenceLines": [
+            {
+              "type": "EvidenceLine",
+              "hasEvidenceItems": ["#/statement/civic.eid:2997"],
+              "targetProposition": "#/proposition/civic.gks:PR.lzu38uLu_bvAPfb7Jo_ol8741OJaSdnu"
+            }
+          ]
+        },
+        "civic.eid:2997": {
+          "id": "civic.eid:2997",
+          "type": "Statement",
+          "proposition": "#/proposition/civic.gks:PR.lzu38uLu_bvAPfb7Jo_ol8741OJaSdnu"
+        }
+      }
+    }
+
+Assertion Statements use ``civic.aid:{id}`` keys, while Evidence Statements use
+``civic.eid:{id}`` keys. Evidence lines remain inline because they have no
+stable CIViC ID, but ``hasEvidenceItems`` points to supporting Statements. Follow
+each Statement's ``proposition`` pointer to find its interpretation. The full
+bundle links each proposition to its variant, gene, condition, and therapy
+objects in the other root collections.
+
+To check whether an Assertion can be transformed into a
+``CivicGksClinSigAssertion`` or ``CivicGksOncogenicAssertion``, call
+``is_valid_for_gks_json`` on the :class:`civic.Assertion` object.
 
 .. important::
 

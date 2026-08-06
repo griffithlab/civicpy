@@ -16,7 +16,12 @@ Annotating a VCF with data from CIViC Variants
 
 .. program-output:: civicpy annotate-vcf -h
 
-Creating a GKS JSON file to submit to ClinVar
----------------------------------------------
+Create dereferenced GKS JSON for ClinVar
+----------------------------------------
 
 .. program-output:: civicpy create-gks-json -h
+
+Create referenced GKS Bundle JSON
+---------------------------------
+
+.. program-output:: civicpy create-gks-bundle -h
