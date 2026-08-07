@@ -240,6 +240,37 @@ CivicGksWriter
 .. autoclass:: civicpy.exports.civic_gks_writer.CivicGksWriter
    :members:
 
+Variation Normalization
+~~~~~~~~~~~~~~~~~~~~~~~
+
+CIViC simple molecular profiles can be normalized to GA4GH VRS Allele or Copy
+Number Change objects using the `VICC Variation Normalizer`_.
+
+``VariationNormalizerDataProxy`` supports normalization through either the REST
+API or the Python API. CIViCpy includes a REST implementation. To use the Python
+API directly, subclass ``VariationNormalizerDataProxy`` and implement
+``normalize``. The base class handles the shared profile parsing and eligibility
+checks.
+
+``VariationNormalizerRESTDataProxy`` is the included implementation for the VICC
+Variation Normalizer REST API. It uses ``http://127.0.0.1:8000/variation`` by default.
+Pass a ``base_url`` argument or set ``CIVICPY_VARIATION_NORMALIZER_URL`` to use a
+different endpoint.
+
+.. _VICC Variation Normalizer: https://github.com/cancervariants/variation-normalization/
+
+VariationNormalizerDataProxy
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. autoclass:: civicpy.exports.variation_normalizer.VariationNormalizerDataProxy
+   :members:
+
+VariationNormalizerRESTDataProxy
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. autoclass:: civicpy.exports.variation_normalizer.VariationNormalizerRESTDataProxy
+   :members:
+
 Examples
 ~~~~~~~~
 
@@ -294,4 +325,3 @@ ready for submission to ClinVar.::
                 records.append(gks_record)
 
     CivicGksWriter(Path("gks.json"), records)
-
