@@ -19,6 +19,12 @@ Annotating a VCF with data from CIViC Variants
 Create dereferenced GKS JSON for ClinVar
 ----------------------------------------
 
+GKS export uses the Variation Normalizer REST service at
+``http://127.0.0.1:8000/variation`` by default. Set the endpoint before running the
+command when a different service should be used::
+
+    export CIVICPY_VARIATION_NORMALIZER_URL=https://variation-normalizer.example/variation
+
 .. program-output:: civicpy create-gks-json -h
 
 Create referenced GKS Bundle JSON

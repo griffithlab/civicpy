@@ -9,6 +9,7 @@ from ga4gh.va_spec.base import Statement
 from ga4gh.va_spec.ccv_2022 import VariantOncogenicityStatement
 
 from civicpy.civic import Assertion, get_assertion_by_id, get_molecular_profile_by_id
+from civicpy.exports.civic_gks_record import CivicGksMolecularProfile
 from civicpy.exports.variation_normalizer import VariationNormalizerDataProxy
 
 
@@ -82,7 +83,10 @@ def mocked_normalizer(braf_v600e_vrs):
     variation_normalizer = Mock(spec=VariationNormalizerDataProxy)
     variation_normalizer.normalize.return_value = None
     variation_normalizer.normalize_molecular_profile.return_value = braf_v600e_vrs
-    return variation_normalizer
+    previous_normalizer = CivicGksMolecularProfile._variation_normalizer
+    CivicGksMolecularProfile.configure_variation_normalizer(variation_normalizer)
+    yield variation_normalizer
+    CivicGksMolecularProfile._variation_normalizer = previous_normalizer
 
 
 @pytest.fixture(scope="module")

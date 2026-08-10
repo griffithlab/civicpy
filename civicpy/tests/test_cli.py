@@ -116,22 +116,18 @@ class TestCli(object):
 
         with tempfile.NamedTemporaryFile("w+", suffix=".json", delete=True) as tmp_file:
             try:
-                with patch(
-                    "civicpy.cli.VariationNormalizerRESTDataProxy",
-                    return_value=mocked_normalizer,
-                ):
-                    command = ["-o", Path(tmp_file.name)]
-                    if not bundle:
-                        command[0:0] = [
-                            "--organization-id",
-                            1,
-                            "--submission-type",
-                            "oncogenicity",
-                        ]
-                    export_command = (
-                        cli.create_gks_bundle if bundle else cli.create_gks_json
-                    )
-                    export_command(command)
+                command = ["-o", Path(tmp_file.name)]
+                if not bundle:
+                    command[0:0] = [
+                        "--organization-id",
+                        1,
+                        "--submission-type",
+                        "oncogenicity",
+                    ]
+                export_command = (
+                    cli.create_gks_bundle if bundle else cli.create_gks_json
+                )
+                export_command(command)
             except SystemExit as e:
                 assert e.code == 0
 
@@ -173,9 +169,9 @@ class TestCli(object):
                     }
                 else:
                     assert gks_output["failed_assertion_ids"] == [6]
-                    assert [
-                        record["id"] for record in gks_output["gks_records"]
-                    ] == ["civic.aid:202"]
+                    assert [record["id"] for record in gks_output["gks_records"]] == [
+                        "civic.aid:202"
+                    ]
 
     @patch("civicpy.civic.get_all_assertions")
     @patch("civicpy.civic.get_all_approvals")
@@ -213,14 +209,10 @@ class TestCli(object):
         ]
         output_path = tmp_path / "civic-gks-bundle.json"
 
-        with patch(
-            "civicpy.cli.VariationNormalizerRESTDataProxy",
-            return_value=mocked_normalizer,
-        ):
-            try:
-                cli.create_gks_bundle(["--organization-id", 1, "-o", output_path])
-            except SystemExit as error:
-                assert error.code == 0
+        try:
+            cli.create_gks_bundle(["--organization-id", 1, "-o", output_path])
+        except SystemExit as error:
+            assert error.code == 0
 
         with output_path.open() as read_file:
             bundle = json.load(read_file)
@@ -257,22 +249,16 @@ class TestCli(object):
 
         with tempfile.NamedTemporaryFile("w+", suffix=".json", delete=True) as tmp_file:
             try:
-                with patch(
-                    "civicpy.cli.VariationNormalizerRESTDataProxy",
-                    return_value=mocked_normalizer,
-                ):
-                    cli.create_gks_json(
-                        ["--organization-id", 1, "-o", Path(tmp_file.name)]
-                    )
+                cli.create_gks_json(["--organization-id", 1, "-o", Path(tmp_file.name)])
             except SystemExit as e:
                 assert e.code == 0
 
             with open(tmp_file.name, "r") as f:
                 gks_output = json.load(f)
                 check_metadata(gks_output["metadata"])
-                assert [
-                    record["id"] for record in gks_output["gks_records"]
-                ] == ["civic.aid:6"]
+                assert [record["id"] for record in gks_output["gks_records"]] == [
+                    "civic.aid:6"
+                ]
                 assert gks_output["failed_assertion_ids"] == [4]
                 assert gks_output["errors"] == [
                     {
@@ -292,32 +278,6 @@ class TestCli(object):
 
         assert not output_file.exists()
         assert "Error getting organization 99999999" in caplog.text
-
-    @patch("civicpy.cli.VariationNormalizerRESTDataProxy")
-    @patch("civicpy.civic.get_all_approvals_ready_for_clinvar_submission_for_org")
-    def test_create_gks_json_variation_normalizer_url(
-        self, mock_approvals, mock_normalizer, tmp_path
-    ):
-        """The CLI configures one normalizer proxy for the export operation."""
-        mock_approvals.return_value = []
-        output_file = tmp_path / "gks.json"
-        normalizer_url = "http://variation-normalizer.example/variation"
-
-        try:
-            cli.create_gks_json(
-                [
-                    "--organization-id",
-                    1,
-                    "--variation-normalizer-url",
-                    normalizer_url,
-                    "-o",
-                    output_file,
-                ]
-            )
-        except SystemExit as e:
-            assert e.code == 0
-
-        mock_normalizer.assert_called_once_with(normalizer_url)
 
     @patch("civicpy.civic.get_all_approvals_ready_for_clinvar_submission_for_org")
     def test_create_gks_json_no_assertions_found(

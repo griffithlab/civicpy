@@ -13,6 +13,7 @@ from dataclasses import dataclass
 from enum import Enum
 from types import MappingProxyType
 from typing import TypeAlias
+from typing import ClassVar
 
 from ga4gh.cat_vrs.models import (
     CategoricalVariant,
@@ -265,25 +266,6 @@ class CategoricalVariantContext:
 _SNP_RE = re.compile(r"RS\d+")
 
 
-def resolve_variation_normalizer(
-    variation_normalizer: VariationNormalizerDataProxy | None = None,
-) -> VariationNormalizerDataProxy:
-    """Return a provided VICC Variation Normalizer proxy or the default REST proxy.
-
-    When generating multiple GKS records, callers should create one data proxy and
-    pass it to each top-level GKS record. If omitted, each independently constructed
-    top-level GKS record creates its own default REST proxy.
-
-    :param variation_normalizer: VICC Variation Normalizer data proxy, if one is
-        already configured for the export operation.
-    :return: VICC Variation Normalizer data proxy to use.
-    """
-    if variation_normalizer is not None:
-        return variation_normalizer
-
-    return VariationNormalizerRESTDataProxy()
-
-
 class CivicGksSop(Method):
     """Class for representing CIViC Curation SOP as GKS Method"""
 
@@ -374,6 +356,10 @@ class CivicGksGene(MappableConcept):
 class CivicGksMolecularProfile(CategoricalVariant):
     """Represent a CIViC molecular profile as a Cat-VRS categorical variant.
 
+    The shared variation normalizer is initialized lazily with the REST data proxy.
+    Downstream users may configure another :class:`VariationNormalizerDataProxy`
+    implementation before constructing molecular profiles.
+
     Simple molecular profiles containing one gene variant are represented as follows:
 
     * Gene-level mutation profiles use a feature-context constraint.
@@ -386,18 +372,36 @@ class CivicGksMolecularProfile(CategoricalVariant):
       ``Undefined`` categorical variation type without constraints or members.
 
     :param molecular_profile: CIViC molecular profile record
-    :param variation_normalizer: VICC Variation Normalizer data proxy.
     """
 
-    def __init__(
-        self,
-        molecular_profile: MolecularProfile,
-        variation_normalizer: VariationNormalizerDataProxy | None = None,
+    _variation_normalizer: ClassVar[VariationNormalizerDataProxy | None] = None
+
+    @classmethod
+    def configure_variation_normalizer(
+        cls, variation_normalizer: VariationNormalizerDataProxy
     ) -> None:
+        """Configure the shared Variation Normalizer backend.
+
+        Call this method before constructing any GKS molecular profiles when using
+        a custom backend, such as a downstream Python API implementation. The
+        configured backend is shared by all subsequent molecular profile instances.
+
+        :param variation_normalizer: Data proxy to use for subsequent molecular
+            profile normalization.
+        """
+        cls._variation_normalizer = variation_normalizer
+
+    @classmethod
+    def _get_variation_normalizer(cls) -> VariationNormalizerDataProxy:
+        """Return the shared backend, lazily creating the default REST proxy."""
+        if cls._variation_normalizer is None:
+            cls._variation_normalizer = VariationNormalizerRESTDataProxy()
+        return cls._variation_normalizer
+
+    def __init__(self, molecular_profile: MolecularProfile) -> None:
         """Initialize CivicGksMolecularProfile class
 
         :param molecular_profile: CIViC molecular profile record
-        :param variation_normalizer: VICC Variation Normalizer data proxy.
         :raises CivicGksRecordError: If molecular profile does not contain exactly one
             variant, or if the variant associated is not a Gene Variant
         """
@@ -419,14 +423,12 @@ class CivicGksMolecularProfile(CategoricalVariant):
             msg = f"Only GeneVariant records are supported. mpid={mp_id}, variant_type={type(variant).__name__!r}"
             raise CivicGksRecordError(msg)
 
-        variation_normalizer = resolve_variation_normalizer(variation_normalizer)
-
         aliases, mappings = self._get_aliases_and_mappings(molecular_profile, variant)
         expressions = self._get_expressions(variant)
         extensions = self._get_extensions(molecular_profile, variant)
 
         categorical_variant_context = self._get_categorical_variant_context(
-            molecular_profile, expressions, variation_normalizer
+            molecular_profile, expressions
         )
         if categorical_variant_context:
             constraints = categorical_variant_context.constraints
@@ -440,7 +442,6 @@ class CivicGksMolecularProfile(CategoricalVariant):
                     expressions,
                     categorical_variant_context.member_syntaxes,
                     constraint_variation,
-                    variation_normalizer,
                 )
                 or None
             )
@@ -669,12 +670,12 @@ class CivicGksMolecularProfile(CategoricalVariant):
 
         return extensions
 
-    @staticmethod
+    @classmethod
     def _build_members(
+        cls,
         expressions: list[Expression],
         member_syntaxes: list[Syntax],
         constraint_variation: Variation | None,
-        variation_normalizer: VariationNormalizerDataProxy,
     ) -> list[Variation]:
         """Build unique members from list of expressions.
 
@@ -687,7 +688,6 @@ class CivicGksMolecularProfile(CategoricalVariant):
         :param expressions: List of expressions for the gene variant
         :param member_syntaxes: Syntaxes that members will have
         :param constraint_variation: VRS variation used in a constraint.
-        :param variation_normalizer: VICC Variation Normalizer data proxy.
         :return: Unique VRS members.
         """
         members_by_id = {}
@@ -697,7 +697,7 @@ class CivicGksMolecularProfile(CategoricalVariant):
                 continue
 
             hgvs_expr = expression.value
-            normalized_variation = variation_normalizer.normalize(hgvs_expr)
+            normalized_variation = cls._get_variation_normalizer().normalize(hgvs_expr)
 
             if not normalized_variation:
                 continue
@@ -724,13 +724,11 @@ class CivicGksMolecularProfile(CategoricalVariant):
         self,
         molecular_profile: MolecularProfile,
         expressions: list[Expression],
-        variation_normalizer: VariationNormalizerDataProxy,
     ) -> CategoricalVariantContext | None:
         """Build the context needed for a categorical variant.
 
         :param molecular_profile: CIViC molecular profile record
         :param expressions: List of expressions for the gene variant
-        :param variation_normalizer: VICC Variation Normalizer data proxy.
         :return: Categorical variant context, or ``None`` when the molecular profile
             cannot be normalized.
         :raises CivicGksRecordError: If a gene-level mutation has no gene mapping or
@@ -740,8 +738,10 @@ class CivicGksMolecularProfile(CategoricalVariant):
         if self._is_gene_level_mutation(parsed_name):
             return self._get_feature_context(parsed_name[0])
 
-        normalized_variation = variation_normalizer.normalize_molecular_profile(
-            molecular_profile
+        normalized_variation = (
+            type(self)
+            ._get_variation_normalizer()
+            .normalize_molecular_profile(molecular_profile)
         )
         if not normalized_variation:
             _logger.warning(
@@ -1125,14 +1125,12 @@ class _CivicGksEvidenceAssertionMixin:
         self,
         record: Evidence | Assertion,
         record_type: CivicEvidenceAssertionType,
-        variation_normalizer: VariationNormalizerDataProxy,
         is_clinical_significance_prop: bool = False,
     ) -> dict:
         """Get proposition parameters shared between propositions
 
         :param record: CIViC assertion or evidence item
         :param record_type: The type of ``record``
-        :param variation_normalizer: Variation Normalizer data proxy
         :param is_clinical_significance_prop: Whether to generate parameters for
             VariantClinicalSignificanceProposition
         :return: Dictionary containing proposition parameters shared between
@@ -1141,9 +1139,7 @@ class _CivicGksEvidenceAssertionMixin:
         variant: GeneVariant = record.molecular_profile.variants[0]
 
         params = {
-            "subjectVariant": CivicGksMolecularProfile(
-                record.molecular_profile, variation_normalizer
-            ),
+            "subjectVariant": CivicGksMolecularProfile(record.molecular_profile),
             "geneContextQualifier": CivicGksGene(variant.gene),
             "alleleOriginQualifier": self.get_allele_origin_qualifier(record),
             "predicate": self.get_predicate(record)
@@ -1190,7 +1186,6 @@ class _CivicGksEvidenceAssertionMixin:
     def get_target_proposition(
         self,
         record: Evidence | Assertion,
-        variation_normalizer: VariationNormalizerDataProxy,
     ) -> (
         VariantTherapeuticResponseProposition
         | VariantDiagnosticProposition
@@ -1199,7 +1194,6 @@ class _CivicGksEvidenceAssertionMixin:
         """Get GKS target proposition
 
         :param record: CIViC assertion or evidence item
-        :param variation_normalizer: Variation Normalizer data proxy
         :return: GKS target proposition
         """
         record_type = (
@@ -1207,9 +1201,7 @@ class _CivicGksEvidenceAssertionMixin:
             if isinstance(record, Assertion)
             else record.evidence_type
         )
-        params: dict = self._get_proposition_params(
-            record, record_type, variation_normalizer
-        )
+        params: dict = self._get_proposition_params(record, record_type)
 
         if record_type == CivicEvidenceAssertionType.PREDICTIVE:
             if len(record.therapies) == 1:
@@ -1295,12 +1287,10 @@ class CivicGksEvidence(Statement, _CivicGksEvidenceAssertionMixin):
     def __init__(
         self,
         evidence_item: Evidence,
-        variation_normalizer: VariationNormalizerDataProxy | None = None,
     ) -> None:
         """Initialize CivicGksEvidence class
 
         :param evidence_item: CIViC evidence item
-        :param variation_normalizer: Variation Normalizer data proxy
         :raises CivicGksRecordError: If CIViC evidence item is not able to be
             represented as GKS object
         """
@@ -1308,15 +1298,11 @@ class CivicGksEvidence(Statement, _CivicGksEvidenceAssertionMixin):
             err_msg = f"Evidence {evidence_item.id} is not valid for GKS."
             raise CivicGksRecordError(err_msg)
 
-        variation_normalizer = resolve_variation_normalizer(variation_normalizer)
-
         super().__init__(
             id=f"{CivicGksCuriePrefix.EVIDENCE.value}:{evidence_item.id}",
             description=evidence_item.description,
             specifiedBy=CivicGksSop(),
-            proposition=self.get_target_proposition(
-                evidence_item, variation_normalizer
-            ),
+            proposition=self.get_target_proposition(evidence_item),
             direction=self.get_direction(evidence_item.evidence_direction),
             strength=self.get_evidence_strength(
                 CivicEvidenceLevel(evidence_item.evidence_level)
@@ -1467,7 +1453,6 @@ class CivicGksClinSigAssertion(
     represented as GKS
 
     :param assertion: CIViC assertion record
-    :param variation_normalizer: Variation Normalizer data proxy
     :raises CivicGksRecordError: If CIViC assertion is not able to be represented as
         GKS object
     """
@@ -1476,13 +1461,11 @@ class CivicGksClinSigAssertion(
         self,
         assertion: Assertion,
         approval: _ApprovalInput = None,
-        variation_normalizer: VariationNormalizerDataProxy | None = None,
     ) -> None:
         """Initialize CivicGksClinSigAssertion class
 
         :param assertion: CIViC assertion record
         :param approval: One or more CIViC approvals for the assertion.
-        :param variation_normalizer: Variation Normalizer data proxy
         :raises CivicGksRecordError: If CIViC assertion is not able to be represented as
             GKS object
         """
@@ -1501,20 +1484,16 @@ class CivicGksClinSigAssertion(
         )
         approvals = self._normalize_approvals(approval)
         contributions = self.get_contributions(approvals) or None
-        variation_normalizer = resolve_variation_normalizer(variation_normalizer)
-
         super().__init__(
             id=f"{CivicGksCuriePrefix.ASSERTION.value}:{assertion.id}",
             contributions=contributions,
             description=assertion.description,
             specifiedBy=CivicGksSop(),
-            proposition=self.get_proposition(assertion, variation_normalizer),
+            proposition=self.get_proposition(assertion),
             direction=self.get_direction(assertion.assertion_direction),
             classification=classification,
             strength=strength,
-            hasEvidenceLines=self.get_evidence_lines(
-                assertion, level, variation_normalizer
-            ),
+            hasEvidenceLines=self.get_evidence_lines(assertion, level),
             reportedIn=self.get_reported_in(assertion),
             extensions=self.get_extensions(approvals) or None,
         )
@@ -1560,7 +1539,6 @@ class CivicGksClinSigAssertion(
         self,
         assertion: Assertion,
         level: AmpAscoCapEvidenceLineStrength,
-        variation_normalizer: VariationNormalizerDataProxy,
     ) -> (
         list[DiagnosticEvidenceLine]
         | list[PrognosticEvidenceLine]
@@ -1572,7 +1550,6 @@ class CivicGksClinSigAssertion(
 
         :param assertion: CIViC assertion
         :param level: The CIViC Assertion's AMP/ASCO/CAP category level
-        :param variation_normalizer: Variation Normalizer data proxy
         :return: List of CIViC evidence lines
         :raises NotImplementedError: If the evidence line type is not supported.
         """
@@ -1581,9 +1558,7 @@ class CivicGksClinSigAssertion(
         evidence_items: list[CivicGksEvidence] = []
         for evidence_item in assertion.evidence_items:
             try:
-                evidence_items.append(
-                    CivicGksEvidence(evidence_item, variation_normalizer)
-                )
+                evidence_items.append(CivicGksEvidence(evidence_item))
             except CivicGksRecordError as e:
                 _logger.exception(
                     "Error translating %s to CivicGksEvidence: %s",
@@ -1609,9 +1584,7 @@ class CivicGksClinSigAssertion(
 
         return [
             evidence_line_cls(
-                targetProposition=self.get_target_proposition(
-                    assertion, variation_normalizer
-                ),
+                targetProposition=self.get_target_proposition(assertion),
                 hasEvidenceItems=evidence_items or None,
                 directionOfEvidenceProvided=direction,
                 strengthOfEvidenceProvided=MappableConcept(
@@ -1621,18 +1594,16 @@ class CivicGksClinSigAssertion(
         ]
 
     def get_proposition(
-        self, assertion: Assertion, variation_normalizer: VariationNormalizerDataProxy
+        self, assertion: Assertion
     ) -> VariantClinicalSignificanceProposition:
         """Get GKS proposition
 
         :param assertion: CIViC assertion record
-        :param variation_normalizer: Variation Normalizer data proxy
         :return: GKS proposition
         """
         params = self._get_proposition_params(
             assertion,
             assertion.assertion_type,
-            variation_normalizer,
             is_clinical_significance_prop=True,
         )
         return VariantClinicalSignificanceProposition(**params)
@@ -1649,13 +1620,11 @@ class CivicGksOncogenicAssertion(
         self,
         assertion: Assertion,
         approval: _ApprovalInput = None,
-        variation_normalizer: VariationNormalizerDataProxy | None = None,
     ) -> None:
         """Initialize CivicGksOncogenicAssertion class
 
         :param assertion: CIViC assertion record
         :param approval: One or more CIViC approvals for the assertion.
-        :param variation_normalizer: Variation Normalizer data proxy
         :raises CivicGksRecordError: If CIViC assertion is not able to be represented as
             GKS object
         """
@@ -1667,11 +1636,9 @@ class CivicGksOncogenicAssertion(
             err_msg = "Assertion is not valid for GKS."
             raise CivicGksRecordError(err_msg)
 
-        variation_normalizer = resolve_variation_normalizer(variation_normalizer)
-
         approvals = self._normalize_approvals(approval)
         contributions = self.get_contributions(approvals) or None
-        proposition = self.get_proposition(assertion, variation_normalizer)
+        proposition = self.get_proposition(assertion)
         classification, strength = self.get_classification_strength(
             assertion.significance
         )
@@ -1747,19 +1714,16 @@ class CivicGksOncogenicAssertion(
             )
 
         return evidence_lines
-    def get_proposition(
-        self, assertion: Assertion, variation_normalizer: VariationNormalizerDataProxy
-    ) -> VariantOncogenicityProposition:
+
+    def get_proposition(self, assertion: Assertion) -> VariantOncogenicityProposition:
         """Get GKS proposition
 
         :param assertion: CIViC assertion record
-        :param variation_normalizer: Variation Normalizer data proxy
         :return: GKS proposition
         """
         params = self._get_proposition_params(
             assertion,
             assertion.assertion_type,
-            variation_normalizer,
             is_clinical_significance_prop=False,
         )
         return VariantOncogenicityProposition(**params)
@@ -1769,7 +1733,6 @@ def create_gks_record_from_assertion(
     assertion: Assertion,
     approval: _ApprovalInput = None,
     submission_type_filter: ClinVarSubmissionType | None = None,
-    variation_normalizer: VariationNormalizerDataProxy | None = None,
 ) -> CivicGksClinSigAssertion | CivicGksOncogenicAssertion:
     """Transform a CIViC Assertion into a supported VA-Spec GKS Statement.
 
@@ -1777,7 +1740,6 @@ def create_gks_record_from_assertion(
     :param approval: One or more CIViC approvals for the assertion.
     :param submission_type_filter: Optional ClinVar submission type used to
         restrict which Assertion types may be translated.
-    :param variation_normalizer: Variation Normalizer data proxy.
     :raises NotImplementedError: If the Assertion type is unsupported or excluded
         by ``submission_type_filter``. Supported types are ``DIAGNOSTIC``,
         ``PREDICTIVE``, ``PROGNOSTIC``, and ``ONCOGENIC``.
@@ -1794,14 +1756,10 @@ def create_gks_record_from_assertion(
             raise NotImplementedError(err_msg)
 
     if assertion_type in CLINICAL_SIGNIFICANCE_ASSERTION_TYPES:
-        return CivicGksClinSigAssertion(
-            assertion, approval=approval, variation_normalizer=variation_normalizer
-        )
+        return CivicGksClinSigAssertion(assertion, approval=approval)
 
     if assertion_type in ONCOGENIC_ASSERTION_TYPES:
-        return CivicGksOncogenicAssertion(
-            assertion, approval=approval, variation_normalizer=variation_normalizer
-        )
+        return CivicGksOncogenicAssertion(assertion, approval=approval)
 
     err_msg = f"Assertion type {assertion_type} is not currently supported"
     raise NotImplementedError(err_msg)

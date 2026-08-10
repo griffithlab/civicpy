@@ -22,12 +22,6 @@ from civicpy.exports.civic_gks_record import (
 from civicpy.exports.civic_gks_writer import CivicGksWriter
 from civicpy.exports.civic_vcf_record import CivicVcfRecord
 from civicpy.exports.civic_vcf_writer import CivicVcfWriter
-from civicpy.exports.variation_normalizer import (
-    VariationNormalizerDataProxy,
-    VariationNormalizerRESTDataProxy,
-)
-
-
 CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 _ACCEPTED_STATUS = "accepted"
 # An Assertion may have approvals from more than one organization.
@@ -109,21 +103,10 @@ def create_vcf(vcf_file_path, include_status):
         path_type=Path,
     ),
 )
-@click.option(
-    "--variation-normalizer-url",
-    envvar=VariationNormalizerRESTDataProxy.BASE_URL_ENV_VAR,
-    default=None,
-    help=(
-        "Base URL for the Variation Normalizer REST service. Uses "
-        f"{VariationNormalizerRESTDataProxy.DEFAULT_BASE_URL!r} by default."
-    ),
-    show_envvar=True,
-)
 def create_gks_json(
     organization_id: int,
     submission_type: str,
     output_json: Path,
-    variation_normalizer_url: str | None,
 ) -> None:
     """Export ClinVar-ready Assertions as dereferenced GKS JSON.
 
@@ -134,13 +117,21 @@ def create_gks_json(
     dereferenced output to either clinical impact (diagnostic, prognostic, and
     predictive) or oncogenicity Assertions.
 
-    \f
-    :param organization_id: CIViC organization that approved the Assertions for
-        ClinVar submission.
-    :param submission_type: ClinVar submission type. Defaults to clinical impact.
-    :param output_json: Destination JSON filepath.
-    :param variation_normalizer_url: Base URL for the Variation Normalizer REST
-        service.
+    The Variation Normalizer REST service defaults to
+    ``http://127.0.0.1:8000/variation``. Set
+    ``CIVICPY_VARIATION_NORMALIZER_URL`` before running the command to use a
+    different endpoint.
+
+    ClinVar only supports submitting records of the same submission type for a
+    given assertion criteria:
+    * Clinical Impact -> diagnostic, prognostic, or predictive assertion
+    * Oncogenicity -> oncogenic assertion
+    Therefore, create separate GKS JSON files for each submission type.
+
+    :param organization_id: The CIViC organization ID that approved the assertion(s) for submission to ClinVar
+    :param submission_type: The ClinVar submission type to generate GKS JSON for.
+        Defaults to clinical impact.
+    :param output_json: The output file path to write the JSON file to
     """
     if not _organization_exists(organization_id):
         return
@@ -155,7 +146,6 @@ def create_gks_json(
     _create_gks_export(
         assertion_approvals,
         output_json,
-        variation_normalizer_url,
         submission_type=submission_type_filter,
         bundle=False,
     )
@@ -180,20 +170,9 @@ def create_gks_json(
         path_type=Path,
     ),
 )
-@click.option(
-    "--variation-normalizer-url",
-    envvar=VariationNormalizerRESTDataProxy.BASE_URL_ENV_VAR,
-    default=None,
-    help=(
-        "Base URL for the Variation Normalizer REST service. Uses "
-        f"{VariationNormalizerRESTDataProxy.DEFAULT_BASE_URL!r} by default."
-    ),
-    show_envvar=True,
-)
 def create_gks_bundle(
     organization_id: int | None,
     output_json: Path,
-    variation_normalizer_url: str | None,
 ) -> None:
     """Export all accepted CIViC Assertions as a referenced GKS bundle.
 
@@ -202,12 +181,13 @@ def create_gks_bundle(
     approved by that organization. The bundle contains both clinical significance
     and oncogenicity Statements.
 
+    Set ``CIVICPY_VARIATION_NORMALIZER_URL`` to use a Variation Normalizer
+    endpoint other than the default.
+
     \f
     :param organization_id: Optional CIViC organization whose approved Assertions
         should be included.
     :param output_json: Destination JSON filepath.
-    :param variation_normalizer_url: Base URL for the Variation Normalizer REST
-        service.
     """
     if organization_id is not None and not _organization_exists(organization_id):
         return
@@ -237,7 +217,6 @@ def create_gks_bundle(
     _create_gks_export(
         assertion_approvals,
         output_json,
-        variation_normalizer_url,
         submission_type=None,
         bundle=True,
     )
@@ -246,7 +225,6 @@ def create_gks_bundle(
 def _create_gks_export(
     assertion_approvals: Iterable[_AssertionApprovals],
     output_json: Path,
-    variation_normalizer_url: str | None,
     submission_type: ClinVarSubmissionType | None,
     bundle: bool,
 ) -> None:
@@ -257,17 +235,13 @@ def _create_gks_export(
 
     :param assertion_approvals: Assertions paired with their applicable approvals.
     :param output_json: Destination JSON filepath.
-    :param variation_normalizer_url: Base URL for the Variation Normalizer REST
-        service.
     :param submission_type: ClinVar submission filter, or ``None`` to include all
         supported Statement types.
     :param bundle: If ``True``, write a referenced CIViC GKS bundle; otherwise
         write the default dereferenced GKS JSON document.
     """
-    variation_normalizer = VariationNormalizerRESTDataProxy(variation_normalizer_url)
     gks_records, errors = _transform_assertions_to_gks(
         assertion_approvals,
-        variation_normalizer,
         submission_type,
     )
 
@@ -280,13 +254,11 @@ def _create_gks_export(
 
 def _transform_assertions_to_gks(
     assertion_approvals: Iterable[_AssertionApprovals],
-    variation_normalizer: VariationNormalizerDataProxy,
     submission_type: ClinVarSubmissionType | None,
 ) -> tuple[list[GksRecord], list[GksAssertionError]]:
     """Transform eligible CIViC Assertions into VA-Spec GKS Statement models.
 
     :param assertion_approvals: Assertions paired with their approvals.
-    :param variation_normalizer: Variation Normalizer data source.
     :param submission_type: Optional ClinVar submission-type filter.
     :return: Successfully transformed GKS Statements and errors for Assertions
         that could not be transformed.
@@ -309,7 +281,6 @@ def _transform_assertions_to_gks(
                 assertion,
                 approval=approvals,
                 submission_type_filter=submission_type,
-                variation_normalizer=variation_normalizer,
             )
         except (CivicGksRecordError, NotImplementedError) as error:
             errors.append(

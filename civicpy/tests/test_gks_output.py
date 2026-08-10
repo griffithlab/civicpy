@@ -48,7 +48,7 @@ class TestCivicGksBundleOutput:
         """Match the complete bundle representation assembled in ``conftest.py``."""
         actual_records = [
             create_gks_record_from_assertion(
-                assertion, variation_normalizer=mocked_normalizer
+                assertion,
             )
             for assertion in (aid6, aid202)
         ]
