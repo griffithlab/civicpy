@@ -98,7 +98,7 @@ def test_group_identifier_uses_member_ids_not_descriptive_content() -> None:
         ],
     )
     updated = TherapyGroup(
-        id="civic.gks:TG.preexisting",
+        id="civic.therapyGroup:preexisting",
         membershipOperator=MembershipOperator.AND,
         therapies=[
             _concept("civic.tid:2", "Renamed therapy 2"),
@@ -108,7 +108,7 @@ def test_group_identifier_uses_member_ids_not_descriptive_content() -> None:
 
     original_id = compute_civic_gks_identifier(original)
 
-    assert original_id.startswith("civic.gks:TG.")
+    assert original_id.startswith("civic.therapyGroup:")
     assert original_id == compute_civic_gks_identifier(updated)
 
 
@@ -131,7 +131,7 @@ def test_group_identifier_includes_membership_operator() -> None:
 
     and_identifier = compute_civic_gks_identifier(and_group)
 
-    assert and_identifier.startswith("civic.gks:CS.")
+    assert and_identifier.startswith("civic.conditionSet:")
     assert and_identifier != compute_civic_gks_identifier(or_group)
 
 
@@ -152,7 +152,7 @@ def test_computes_proposition_identifier_from_pydantic_type() -> None:
 
     identifier = compute_civic_gks_identifier(proposition)
 
-    assert identifier.startswith("civic.gks:PR.")
+    assert identifier.startswith("civic.proposition:")
     assert identifier == compute_civic_gks_identifier(updated_proposition)
     assert identifier != compute_civic_gks_identifier(different_object)
 

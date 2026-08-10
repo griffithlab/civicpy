@@ -221,7 +221,7 @@ Use :class:`civicpy.exports.civic_gks_writer.CivicGksWriter` to write
   objects are included in each Assertion record.
 * ``bundle=True`` writes **referenced GKS Bundle JSON**. Shared objects appear
   in keyed root collections and relationships use JSON Pointers such as
-  ``#/categoricalVariant/civic.mpid:33``.
+  ``#/molecularProfile/civic.mpid:33``.
 
 .. important::
 
@@ -264,13 +264,15 @@ organization::
 What's in a GKS Bundle
 ~~~~~~~~~~~~~~~~~~~~~~
 
-A bundle is one JSON object with keyed root collections. Shared variations,
-genes, documents, and propositions are stored once and linked with local JSON
+A bundle is one JSON object with keyed root collections. Shared variants,
+genes, sources, and propositions are stored once and linked with local JSON
 Pointers.
 
 The ``metadata`` identifies the bundle format and version.
 ``statistics.collections`` gives the size of every collection. Collections
 that can contain several object types also include counts by type.
+For ``variant``, ``count`` is the number of CIViC variants, while ``types``
+counts their VRS representations as Alleles or copy-number objects.
 
 The root collections are:
 
@@ -284,31 +286,33 @@ The root collections are:
      - VRS sequence references, keyed by ``refgetAccession``.
    * - ``location``
      - Reusable VRS locations, including sequence locations.
-   * - ``molecularVariation``
-     - Reusable VRS alleles, copy-number changes, and copy-number counts.
-   * - ``categoricalVariant``
+   * - ``variant``
+     - VRS representations grouped by ``civic.vid``, then by protein, coding,
+       genomic, or unclassified coordinate level. Each representation retains
+       its GA4GH identifier.
+   * - ``molecularProfile``
      - CIViC molecular profiles represented as GKS categorical variants.
-   * - ``gene``, ``condition``, and ``conditionSet``
-     - Gene, disease, and phenotype concepts used by propositions, plus grouped
-       conditions.
+   * - ``feature``, ``disease``, ``phenotype``, and ``conditionSet``
+     - Gene and clinical concepts used by propositions, plus grouped conditions.
    * - ``therapy`` and ``therapyGroup``
      - Individual therapies and multi-therapy groups referenced by clinical
        significance propositions.
-   * - ``alleleOriginQualifier``
-     - Allele origin concepts referenced by propositions. Existing external IRI
+   * - ``variantOrigin``
+     - Variant origin concepts referenced by propositions. Existing external IRI
        references remain unchanged.
-   * - ``document``, ``method``, and ``agent``
+   * - ``source``, ``method``, and ``organization``
      - Sources and provenance objects, including the PMID-identified CIViC SOP
-       and CCV framework documents.
+       and CCV framework sources.
    * - ``proposition``
      - Assertion propositions and evidence-line target propositions.
-   * - ``statement``
-     - CIViC Assertion and Evidence Statements, distinguished by their
-       ``civic.aid:`` and ``civic.eid:`` identifiers.
+   * - ``evidence`` and ``assertion``
+     - CIViC Evidence and Assertion Statements, keyed by ``civic.eid:`` and
+       ``civic.aid:`` identifiers, respectively.
 
-Objects with source IDs keep them. Condition sets, therapy groups, allele origin
-qualifiers, and propositions without source IDs receive ``civic.gks``
-identifiers computed from their identifying fields.
+Objects with source IDs keep them. Variant origins use the code from their first
+mapping. Propositions, condition sets, and therapy groups use a digest of their
+identifying fields in the ``civic.proposition``, ``civic.conditionSet``, and
+``civic.therapyGroup`` namespaces.
 Descriptive changes, such as renaming a therapy or changing an alias, do not
 change an enclosing group's identifier. Member and mapping order also does not
 affect an identifier. Other value objects without stable identities remain
@@ -316,7 +320,7 @@ inline.
 
 .. note::
 
-   The GKS Bundle Format currently uses JSON Pointers in agent and
+   The GKS Bundle Format currently uses JSON Pointers in organization and
    proposition fields that VA-Spec does not type as ``iriReference``. Resolve
    these fields according to the GKS Bundle Format.
 
@@ -334,45 +338,53 @@ If records contain different representations of the same object, the bundle
 keeps the first and logs a warning. Statements and collection keys are sorted so
 the result is deterministic.
 
-This excerpt uses computed ``civic.gks`` identifiers from the test data and
-shows only the ``statement`` and ``proposition`` collections so the links are
+Each CIViC variant groups its defining VRS object and normalized members.
+Molecular-profile constraints and members point to the corresponding nested VRS
+representations, preserving protein, coding, and genomic HGVS forms.
+A defining Allele without an HGVS expression is treated as protein-level because
+CIViC uses it for the molecular profile's protein-sequence consequence.
+
+This excerpt uses computed CIViC GKS identifiers from the test data and
+shows only the Statement collections and ``proposition`` so the links are
 easy to see::
 
     {
       "proposition": {
-        "civic.gks:PR.-AKWXtNluL_XZYk5cDaaV7bKw6fKlPmD": {
-          "id": "civic.gks:PR.-AKWXtNluL_XZYk5cDaaV7bKw6fKlPmD",
+        "civic.proposition:-AKWXtNluL_XZYk5cDaaV7bKw6fKlPmD": {
+          "id": "civic.proposition:-AKWXtNluL_XZYk5cDaaV7bKw6fKlPmD",
           "type": "VariantClinicalSignificanceProposition",
-          "subjectVariant": "#/categoricalVariant/civic.mpid:33",
-          "geneContextQualifier": "#/gene/civic.gid:19",
+          "subjectVariant": "#/molecularProfile/civic.mpid:33",
+          "geneContextQualifier": "#/feature/civic.gid:19",
           "predicate": "hasClinicalSignificanceFor",
-          "objectCondition": "#/condition/civic.did:8"
+          "objectCondition": "#/disease/civic.did:8"
         },
-        "civic.gks:PR.lzu38uLu_bvAPfb7Jo_ol8741OJaSdnu": {
-          "id": "civic.gks:PR.lzu38uLu_bvAPfb7Jo_ol8741OJaSdnu",
+        "civic.proposition:lzu38uLu_bvAPfb7Jo_ol8741OJaSdnu": {
+          "id": "civic.proposition:lzu38uLu_bvAPfb7Jo_ol8741OJaSdnu",
           "type": "VariantTherapeuticResponseProposition",
-          "subjectVariant": "#/categoricalVariant/civic.mpid:33",
+          "subjectVariant": "#/molecularProfile/civic.mpid:33",
           "predicate": "predictsSensitivityTo",
           "objectTherapeutic": "#/therapy/civic.tid:146"
         }
       },
-      "statement": {
+      "assertion": {
         "civic.aid:6": {
           "id": "civic.aid:6",
           "type": "Statement",
-          "proposition": "#/proposition/civic.gks:PR.-AKWXtNluL_XZYk5cDaaV7bKw6fKlPmD",
+          "proposition": "#/proposition/civic.proposition:-AKWXtNluL_XZYk5cDaaV7bKw6fKlPmD",
           "hasEvidenceLines": [
             {
               "type": "EvidenceLine",
-              "hasEvidenceItems": ["#/statement/civic.eid:2997"],
-              "targetProposition": "#/proposition/civic.gks:PR.lzu38uLu_bvAPfb7Jo_ol8741OJaSdnu"
+              "hasEvidenceItems": ["#/evidence/civic.eid:2997"],
+              "targetProposition": "#/proposition/civic.proposition:lzu38uLu_bvAPfb7Jo_ol8741OJaSdnu"
             }
           ]
-        },
+        }
+      },
+      "evidence": {
         "civic.eid:2997": {
           "id": "civic.eid:2997",
           "type": "Statement",
-          "proposition": "#/proposition/civic.gks:PR.lzu38uLu_bvAPfb7Jo_ol8741OJaSdnu"
+          "proposition": "#/proposition/civic.proposition:lzu38uLu_bvAPfb7Jo_ol8741OJaSdnu"
         }
       }
     }
@@ -381,7 +393,7 @@ Assertion Statements use ``civic.aid:{id}`` keys, while Evidence Statements use
 ``civic.eid:{id}`` keys. Evidence lines remain inline because they have no
 stable CIViC ID, but ``hasEvidenceItems`` points to supporting Statements. Follow
 each Statement's ``proposition`` pointer to find its interpretation. The full
-bundle links each proposition to its variant, gene, condition, and therapy
+bundle links each proposition to its variant, feature, disease or phenotype, and therapy
 objects in the other root collections.
 
 To check whether an Assertion can be transformed into a

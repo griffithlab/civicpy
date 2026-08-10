@@ -1231,27 +1231,39 @@ def gks_bundle_locations(braf_v600e_vrs) -> dict[str, Any]:
 
 
 @pytest.fixture(scope="module")
-def gks_bundle_molecular_variations(
+def gks_bundle_variants(
     braf_v600e_vrs,
+    gks_mpid33,
     civic_mpid113,
 ) -> dict[str, Any]:
-    """Reference the location used by the shared normalized allele."""
+    """Return the VRS object under each associated CIViC variant ID."""
     allele = braf_v600e_vrs.model_dump(exclude_none=True)
-    source_allele = civic_mpid113["constraints"][0]["allele"]
-    allele["expressions"] = deepcopy(source_allele["expressions"])
     allele["location"] = f"#/location/{allele['location']['id']}"
-    return {allele["id"]: allele}
+    allele_33 = deepcopy(allele)
+    allele_33["expressions"] = deepcopy(
+        gks_mpid33["constraints"][0]["allele"]["expressions"]
+    )
+    allele_33["expressions"].append(
+        {"syntax": "hgvs.p", "value": "ENSP00000275493.2:p.Leu858Arg"}
+    )
+    allele["expressions"] = deepcopy(
+        civic_mpid113["constraints"][0]["allele"]["expressions"]
+    )
+    return {
+        "civic.vid:33": {"protein": {allele_33["id"]: allele_33}},
+        "civic.vid:113": {"protein": {allele["id"]: allele}},
+    }
 
 
 @pytest.fixture(scope="module")
-def gks_bundle_genes(gks_gid19, gks_gid42) -> dict[str, Any]:
+def gks_bundle_features(gks_gid19, gks_gid42) -> dict[str, Any]:
     """Return genes already defined by the shared GKS record fixtures."""
     return {gene["id"]: deepcopy(gene) for gene in (gks_gid19, gks_gid42)}
 
 
 @pytest.fixture(scope="module")
-def gks_bundle_categorical_variants() -> dict[str, Any]:
-    """Return the expected ``categoricalVariant`` bundle collection."""
+def gks_bundle_molecular_profiles() -> dict[str, Any]:
+    """Return the expected ``molecularProfile`` bundle collection."""
     return {
         "civic.mpid:113": {
             "id": "civic.mpid:113",
@@ -1305,12 +1317,12 @@ def gks_bundle_categorical_variants() -> dict[str, Any]:
                 },
             ],
             "members": [
-                "#/molecularVariation/ga4gh:VA.j4XnsLZcdzDIYa5pvvXM7t1wn9OITr0L"
+                "#/variant/civic.vid:113/protein/ga4gh:VA.j4XnsLZcdzDIYa5pvvXM7t1wn9OITr0L"
             ],
             "constraints": [
                 {
                     "type": "DefiningAlleleConstraint",
-                    "allele": "#/molecularVariation/ga4gh:VA.j4XnsLZcdzDIYa5pvvXM7t1wn9OITr0L",
+                    "allele": "#/variant/civic.vid:113/protein/ga4gh:VA.j4XnsLZcdzDIYa5pvvXM7t1wn9OITr0L",
                     "relations": [
                         {
                             "primaryCoding": {
@@ -1329,7 +1341,7 @@ def gks_bundle_categorical_variants() -> dict[str, Any]:
             ],
             "mappings": [
                 {
-                    "coding": "#/categoricalVariant/civic.mpid:113",
+                    "coding": "#/molecularProfile/civic.mpid:113",
                     "relation": "exactMatch",
                 },
                 {
@@ -1440,12 +1452,12 @@ def gks_bundle_categorical_variants() -> dict[str, Any]:
                 },
             ],
             "members": [
-                "#/molecularVariation/ga4gh:VA.j4XnsLZcdzDIYa5pvvXM7t1wn9OITr0L"
+                "#/variant/civic.vid:33/protein/ga4gh:VA.j4XnsLZcdzDIYa5pvvXM7t1wn9OITr0L"
             ],
             "constraints": [
                 {
                     "type": "DefiningAlleleConstraint",
-                    "allele": "#/molecularVariation/ga4gh:VA.j4XnsLZcdzDIYa5pvvXM7t1wn9OITr0L",
+                    "allele": "#/variant/civic.vid:33/protein/ga4gh:VA.j4XnsLZcdzDIYa5pvvXM7t1wn9OITr0L",
                     "relations": [
                         {
                             "primaryCoding": {
@@ -1464,7 +1476,7 @@ def gks_bundle_categorical_variants() -> dict[str, Any]:
             ],
             "mappings": [
                 {
-                    "coding": "#/categoricalVariant/civic.mpid:33",
+                    "coding": "#/molecularProfile/civic.mpid:33",
                     "relation": "exactMatch",
                 },
                 {
@@ -1539,9 +1551,9 @@ def gks_bundle_categorical_variants() -> dict[str, Any]:
 
 
 @pytest.fixture(scope="module")
-def gks_bundle_conditions(gks_did8) -> dict[str, Any]:
-    """Return conditions shared by the record and bundle expectations."""
-    conditions = {
+def gks_bundle_diseases(gks_did8) -> dict[str, Any]:
+    """Return diseases shared by the record and bundle expectations."""
+    diseases = {
         "civic.did:15": {
             "id": "civic.did:15",
             "conceptType": "Disease",
@@ -1571,8 +1583,8 @@ def gks_bundle_conditions(gks_did8) -> dict[str, Any]:
             ],
         },
     }
-    conditions[gks_did8["id"]] = deepcopy(gks_did8)
-    return conditions
+    diseases[gks_did8["id"]] = deepcopy(gks_did8)
+    return diseases
 
 
 @pytest.fixture(scope="module")
@@ -1594,11 +1606,11 @@ def gks_bundle_therapy_groups() -> dict[str, Any]:
 
 
 @pytest.fixture(scope="module")
-def gks_bundle_allele_origin_qualifiers() -> dict[str, Any]:
-    """Return the expected ``alleleOriginQualifier`` bundle collection."""
+def gks_bundle_variant_origins() -> dict[str, Any]:
+    """Return the expected ``variantOrigin`` bundle collection."""
     return {
-        "civic.gks:AO.6fBqdF3KoUPvgnotdWwZhgghncOKeZ9o": {
-            "id": "civic.gks:AO.6fBqdF3KoUPvgnotdWwZhgghncOKeZ9o",
+        "civic.variantOrigin:SOMATIC": {
+            "id": "civic.variantOrigin:SOMATIC",
             "name": "somatic",
             "mappings": [
                 {
@@ -1617,7 +1629,7 @@ def gks_bundle_allele_origin_qualifiers() -> dict[str, Any]:
 
 
 @pytest.fixture(scope="module")
-def gks_bundle_documents(gks_method, gks_aid6, gks_aid202) -> dict[str, Any]:
+def gks_bundle_sources(gks_method, gks_aid6, gks_aid202) -> dict[str, Any]:
     """Collect documents from the shared dereferenced GKS fixtures."""
     documents: dict[str, Any] = {}
     for value in (
@@ -1634,13 +1646,13 @@ def gks_bundle_documents(gks_method, gks_aid6, gks_aid202) -> dict[str, Any]:
 def gks_bundle_methods(gks_method) -> dict[str, Any]:
     """Reference the document nested in the shared method fixture."""
     method = deepcopy(gks_method)
-    method["reportedIn"] = f"#/document/{method['reportedIn']['id']}"
+    method["reportedIn"] = f"#/source/{method['reportedIn']['id']}"
     return {method["id"]: method}
 
 
 @pytest.fixture(scope="module")
-def gks_bundle_agents() -> dict[str, Any]:
-    """Return the expected ``agent`` bundle collection."""
+def gks_bundle_organizations() -> dict[str, Any]:
+    """Return the expected ``organization`` bundle collection."""
     return {}
 
 
@@ -1648,49 +1660,49 @@ def gks_bundle_agents() -> dict[str, Any]:
 def gks_bundle_propositions() -> dict[str, Any]:
     """Return the expected ``proposition`` bundle collection."""
     return {
-        "civic.gks:PR.-AKWXtNluL_XZYk5cDaaV7bKw6fKlPmD": {
-            "id": "civic.gks:PR.-AKWXtNluL_XZYk5cDaaV7bKw6fKlPmD",
+        "civic.proposition:-AKWXtNluL_XZYk5cDaaV7bKw6fKlPmD": {
+            "id": "civic.proposition:-AKWXtNluL_XZYk5cDaaV7bKw6fKlPmD",
             "type": "VariantClinicalSignificanceProposition",
-            "subjectVariant": "#/categoricalVariant/civic.mpid:33",
-            "geneContextQualifier": "#/gene/civic.gid:19",
-            "alleleOriginQualifier": "#/alleleOriginQualifier/civic.gks:AO.6fBqdF3KoUPvgnotdWwZhgghncOKeZ9o",
+            "subjectVariant": "#/molecularProfile/civic.mpid:33",
+            "geneContextQualifier": "#/feature/civic.gid:19",
+            "alleleOriginQualifier": "#/variantOrigin/civic.variantOrigin:SOMATIC",
             "predicate": "hasClinicalSignificanceFor",
-            "objectCondition": "#/condition/civic.did:8",
+            "objectCondition": "#/disease/civic.did:8",
         },
-        "civic.gks:PR.lGNyTBSVq9ncomifdlwtOERYq7ZM37FX": {
-            "id": "civic.gks:PR.lGNyTBSVq9ncomifdlwtOERYq7ZM37FX",
+        "civic.proposition:lGNyTBSVq9ncomifdlwtOERYq7ZM37FX": {
+            "id": "civic.proposition:lGNyTBSVq9ncomifdlwtOERYq7ZM37FX",
             "type": "VariantOncogenicityProposition",
-            "subjectVariant": "#/categoricalVariant/civic.mpid:113",
-            "geneContextQualifier": "#/gene/civic.gid:42",
-            "alleleOriginQualifier": "#/alleleOriginQualifier/civic.gks:AO.6fBqdF3KoUPvgnotdWwZhgghncOKeZ9o",
+            "subjectVariant": "#/molecularProfile/civic.mpid:113",
+            "geneContextQualifier": "#/feature/civic.gid:42",
+            "alleleOriginQualifier": "#/variantOrigin/civic.variantOrigin:SOMATIC",
             "predicate": "isOncogenicFor",
-            "objectTumorType": "#/condition/civic.did:15",
+            "objectTumorType": "#/disease/civic.did:15",
         },
-        "civic.gks:PR.lzu38uLu_bvAPfb7Jo_ol8741OJaSdnu": {
-            "id": "civic.gks:PR.lzu38uLu_bvAPfb7Jo_ol8741OJaSdnu",
+        "civic.proposition:lzu38uLu_bvAPfb7Jo_ol8741OJaSdnu": {
+            "id": "civic.proposition:lzu38uLu_bvAPfb7Jo_ol8741OJaSdnu",
             "type": "VariantTherapeuticResponseProposition",
-            "subjectVariant": "#/categoricalVariant/civic.mpid:33",
-            "geneContextQualifier": "#/gene/civic.gid:19",
-            "alleleOriginQualifier": "#/alleleOriginQualifier/civic.gks:AO.6fBqdF3KoUPvgnotdWwZhgghncOKeZ9o",
+            "subjectVariant": "#/molecularProfile/civic.mpid:33",
+            "geneContextQualifier": "#/feature/civic.gid:19",
+            "alleleOriginQualifier": "#/variantOrigin/civic.variantOrigin:SOMATIC",
             "predicate": "predictsSensitivityTo",
             "objectTherapeutic": "#/therapy/civic.tid:146",
-            "conditionQualifier": "#/condition/civic.did:8",
+            "conditionQualifier": "#/disease/civic.did:8",
         },
-        "civic.gks:PR.nqvFeEaF3J52FxWjzgqxOoafka3s50pY": {
-            "id": "civic.gks:PR.nqvFeEaF3J52FxWjzgqxOoafka3s50pY",
+        "civic.proposition:nqvFeEaF3J52FxWjzgqxOoafka3s50pY": {
+            "id": "civic.proposition:nqvFeEaF3J52FxWjzgqxOoafka3s50pY",
             "type": "VariantTherapeuticResponseProposition",
-            "subjectVariant": "#/categoricalVariant/civic.mpid:33",
-            "geneContextQualifier": "#/gene/civic.gid:19",
-            "alleleOriginQualifier": "#/alleleOriginQualifier/civic.gks:AO.6fBqdF3KoUPvgnotdWwZhgghncOKeZ9o",
+            "subjectVariant": "#/molecularProfile/civic.mpid:33",
+            "geneContextQualifier": "#/feature/civic.gid:19",
+            "alleleOriginQualifier": "#/variantOrigin/civic.variantOrigin:SOMATIC",
             "predicate": "predictsSensitivityTo",
             "objectTherapeutic": "#/therapy/civic.tid:146",
-            "conditionQualifier": "#/condition/civic.did:30",
+            "conditionQualifier": "#/disease/civic.did:30",
         },
     }
 
 
 @pytest.fixture(scope="module")
-def gks_bundle_statements() -> dict[str, Any]:
+def gks_bundle_statement_objects() -> dict[str, Any]:
     """Return the expected ``statement`` bundle collection."""
     return {
         "civic.aid:202": {
@@ -1730,18 +1742,18 @@ def gks_bundle_statements() -> dict[str, Any]:
                 "type": "Method",
                 "name": "ClinGen/CGC/VICC Guidelines for Oncogenicity, 2022",
                 "methodType": "guideline",
-                "reportedIn": "#/document/pmid:35101336",
+                "reportedIn": "#/source/pmid:35101336",
             },
             "reportedIn": [
                 "https://civicdb.org/links/assertion/202",
-                "#/document/civic.sid:44",
-                "#/document/civic.sid:92",
-                "#/document/civic.sid:5458",
-                "#/document/civic.sid:5519",
-                "#/document/civic.sid:4870",
-                "#/document/civic.sid:4953",
+                "#/source/civic.sid:44",
+                "#/source/civic.sid:92",
+                "#/source/civic.sid:5458",
+                "#/source/civic.sid:5519",
+                "#/source/civic.sid:4870",
+                "#/source/civic.sid:4953",
             ],
-            "proposition": "#/proposition/civic.gks:PR.lGNyTBSVq9ncomifdlwtOERYq7ZM37FX",
+            "proposition": "#/proposition/civic.proposition:lGNyTBSVq9ncomifdlwtOERYq7ZM37FX",
             "direction": "supports",
             "strength": {
                 "primaryCoding": {
@@ -1762,7 +1774,7 @@ def gks_bundle_statements() -> dict[str, Any]:
                         "type": "Method",
                         "name": "ClinGen/CGC/VICC Guidelines for Oncogenicity, 2022",
                         "methodType": "functional_domain_location",
-                        "reportedIn": "#/document/pmid:35101336",
+                        "reportedIn": "#/source/pmid:35101336",
                     },
                     "directionOfEvidenceProvided": "supports",
                     "strengthOfEvidenceProvided": {
@@ -1793,7 +1805,7 @@ def gks_bundle_statements() -> dict[str, Any]:
                         "type": "Method",
                         "name": "ClinGen/CGC/VICC Guidelines for Oncogenicity, 2022",
                         "methodType": "functional_assay",
-                        "reportedIn": "#/document/pmid:35101336",
+                        "reportedIn": "#/source/pmid:35101336",
                     },
                     "directionOfEvidenceProvided": "supports",
                     "strengthOfEvidenceProvided": {
@@ -1824,7 +1836,7 @@ def gks_bundle_statements() -> dict[str, Any]:
                         "type": "Method",
                         "name": "ClinGen/CGC/VICC Guidelines for Oncogenicity, 2022",
                         "methodType": "population_frequency",
-                        "reportedIn": "#/document/pmid:35101336",
+                        "reportedIn": "#/source/pmid:35101336",
                     },
                     "directionOfEvidenceProvided": "supports",
                     "strengthOfEvidenceProvided": {
@@ -1855,7 +1867,7 @@ def gks_bundle_statements() -> dict[str, Any]:
                         "type": "Method",
                         "name": "ClinGen/CGC/VICC Guidelines for Oncogenicity, 2022",
                         "methodType": "computational_prediction",
-                        "reportedIn": "#/document/pmid:35101336",
+                        "reportedIn": "#/source/pmid:35101336",
                     },
                     "directionOfEvidenceProvided": "supports",
                     "strengthOfEvidenceProvided": {
@@ -1886,7 +1898,7 @@ def gks_bundle_statements() -> dict[str, Any]:
                         "type": "Method",
                         "name": "ClinGen/CGC/VICC Guidelines for Oncogenicity, 2022",
                         "methodType": "somatic_hotspot_recurrence",
-                        "reportedIn": "#/document/pmid:35101336",
+                        "reportedIn": "#/source/pmid:35101336",
                     },
                     "directionOfEvidenceProvided": "supports",
                     "strengthOfEvidenceProvided": {
@@ -1926,14 +1938,14 @@ def gks_bundle_statements() -> dict[str, Any]:
             "specifiedBy": "#/method/civic.method:2019",
             "reportedIn": [
                 "https://civicdb.org/links/assertion/6",
-                "#/document/civic.sid:1725",
-                "#/document/civic.sid:592",
-                "#/document/civic.sid:679",
-                "#/document/civic.sid:594",
-                "#/document/civic.sid:669",
-                "#/document/civic.sid:1525",
+                "#/source/civic.sid:1725",
+                "#/source/civic.sid:592",
+                "#/source/civic.sid:679",
+                "#/source/civic.sid:594",
+                "#/source/civic.sid:669",
+                "#/source/civic.sid:1525",
             ],
-            "proposition": "#/proposition/civic.gks:PR.-AKWXtNluL_XZYk5cDaaV7bKw6fKlPmD",
+            "proposition": "#/proposition/civic.proposition:-AKWXtNluL_XZYk5cDaaV7bKw6fKlPmD",
             "direction": "supports",
             "strength": {
                 "primaryCoding": {
@@ -1951,14 +1963,14 @@ def gks_bundle_statements() -> dict[str, Any]:
             "hasEvidenceLines": [
                 {
                     "type": "EvidenceLine",
-                    "targetProposition": "#/proposition/civic.gks:PR.lzu38uLu_bvAPfb7Jo_ol8741OJaSdnu",
+                    "targetProposition": "#/proposition/civic.proposition:lzu38uLu_bvAPfb7Jo_ol8741OJaSdnu",
                     "hasEvidenceItems": [
-                        "#/statement/civic.eid:2997",
-                        "#/statement/civic.eid:879",
-                        "#/statement/civic.eid:982",
-                        "#/statement/civic.eid:883",
-                        "#/statement/civic.eid:968",
-                        "#/statement/civic.eid:2629",
+                        "#/evidence/civic.eid:2997",
+                        "#/evidence/civic.eid:879",
+                        "#/evidence/civic.eid:982",
+                        "#/evidence/civic.eid:883",
+                        "#/evidence/civic.eid:968",
+                        "#/evidence/civic.eid:2629",
                     ],
                     "directionOfEvidenceProvided": "supports",
                     "strengthOfEvidenceProvided": {
@@ -1982,8 +1994,8 @@ def gks_bundle_statements() -> dict[str, Any]:
             "to afatinib (IC50: 0.7nM vs. 60nM) compared to "
             "wildtype EGFR cells.",
             "specifiedBy": "#/method/civic.method:2019",
-            "reportedIn": ["#/document/civic.sid:1525"],
-            "proposition": "#/proposition/civic.gks:PR.lzu38uLu_bvAPfb7Jo_ol8741OJaSdnu",
+            "reportedIn": ["#/source/civic.sid:1525"],
+            "proposition": "#/proposition/civic.proposition:lzu38uLu_bvAPfb7Jo_ol8741OJaSdnu",
             "direction": "supports",
             "strength": {
                 "name": "Preclinical evidence",
@@ -2014,8 +2026,8 @@ def gks_bundle_statements() -> dict[str, Any]:
             "exon 21 (L858R) substitution mutations as detected "
             "by a US FDA-approved test",
             "specifiedBy": "#/method/civic.method:2019",
-            "reportedIn": ["#/document/civic.sid:1725"],
-            "proposition": "#/proposition/civic.gks:PR.lzu38uLu_bvAPfb7Jo_ol8741OJaSdnu",
+            "reportedIn": ["#/source/civic.sid:1725"],
+            "proposition": "#/proposition/civic.proposition:lzu38uLu_bvAPfb7Jo_ol8741OJaSdnu",
             "direction": "supports",
             "strength": {
                 "name": "Validated association",
@@ -2045,8 +2057,8 @@ def gks_bundle_statements() -> dict[str, Any]:
             "for chemotherapy (HR, 0.47; 95% CI, 0.34 to 0.65; P "
             "= 0.001).",
             "specifiedBy": "#/method/civic.method:2019",
-            "reportedIn": ["#/document/civic.sid:592"],
-            "proposition": "#/proposition/civic.gks:PR.nqvFeEaF3J52FxWjzgqxOoafka3s50pY",
+            "reportedIn": ["#/source/civic.sid:592"],
+            "proposition": "#/proposition/civic.proposition:nqvFeEaF3J52FxWjzgqxOoafka3s50pY",
             "direction": "supports",
             "strength": {
                 "name": "Clinical evidence",
@@ -2078,8 +2090,8 @@ def gks_bundle_statements() -> dict[str, Any]:
             "19 or L858R) had an objective response compared to "
             "39% of 23 patients with less common mutations.",
             "specifiedBy": "#/method/civic.method:2019",
-            "reportedIn": ["#/document/civic.sid:594"],
-            "proposition": "#/proposition/civic.gks:PR.nqvFeEaF3J52FxWjzgqxOoafka3s50pY",
+            "reportedIn": ["#/source/civic.sid:594"],
+            "proposition": "#/proposition/civic.proposition:nqvFeEaF3J52FxWjzgqxOoafka3s50pY",
             "direction": "supports",
             "strength": {
                 "name": "Clinical evidence",
@@ -2112,8 +2124,8 @@ def gks_bundle_statements() -> dict[str, Any]:
             "and evaluated sensitivity to EGFR-TKIs by MTS "
             "assay.",
             "specifiedBy": "#/method/civic.method:2019",
-            "reportedIn": ["#/document/civic.sid:669"],
-            "proposition": "#/proposition/civic.gks:PR.lzu38uLu_bvAPfb7Jo_ol8741OJaSdnu",
+            "reportedIn": ["#/source/civic.sid:669"],
+            "proposition": "#/proposition/civic.proposition:lzu38uLu_bvAPfb7Jo_ol8741OJaSdnu",
             "direction": "supports",
             "strength": {
                 "name": "Preclinical evidence",
@@ -2149,8 +2161,8 @@ def gks_bundle_statements() -> dict[str, Any]:
             "compositions: 51.2/50.8 % del 19; 38/37.7 % "
             "Leu858Arg; 10.8/11.5 % Uncommon.",
             "specifiedBy": "#/method/civic.method:2019",
-            "reportedIn": ["#/document/civic.sid:679"],
-            "proposition": "#/proposition/civic.gks:PR.nqvFeEaF3J52FxWjzgqxOoafka3s50pY",
+            "reportedIn": ["#/source/civic.sid:679"],
+            "proposition": "#/proposition/civic.proposition:nqvFeEaF3J52FxWjzgqxOoafka3s50pY",
             "direction": "supports",
             "strength": {
                 "name": "Clinical evidence",
@@ -2185,17 +2197,18 @@ def gks_bundle_metadata() -> dict[str, Any]:
             "collections": {
                 "sequenceReference": {"count": 1},
                 "location": {"count": 1, "types": {"SequenceLocation": 1}},
-                "molecularVariation": {"count": 1, "types": {"Allele": 1}},
-                "gene": {"count": 2},
-                "categoricalVariant": {"count": 2},
-                "condition": {"count": 3, "types": {"Disease": 3}},
+                "variant": {"count": 2, "types": {"Allele": 2}},
+                "feature": {"count": 2},
+                "molecularProfile": {"count": 2},
+                "disease": {"count": 3},
+                "phenotype": {"count": 0},
                 "conditionSet": {"count": 0},
                 "therapy": {"count": 1},
                 "therapyGroup": {"count": 0},
-                "alleleOriginQualifier": {"count": 1},
-                "document": {"count": 14},
+                "variantOrigin": {"count": 1},
+                "source": {"count": 14},
                 "method": {"count": 1},
-                "agent": {"count": 0},
+                "organization": {"count": 0},
                 "proposition": {
                     "count": 4,
                     "types": {
@@ -2204,7 +2217,8 @@ def gks_bundle_metadata() -> dict[str, Any]:
                         "VariantTherapeuticResponseProposition": 2,
                     },
                 },
-                "statement": {"count": 8},
+                "evidence": {"count": 6},
+                "assertion": {"count": 2},
             }
         },
     }
@@ -2214,38 +2228,48 @@ def gks_bundle_metadata() -> dict[str, Any]:
 def gks_bundle_expected(
     gks_bundle_sequence_references,
     gks_bundle_locations,
-    gks_bundle_molecular_variations,
-    gks_bundle_genes,
-    gks_bundle_categorical_variants,
-    gks_bundle_conditions,
+    gks_bundle_variants,
+    gks_bundle_features,
+    gks_bundle_molecular_profiles,
+    gks_bundle_diseases,
     gks_bundle_condition_sets,
     gks_bundle_therapies,
     gks_bundle_therapy_groups,
-    gks_bundle_allele_origin_qualifiers,
-    gks_bundle_documents,
+    gks_bundle_variant_origins,
+    gks_bundle_sources,
     gks_bundle_methods,
-    gks_bundle_agents,
+    gks_bundle_organizations,
     gks_bundle_propositions,
-    gks_bundle_statements,
+    gks_bundle_statement_objects,
     gks_bundle_metadata,
 ) -> dict[str, Any]:
     """Compose the complete expected bundle from its collection fixtures."""
     return {
         "sequenceReference": gks_bundle_sequence_references,
         "location": gks_bundle_locations,
-        "molecularVariation": gks_bundle_molecular_variations,
-        "gene": gks_bundle_genes,
-        "categoricalVariant": gks_bundle_categorical_variants,
-        "condition": gks_bundle_conditions,
+        "variant": gks_bundle_variants,
+        "feature": gks_bundle_features,
+        "molecularProfile": gks_bundle_molecular_profiles,
+        "disease": gks_bundle_diseases,
+        "phenotype": {},
         "conditionSet": gks_bundle_condition_sets,
         "therapy": gks_bundle_therapies,
         "therapyGroup": gks_bundle_therapy_groups,
-        "alleleOriginQualifier": gks_bundle_allele_origin_qualifiers,
-        "document": gks_bundle_documents,
+        "variantOrigin": gks_bundle_variant_origins,
+        "source": gks_bundle_sources,
         "method": gks_bundle_methods,
-        "agent": gks_bundle_agents,
+        "organization": gks_bundle_organizations,
         "proposition": gks_bundle_propositions,
-        "statement": gks_bundle_statements,
+        "evidence": {
+            identifier: statement
+            for identifier, statement in gks_bundle_statement_objects.items()
+            if identifier.startswith("civic.eid:")
+        },
+        "assertion": {
+            identifier: statement
+            for identifier, statement in gks_bundle_statement_objects.items()
+            if identifier.startswith("civic.aid:")
+        },
         "metadata": gks_bundle_metadata,
         "failed_assertion_ids": [],
         "errors": [],

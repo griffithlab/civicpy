@@ -21,13 +21,7 @@ from ga4gh.va_spec.base import (
     VariantPrognosticProposition,
     VariantTherapeuticResponseProposition,
 )
-from ga4gh.vrs.models import (
-    Allele,
-    CopyNumberChange,
-    CopyNumberCount,
-    SequenceLocation,
-    VrsType,
-)
+from ga4gh.vrs.models import SequenceLocation, Syntax, VrsType
 from civicpy.exports.civic_gks_bundle import (
     CivicGksBundleError,
     GksBundleCollection,
@@ -36,12 +30,16 @@ from civicpy.exports.civic_gks_bundle import (
     GksBundleOutput,
     GksBundleReference,
     GksBundleStatistics,
+    GksVariantRepresentation,
 )
 from civicpy.exports.civic_gks_constants import (
     ALLELE_ORIGIN_QUALIFIER_FIELD,
+    CODE_FIELD,
+    CODING_FIELD,
     CONDITIONS_FIELD,
     GA4GH_CURIE_PREFIX,
     ID_FIELD,
+    MAPPINGS_FIELD,
     PROPOSITION_FIELD,
     REFGET_ACCESSION_FIELD,
     TARGET_PROPOSITION_FIELD,
@@ -50,7 +48,6 @@ from civicpy.exports.civic_gks_constants import (
     CivicGksCuriePrefix,
 )
 from civicpy.exports.civic_gks_identifier import (
-    CivicGksAlleleOriginQualifier,
     CivicGksComputedIdentifierObject,
     compute_civic_gks_identifier,
 )
@@ -70,18 +67,15 @@ _BUNDLE_COLLECTION_BY_ID_PREFIX: Mapping[str, GksBundleCollection] = MappingProx
         # SequenceReference uses a refget accession and has no VRS ``ga4gh.prefix``.
         f"{GA4GH_CURIE_PREFIX}:SQ.": GksBundleCollection.SEQUENCE_REFERENCE,
         f"{GA4GH_CURIE_PREFIX}:{SequenceLocation.ga4gh.prefix}.": GksBundleCollection.LOCATION,
-        f"{GA4GH_CURIE_PREFIX}:{Allele.ga4gh.prefix}.": GksBundleCollection.MOLECULAR_VARIATION,
-        f"{GA4GH_CURIE_PREFIX}:{CopyNumberChange.ga4gh.prefix}.": GksBundleCollection.MOLECULAR_VARIATION,
-        f"{GA4GH_CURIE_PREFIX}:{CopyNumberCount.ga4gh.prefix}.": GksBundleCollection.MOLECULAR_VARIATION,
-        f"{CivicGksCuriePrefix.GENE.value}:": GksBundleCollection.GENE,
-        f"{CivicGksCuriePrefix.MOLECULAR_PROFILE.value}:": GksBundleCollection.CATEGORICAL_VARIANT,
-        f"{CivicGksCuriePrefix.DISEASE.value}:": GksBundleCollection.CONDITION,
-        f"{CivicGksCuriePrefix.PHENOTYPE.value}:": GksBundleCollection.CONDITION,
+        f"{CivicGksCuriePrefix.GENE.value}:": GksBundleCollection.FEATURE,
+        f"{CivicGksCuriePrefix.MOLECULAR_PROFILE.value}:": GksBundleCollection.MOLECULAR_PROFILE,
+        f"{CivicGksCuriePrefix.DISEASE.value}:": GksBundleCollection.DISEASE,
+        f"{CivicGksCuriePrefix.PHENOTYPE.value}:": GksBundleCollection.PHENOTYPE,
         f"{CivicGksCuriePrefix.THERAPY.value}:": GksBundleCollection.THERAPY,
-        f"{CivicGksCuriePrefix.EVIDENCE.value}:": GksBundleCollection.STATEMENT,
-        f"{CivicGksCuriePrefix.ASSERTION.value}:": GksBundleCollection.STATEMENT,
+        f"{CivicGksCuriePrefix.EVIDENCE.value}:": GksBundleCollection.EVIDENCE,
+        f"{CivicGksCuriePrefix.ASSERTION.value}:": GksBundleCollection.ASSERTION,
         f"{CivicGksCuriePrefix.METHOD.value}:": GksBundleCollection.METHOD,
-        f"{CivicGksCuriePrefix.ORGANIZATION.value}:": GksBundleCollection.AGENT,
+        f"{CivicGksCuriePrefix.ORGANIZATION.value}:": GksBundleCollection.ORGANIZATION,
     }
 )
 
@@ -89,15 +83,12 @@ _BUNDLE_COLLECTION_BY_GKS_TYPE: Mapping[str, GksBundleCollection] = MappingProxy
     {
         VrsType.SEQ_REF.value: GksBundleCollection.SEQUENCE_REFERENCE,
         VrsType.SEQ_LOC.value: GksBundleCollection.LOCATION,
-        VrsType.ALLELE.value: GksBundleCollection.MOLECULAR_VARIATION,
-        VrsType.CN_CHANGE.value: GksBundleCollection.MOLECULAR_VARIATION,
-        VrsType.CN_COUNT.value: GksBundleCollection.MOLECULAR_VARIATION,
         CategoricalVariant.model_fields[
             TYPE_FIELD
-        ].default: GksBundleCollection.CATEGORICAL_VARIANT,
-        CoreType.DOCUMENT.value: GksBundleCollection.DOCUMENT,
+        ].default: GksBundleCollection.MOLECULAR_PROFILE,
+        CoreType.DOCUMENT.value: GksBundleCollection.SOURCE,
         CoreType.METHOD.value: GksBundleCollection.METHOD,
-        CoreType.AGENT.value: GksBundleCollection.AGENT,
+        CoreType.AGENT.value: GksBundleCollection.ORGANIZATION,
     }
 )
 
@@ -110,13 +101,11 @@ _COMPUTED_IDENTIFIER_MODELS: tuple[type[CivicGksComputedIdentifierObject], ...] 
 )
 _COMPUTED_IDENTIFIER_MODEL_BY_TYPE: Mapping[
     str, type[CivicGksComputedIdentifierObject]
-] = (
-    MappingProxyType(
-        {
-            model.model_fields[TYPE_FIELD].default: model
-            for model in _COMPUTED_IDENTIFIER_MODELS
-        }
-    )
+] = MappingProxyType(
+    {
+        model.model_fields[TYPE_FIELD].default: model
+        for model in _COMPUTED_IDENTIFIER_MODELS
+    }
 )
 
 _COMPUTED_IDENTIFIER_MODEL_BY_COLLECTION: Mapping[
@@ -125,7 +114,6 @@ _COMPUTED_IDENTIFIER_MODEL_BY_COLLECTION: Mapping[
     {
         GksBundleCollection.CONDITION_SET: ConditionSet,
         GksBundleCollection.THERAPY_GROUP: TherapyGroup,
-        GksBundleCollection.ALLELE_ORIGIN_QUALIFIER: CivicGksAlleleOriginQualifier,
     }
 )
 
@@ -146,6 +134,8 @@ class _BundleBuilder:
         }
         # Original serialization for each collection key.
         self._source_serializations: dict[tuple[GksBundleCollection, str], str] = {}
+        # A molecular profile's CIViC mapping supplies the key for its defining VRS object.
+        self._variant_reference_by_vrs_id: dict[str, GksBundleReference] = {}
 
     def build(
         self,
@@ -166,7 +156,15 @@ class _BundleBuilder:
         )
 
         for record in serialized_records:
-            self._store_bundle_object(record, GksBundleCollection.STATEMENT)
+            collection = self._resolve_collection(record)
+            if collection not in {
+                GksBundleCollection.EVIDENCE,
+                GksBundleCollection.ASSERTION,
+            }:
+                raise CivicGksBundleError(
+                    f"Unsupported Statement identifier: {record.get(ID_FIELD)!r}."
+                )
+            self._store_bundle_object(record, collection)
 
         bundle_metadata = GksBundleMetadata(
             **metadata.model_dump(),
@@ -196,8 +194,8 @@ class _BundleBuilder:
         """
         return f"#/{collection.value}/{collection_key}"
 
-    @staticmethod
     def _resolve_collection(
+        self,
         record: Mapping[str, Any],
     ) -> GksBundleCollection | None:
         """Select the root collection for a referenceable GKS object.
@@ -227,9 +225,8 @@ class _BundleBuilder:
 
         return collection if isinstance(identifier, str) else None
 
-    @staticmethod
     def _get_collection_key(
-        record: Mapping[str, Any], collection: GksBundleCollection
+        self, record: Mapping[str, Any], collection: GksBundleCollection
     ) -> str:
         """Return the key used to store an object in its bundle collection.
 
@@ -278,6 +275,9 @@ class _BundleBuilder:
         # Mark the object as seen before processing its nested values.
         self._source_serializations[source_key] = stable_record
 
+        if collection is GksBundleCollection.MOLECULAR_PROFILE:
+            self._store_molecular_profile_variants(record)
+
         # Replace nested objects with references, then store the result.
         transformed = {
             key: self._replace_nested_objects_with_references(value, key)
@@ -285,6 +285,140 @@ class _BundleBuilder:
         }
         self._collections[collection][collection_key] = transformed
         return self._build_reference(collection, collection_key)
+
+    def _store_molecular_profile_variants(
+        self, molecular_profile: Mapping[str, Any]
+    ) -> None:
+        """Group a profile's VRS representations under its CIViC VID."""
+        variant_id = self._find_civic_variant_id(molecular_profile)
+        if variant_id is None:
+            return
+
+        variations: dict[str, dict[str, Any]] = {}
+        defining_vrs_ids: set[str] = set()
+        for constraint in molecular_profile.get("constraints", []):
+            if not isinstance(constraint, Mapping):
+                continue
+            for value in constraint.values():
+                identifier = self._add_vrs_representation(variations, value)
+                if identifier is not None:
+                    defining_vrs_ids.add(identifier)
+
+        for member in molecular_profile.get("members", []):
+            self._add_vrs_representation(variations, member)
+
+        grouped: dict[str, GksBundleObject] = {}
+        for vrs_id, variation in variations.items():
+            representation = self._classify_vrs_representation(
+                variation, is_defining=vrs_id in defining_vrs_ids
+            )
+            reference = (
+                f"#/{GksBundleCollection.VARIANT.value}/{variant_id}/"
+                f"{representation.value}/{vrs_id}"
+            )
+            self._variant_reference_by_vrs_id[vrs_id] = reference
+            grouped.setdefault(representation.value, {})[vrs_id] = variation
+
+        source_key = (GksBundleCollection.VARIANT, variant_id)
+        stable_group = serialize_canonical_json(grouped)
+        existing_source = self._source_serializations.get(source_key)
+        if existing_source is not None:
+            if existing_source != stable_group:
+                _logger.warning(
+                    "Multiple representations found for variant/%s; retaining the "
+                    "first bundle object.",
+                    variant_id,
+                )
+            return
+
+        self._source_serializations[source_key] = stable_group
+        self._collections[GksBundleCollection.VARIANT][variant_id] = {
+            representation: {
+                vrs_id: {
+                    key: self._replace_nested_objects_with_references(value, key)
+                    for key, value in variation.items()
+                }
+                for vrs_id, variation in representations.items()
+            }
+            for representation, representations in grouped.items()
+        }
+
+    @staticmethod
+    def _add_vrs_representation(
+        variations: dict[str, dict[str, Any]], value: Any
+    ) -> str | None:
+        """Add an identified VRS variation and return its identifier."""
+        if not isinstance(value, Mapping) or value.get(TYPE_FIELD) not in {
+            VrsType.ALLELE.value,
+            VrsType.CN_CHANGE.value,
+            VrsType.CN_COUNT.value,
+        }:
+            return None
+
+        identifier = value.get(ID_FIELD)
+        if isinstance(identifier, str):
+            variations.setdefault(identifier, dict(value))
+            return identifier
+
+        return None
+
+    @staticmethod
+    def _classify_vrs_representation(
+        variation: Mapping[str, Any], *, is_defining: bool
+    ) -> GksVariantRepresentation:
+        """Classify a VRS object by its HGVS syntax and constraint context."""
+        syntaxes = {
+            expression.get("syntax")
+            for expression in variation.get("expressions", [])
+            if isinstance(expression, Mapping)
+        }
+        representation_by_syntax = {
+            Syntax.HGVS_P.value: GksVariantRepresentation.PROTEIN,
+            Syntax.HGVS_C.value: GksVariantRepresentation.CODING,
+            Syntax.HGVS_G.value: GksVariantRepresentation.GENOMIC,
+        }
+        for syntax, representation in representation_by_syntax.items():
+            if syntax in syntaxes:
+                return representation
+
+        if is_defining and variation.get(TYPE_FIELD) == VrsType.ALLELE.value:
+            return GksVariantRepresentation.PROTEIN
+
+        if variation.get(TYPE_FIELD) in {
+            VrsType.CN_CHANGE.value,
+            VrsType.CN_COUNT.value,
+        }:
+            return GksVariantRepresentation.GENOMIC
+
+        return GksVariantRepresentation.UNCLASSIFIED
+
+    @staticmethod
+    def _find_civic_variant_id(molecular_profile: Mapping[str, Any]) -> str | None:
+        """Return the single CIViC VID recorded in a profile's mappings.
+
+        :param molecular_profile: Serialized Cat-VRS molecular profile.
+        :raises CivicGksBundleError: If mappings identify multiple CIViC variants.
+        :return: CIViC VID, if one is mapped.
+        """
+        variant_ids: set[str] = set()
+        for mapping in molecular_profile.get(MAPPINGS_FIELD, []):
+            if not isinstance(mapping, Mapping):
+                continue
+            coding = mapping.get(CODING_FIELD)
+            if not isinstance(coding, Mapping):
+                continue
+            identifier = coding.get(ID_FIELD)
+            prefix = f"{CivicGksCuriePrefix.VARIANT.value}:"
+            if isinstance(identifier, str) and identifier.startswith(prefix):
+                variant_ids.add(identifier)
+
+        if len(variant_ids) > 1:
+            raise CivicGksBundleError(
+                f"Molecular profile {molecular_profile.get(ID_FIELD)!r} maps to "
+                f"multiple CIViC variants: {', '.join(sorted(variant_ids))}."
+            )
+
+        return next(iter(variant_ids), None)
 
     def _replace_nested_objects_with_references(
         self, value: Any, field_name: str
@@ -304,15 +438,19 @@ class _BundleBuilder:
         if not isinstance(value, dict):
             return value
 
+        identifier = value.get(ID_FIELD)
+        if isinstance(identifier, str):
+            variant_reference = self._variant_reference_by_vrs_id.get(identifier)
+            if variant_reference is not None:
+                return variant_reference
+
         if field_name in _PROPOSITION_FIELDS and ID_FIELD not in value:
             return self._store_object_with_computed_id(
                 value, GksBundleCollection.PROPOSITION
             )
 
         if field_name == ALLELE_ORIGIN_QUALIFIER_FIELD and ID_FIELD not in value:
-            return self._store_object_with_computed_id(
-                value, GksBundleCollection.ALLELE_ORIGIN_QUALIFIER
-            )
+            return self._store_variant_origin(value)
 
         collection = self._resolve_collection(value)
         if collection:
@@ -349,7 +487,7 @@ class _BundleBuilder:
         value: dict[str, Any],
         collection: GksBundleCollection,
     ) -> GksBundleReference:
-        """Store an object without a source ID under a computed ``civic.gks`` identifier.
+        """Store an object without a source ID under a computed CIViC GKS identifier.
 
         :param value: Serialized GKS object without a source-provided ID.
         :param collection: Root collection selected for the object.
@@ -359,12 +497,31 @@ class _BundleBuilder:
         identifier = compute_civic_gks_identifier(gks_object)
         return self._store_bundle_object({ID_FIELD: identifier, **value}, collection)
 
+    def _store_variant_origin(self, value: dict[str, Any]) -> GksBundleReference:
+        """Store a variant origin under the code from its first mapping."""
+        try:
+            code = value[MAPPINGS_FIELD][0][CODING_FIELD][CODE_FIELD]
+        except (KeyError, IndexError, TypeError) as error:
+            raise CivicGksBundleError(
+                "A variant origin requires a code in its first mapping."
+            ) from error
+
+        if not isinstance(code, str) or not code:
+            raise CivicGksBundleError(
+                "A variant origin requires a code in its first mapping."
+            )
+
+        identifier = f"{CivicGksCuriePrefix.VARIANT_ORIGIN.value}:{code}"
+        return self._store_bundle_object(
+            {ID_FIELD: identifier, **value}, GksBundleCollection.VARIANT_ORIGIN
+        )
+
     @staticmethod
     def _parse_computed_identifier_object(
         value: dict[str, Any],
         collection: GksBundleCollection,
     ) -> CivicGksComputedIdentifierObject:
-        """Parse an object that supports a computed ``civic.gks`` identifier.
+        """Parse an object that supports a computed CIViC GKS identifier.
 
         :param value: Serialized GKS object without a source-provided ID.
         :param collection: Bundle collection selected for the object.
@@ -383,7 +540,7 @@ class _BundleBuilder:
 
         if model_class is None:
             raise CivicGksBundleError(
-                f"Unsupported object for a computed civic.gks identifier: {object_type!r}."
+                f"Unsupported object for a computed CIViC GKS identifier: {object_type!r}."
             )
 
         model_value = value

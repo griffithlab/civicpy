@@ -75,7 +75,8 @@ class TestCivicGksBundleOutput:
             "subject": {
                 "id": "civic.mpid:1",
                 "type": "CategoricalVariant",
-                "member": {"id": "ga4gh:VA.first", "type": "Allele"},
+                "mappings": [{"coding": {"id": "civic.vid:1"}}],
+                "constraints": [{"allele": {"id": "ga4gh:VA.first", "type": "Allele"}}],
             },
         }
         second_record = Mock()
@@ -85,7 +86,10 @@ class TestCivicGksBundleOutput:
             "subject": {
                 "id": "civic.mpid:1",
                 "type": "CategoricalVariant",
-                "member": {"id": "ga4gh:VA.discarded", "type": "Allele"},
+                "mappings": [{"coding": {"id": "civic.vid:1"}}],
+                "constraints": [
+                    {"allele": {"id": "ga4gh:VA.discarded", "type": "Allele"}}
+                ],
             },
         }
 
@@ -95,22 +99,41 @@ class TestCivicGksBundleOutput:
             [],
         )
 
-        assert set(bundle.categoricalVariant) == {"civic.mpid:1"}
-        assert set(bundle.molecularVariation) == {"ga4gh:VA.first"}
+        assert set(bundle.molecularProfile) == {"civic.mpid:1"}
+        assert set(bundle.variant) == {"civic.vid:1"}
         assert "retaining the first bundle object" in caplog.text
 
-    def test_groups_molecular_variations_by_concrete_type(self) -> None:
-        """Store molecular variations together and report their concrete types."""
+    def test_keys_vrs_variant_by_civic_vid(self) -> None:
+        """Store one defining VRS object per VID and preserve other members."""
         record = Mock()
         record.model_dump.return_value = {
             "id": "civic.aid:1",
             "type": "Statement",
-            "variations": [
-                {"id": "civic.mpid:1", "type": "CategoricalVariant"},
-                {"id": "ga4gh:VA.allele", "type": "Allele"},
-                {"id": "ga4gh:CX.change", "type": "CopyNumberChange"},
-                {"id": "ga4gh:CN.count", "type": "CopyNumberCount"},
-            ],
+            "subject": {
+                "id": "civic.mpid:1",
+                "type": "CategoricalVariant",
+                "mappings": [{"coding": {"id": "civic.vid:42"}}],
+                "constraints": [
+                    {
+                        "allele": {
+                            "id": "ga4gh:VA.allele",
+                            "type": "Allele",
+                        }
+                    }
+                ],
+                "members": [
+                    {
+                        "id": "ga4gh:VA.member",
+                        "type": "Allele",
+                        "expressions": [{"syntax": "hgvs.c", "value": "c.1T>C"}],
+                    },
+                    {
+                        "id": "ga4gh:VA.allele",
+                        "type": "Allele",
+                        "expressions": [{"syntax": "hgvs.p", "value": "p.V1A"}],
+                    },
+                ],
+            },
         }
 
         bundle = build_gks_bundle(
@@ -119,23 +142,31 @@ class TestCivicGksBundleOutput:
             [],
         )
 
-        assert set(bundle.categoricalVariant) == {"civic.mpid:1"}
-        assert set(bundle.molecularVariation) == {
-            "ga4gh:VA.allele",
-            "ga4gh:CX.change",
-            "ga4gh:CN.count",
+        assert bundle.variant == {
+            "civic.vid:42": {
+                "protein": {
+                    "ga4gh:VA.allele": {
+                        "id": "ga4gh:VA.allele",
+                        "type": "Allele",
+                    }
+                },
+                "coding": {
+                    "ga4gh:VA.member": {
+                        "id": "ga4gh:VA.member",
+                        "type": "Allele",
+                        "expressions": [{"syntax": "hgvs.c", "value": "c.1T>C"}],
+                    }
+                },
+            }
         }
-        assert bundle.metadata.statistics.collections["molecularVariation"].types == {
-            "Allele": 1,
-            "CopyNumberChange": 1,
-            "CopyNumberCount": 1,
-        }
-        assert bundle.statement["civic.aid:1"]["variations"] == [
-            "#/categoricalVariant/civic.mpid:1",
-            "#/molecularVariation/ga4gh:VA.allele",
-            "#/molecularVariation/ga4gh:CX.change",
-            "#/molecularVariation/ga4gh:CN.count",
+        assert bundle.molecularProfile["civic.mpid:1"]["constraints"] == [
+            {"allele": "#/variant/civic.vid:42/protein/ga4gh:VA.allele"}
         ]
+        assert bundle.molecularProfile["civic.mpid:1"]["members"] == [
+            "#/variant/civic.vid:42/coding/ga4gh:VA.member",
+            "#/variant/civic.vid:42/protein/ga4gh:VA.allele",
+        ]
+        assert bundle.metadata.statistics.collections["variant"].types == {"Allele": 2}
 
     def test_references_condition_and_therapy_groups_without_ids(self) -> None:
         """Assign deterministic local IDs to referenceable group value objects."""
@@ -185,22 +216,19 @@ class TestCivicGksBundleOutput:
         assert len(bundle.therapyGroup) == 1
         condition_set_id = next(iter(bundle.conditionSet))
         therapy_group_id = next(iter(bundle.therapyGroup))
-        assert condition_set_id.startswith("civic.gks:CS.")
-        assert therapy_group_id.startswith("civic.gks:TG.")
+        assert condition_set_id.startswith("civic.conditionSet:")
+        assert therapy_group_id.startswith("civic.therapyGroup:")
         assert bundle.conditionSet[condition_set_id]["id"] == condition_set_id
         assert bundle.therapyGroup[therapy_group_id]["id"] == therapy_group_id
-        assert set(bundle.condition) == {"civic.did:1", "civic.phenotype:2"}
+        assert set(bundle.disease) == {"civic.did:1"}
+        assert set(bundle.phenotype) == {"civic.phenotype:2"}
         assert bundle.conditionSet[condition_set_id]["conditions"] == [
-            "#/condition/civic.did:1",
-            "#/condition/civic.phenotype:2",
+            "#/disease/civic.did:1",
+            "#/phenotype/civic.phenotype:2",
         ]
-        statement = bundle.statement["civic.aid:1"]
+        statement = bundle.assertion["civic.aid:1"]
         assert statement["condition"] == f"#/conditionSet/{condition_set_id}"
         assert statement["therapeutic"] == f"#/therapyGroup/{therapy_group_id}"
-        assert bundle.metadata.statistics.collections["condition"].types == {
-            "Disease": 1,
-            "Phenotype": 1,
-        }
 
     def test_rejects_invalid_group_without_id(self) -> None:
         """Reject malformed group-shaped data instead of leaving it inline."""

@@ -1035,7 +1035,7 @@ class _CivicGksEvidenceAssertionMixin:
     ) -> CivicGksAlleleOriginQualifier:
         """Create the mapped allele origin concept for a CIViC record.
 
-        The qualifier's name and mappings define its computed bundle identity.
+        The first mapping code identifies the object in a CIViC GKS bundle.
 
         :param record: CIViC assertion or evidence item.
         :return: Mapped allele origin qualifier.

@@ -1,4 +1,4 @@
-"""Compute stable ``civic.gks`` identifiers for objects without source IDs.
+"""Compute stable CIViC identifiers for GKS objects without source IDs.
 
 The CIViC GKS Bundle Format uses these identifiers for referenceable objects
 without an ID defined by CIViC. For example, molecular profiles already have
@@ -41,7 +41,7 @@ _NON_IDENTITY_PROPOSITION_FIELDS = _COMMON_NON_IDENTITY_FIELDS | frozenset(
 
 
 class CivicGksIdentifierError(ValueError):
-    """Indicate that an object does not support a computed ``civic.gks`` identifier."""
+    """Indicate that an object does not support a computed CIViC GKS identifier."""
 
 
 class CivicGksAlleleOriginQualifier(MappableConcept):
@@ -67,16 +67,16 @@ CivicGksComputedIdentifierObject: TypeAlias = (
 
 
 class CivicGksIdentifierPrefix(str, Enum):
-    """Prefixes for supported computed ``civic.gks`` identifiers."""
+    """Namespaces for supported computed CIViC GKS identifiers."""
 
-    PROPOSITION = "PR"
-    CONDITION_SET = "CS"
-    THERAPY_GROUP = "TG"
-    ALLELE_ORIGIN_QUALIFIER = "AO"
+    PROPOSITION = CivicGksCuriePrefix.PROPOSITION.value
+    CONDITION_SET = CivicGksCuriePrefix.CONDITION_SET.value
+    THERAPY_GROUP = CivicGksCuriePrefix.THERAPY_GROUP.value
+    ALLELE_ORIGIN_QUALIFIER = CivicGksCuriePrefix.VARIANT_ORIGIN.value
 
 
 def compute_civic_gks_identifier(gks_object: BaseModel) -> str:
-    """Compute a stable ``civic.gks`` identifier.
+    """Compute a stable CIViC identifier for a supported GKS object.
 
     Supported objects are defined by ``CivicGksComputedIdentifierObject``.
 
@@ -90,7 +90,7 @@ def compute_civic_gks_identifier(gks_object: BaseModel) -> str:
     * Proposition identity includes its type, predicate, and semantic participant
       or qualifier fields. ``name``, ``description``, and ``aliases`` are excluded.
       Nested condition sets and therapy groups contribute their own computed
-      ``civic.gks`` identifiers.
+      computed CIViC GKS identifiers.
     * Allele origin qualifier identity includes only ``name`` and ``mappings``.
       Mappings are sorted because their order is not semantically meaningful.
     * A nested ``SequenceReference`` contributes its ``refgetAccession`` when it
@@ -98,7 +98,7 @@ def compute_civic_gks_identifier(gks_object: BaseModel) -> str:
 
     :param gks_object: Pydantic model to identify.
     :raises CivicGksIdentifierError: If the object is not a supported GKS model.
-    :return: Computed identifier in the ``civic.gks`` namespace.
+    :return: Computed identifier in the namespace for the object's GKS type.
     """
     if isinstance(gks_object, ClinicalVariantProposition):
         identifier_prefix = CivicGksIdentifierPrefix.PROPOSITION
@@ -114,7 +114,7 @@ def compute_civic_gks_identifier(gks_object: BaseModel) -> str:
         member_field = MAPPINGS_FIELD
     else:
         raise CivicGksIdentifierError(
-            "Computed civic.gks identifiers are not supported for "
+            "Computed CIViC GKS identifiers are not supported for "
             f"{type(gks_object).__name__}."
         )
 
@@ -146,7 +146,7 @@ def compute_civic_gks_identifier(gks_object: BaseModel) -> str:
         )
 
     digest = sha512t24u(serialize_canonical_json(identity_payload).encode())
-    return f"{CivicGksCuriePrefix.COMPUTED_IDENTIFIER.value}:{identifier_prefix.value}.{digest}"
+    return f"{identifier_prefix.value}:{digest}"
 
 
 def _reduce_to_identity(value: Any, *, use_computed_group_ids: bool = True) -> Any:
@@ -158,7 +158,7 @@ def _reduce_to_identity(value: Any, *, use_computed_group_ids: bool = True) -> A
 
     :param value: JSON-compatible value from a supported Pydantic GKS model.
     :param use_computed_group_ids: Whether nested groups without source IDs should
-        reduce to their computed ``civic.gks`` identifiers. This is disabled for the root
+        reduce to their computed CIViC GKS identifiers. This is disabled for the root
         object.
     :return: Identity-defining content for deterministic hashing.
     """
@@ -192,7 +192,7 @@ def _compute_nested_group_identifier(value: dict[str, Any]) -> str | None:
     operator fields identify their concrete Pydantic class.
 
     :param value: Serialized nested value to inspect.
-    :return: Computed ``civic.gks`` group identifier, or ``None`` for another
+    :return: Computed CIViC GKS group identifier, or ``None`` for another
         value type.
     """
     if MEMBERSHIP_OPERATOR_FIELD not in value:

@@ -5,8 +5,8 @@ extraction and reference construction are implemented in
 :mod:`civicpy.exports.civic_gks_bundle_builder`; file serialization remains in
 :mod:`civicpy.exports.civic_gks_writer`.
 
-The GKS Bundle Format permits pointers to every extracted collection. Agent and
-proposition fields currently use pointers even though VA-Spec does not type
+The GKS Bundle Format permits pointers to every extracted collection. Organization
+and proposition fields currently use pointers even though VA-Spec does not type
 those fields as ``iriReference``.
 """
 
@@ -19,7 +19,6 @@ from typing import Any, TypeAlias
 from pydantic import BaseModel, Field, NonNegativeInt
 
 from civicpy.exports.civic_gks_constants import (
-    CONCEPT_TYPE_FIELD,
     TYPE_FIELD,
     CivicGksBundleFormat,
 )
@@ -30,6 +29,7 @@ from civicpy.exports.civic_gks_output import (
 
 GksBundleObject: TypeAlias = dict[str, Any]
 GksBundleReference: TypeAlias = str
+GksVariantRepresentations: TypeAlias = dict[str, dict[str, GksBundleObject]]
 
 
 class GksBundleCollection(str, Enum):
@@ -37,19 +37,30 @@ class GksBundleCollection(str, Enum):
 
     SEQUENCE_REFERENCE = "sequenceReference"
     LOCATION = "location"
-    MOLECULAR_VARIATION = "molecularVariation"
-    GENE = "gene"
-    CATEGORICAL_VARIANT = "categoricalVariant"
-    CONDITION = "condition"
+    VARIANT = "variant"
+    FEATURE = "feature"
+    MOLECULAR_PROFILE = "molecularProfile"
+    DISEASE = "disease"
+    PHENOTYPE = "phenotype"
     CONDITION_SET = "conditionSet"
     THERAPY = "therapy"
     THERAPY_GROUP = "therapyGroup"
-    ALLELE_ORIGIN_QUALIFIER = "alleleOriginQualifier"
-    DOCUMENT = "document"
+    VARIANT_ORIGIN = "variantOrigin"
+    SOURCE = "source"
     METHOD = "method"
-    AGENT = "agent"
+    ORGANIZATION = "organization"
     PROPOSITION = "proposition"
-    STATEMENT = "statement"
+    EVIDENCE = "evidence"
+    ASSERTION = "assertion"
+
+
+class GksVariantRepresentation(str, Enum):
+    """Coordinate levels used to group VRS representations of a CIViC variant."""
+
+    PROTEIN = "protein"
+    CODING = "coding"
+    GENOMIC = "genomic"
+    UNCLASSIFIED = "unclassified"
 
 
 class CivicGksBundleError(ValueError):
@@ -60,8 +71,6 @@ class CivicGksBundleError(ValueError):
 _TYPE_COUNT_FIELD_BY_COLLECTION: Mapping[GksBundleCollection, str] = MappingProxyType(
     {
         GksBundleCollection.LOCATION: TYPE_FIELD,
-        GksBundleCollection.MOLECULAR_VARIATION: TYPE_FIELD,
-        GksBundleCollection.CONDITION: CONCEPT_TYPE_FIELD,
         GksBundleCollection.PROPOSITION: TYPE_FIELD,
     }
 )
@@ -98,8 +107,19 @@ class GksBundleStatistics(BaseModel):
         for collection, objects in collections.items():
             type_field = _TYPE_COUNT_FIELD_BY_COLLECTION.get(collection)
 
-            type_counts = (
-                dict(
+            if collection is GksBundleCollection.VARIANT:
+                type_counts = dict(
+                    sorted(
+                        Counter(
+                            variation[TYPE_FIELD]
+                            for representations in objects.values()
+                            for variations in representations.values()
+                            for variation in variations.values()
+                        ).items()
+                    )
+                )
+            elif type_field:
+                type_counts = dict(
                     sorted(
                         Counter(
                             bundle_object[type_field]
@@ -107,9 +127,8 @@ class GksBundleStatistics(BaseModel):
                         ).items()
                     )
                 )
-                if type_field
-                else None
-            )
+            else:
+                type_counts = None
 
             statistics[collection.value] = GksBundleCollectionStatistics(
                 count=len(objects),
@@ -133,26 +152,28 @@ class GksBundleOutput(BaseModel):
     """Represent CIViC data in the GKS Bundle Format.
 
     Referenceable objects are stored once in keyed root collections. Nested uses
-    become JSON Pointers such as ``#/categoricalVariant/civic.mpid:33``.
+    become JSON Pointers such as ``#/molecularProfile/civic.mpid:33``.
     Propositions and groups without source-provided IDs receive deterministic
     bundle-local ``id`` values; other value objects remain inline.
     """
 
     sequenceReference: dict[str, GksBundleObject]
     location: dict[str, GksBundleObject]
-    molecularVariation: dict[str, GksBundleObject]
-    gene: dict[str, GksBundleObject]
-    categoricalVariant: dict[str, GksBundleObject]
-    condition: dict[str, GksBundleObject]
+    variant: dict[str, GksVariantRepresentations]
+    feature: dict[str, GksBundleObject]
+    molecularProfile: dict[str, GksBundleObject]
+    disease: dict[str, GksBundleObject]
+    phenotype: dict[str, GksBundleObject]
     conditionSet: dict[str, GksBundleObject]
     therapy: dict[str, GksBundleObject]
     therapyGroup: dict[str, GksBundleObject]
-    alleleOriginQualifier: dict[str, GksBundleObject]
-    document: dict[str, GksBundleObject]
+    variantOrigin: dict[str, GksBundleObject]
+    source: dict[str, GksBundleObject]
     method: dict[str, GksBundleObject]
-    agent: dict[str, GksBundleObject]
+    organization: dict[str, GksBundleObject]
     proposition: dict[str, GksBundleObject]
-    statement: dict[str, GksBundleObject]
+    evidence: dict[str, GksBundleObject]
+    assertion: dict[str, GksBundleObject]
     metadata: GksBundleMetadata
     failed_assertion_ids: list[int]
     errors: list[GksAssertionError]

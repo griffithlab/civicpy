@@ -13,11 +13,7 @@ from civicpy.exports.civic_gks_writer import GksOutput
 
 def _bundle_assertion_ids(bundle: dict[str, Any]) -> set[str]:
     """Return the CIViC Assertion IDs stored in a bundle."""
-    return {
-        identifier
-        for identifier in bundle["statement"]
-        if identifier.startswith("civic.aid:")
-    }
+    return set(bundle["assertion"])
 
 
 def check_metadata(metadata: dict[str, Any], bundle: bool = False) -> None:
@@ -138,7 +134,7 @@ class TestCli(object):
                 check_metadata(gks_output["metadata"], bundle=bundle)
                 if bundle:
                     GksBundleOutput.model_validate(gks_output)
-                    statement = gks_output["statement"]["civic.aid:6"]
+                    statement = gks_output["assertion"]["civic.aid:6"]
                     accessions_by_contributor = {
                         contribution["contributor"]: contribution["extensions"][0]
                         for contribution in statement["contributions"]
@@ -147,7 +143,7 @@ class TestCli(object):
                         "civic.aid:6",
                         "civic.aid:202",
                     }
-                    assert set(gks_output["agent"]) == {
+                    assert set(gks_output["organization"]) == {
                         "civic.organization:1",
                         "civic.organization:2",
                     }
@@ -158,11 +154,11 @@ class TestCli(object):
                         }
                     ]
                     assert accessions_by_contributor == {
-                        "#/agent/civic.organization:1": {
+                        "#/organization/civic.organization:1": {
                             "name": "clinvarAccession",
                             "value": "SCV000000001",
                         },
-                        "#/agent/civic.organization:2": {
+                        "#/organization/civic.organization:2": {
                             "name": "clinvarAccession",
                             "value": "SCV000000002",
                         },
@@ -217,7 +213,7 @@ class TestCli(object):
         with output_path.open() as read_file:
             bundle = json.load(read_file)
         assert _bundle_assertion_ids(bundle) == {"civic.aid:6"}
-        assert set(bundle["agent"]) == {"civic.organization:1"}
+        assert set(bundle["organization"]) == {"civic.organization:1"}
 
     @patch("civicpy.civic.get_all_approvals_ready_for_clinvar_submission_for_org")
     def test_create_gks_json_assertions_not_valid(
