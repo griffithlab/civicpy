@@ -19,7 +19,6 @@ from civicpy.exports.civic_gks_record import (
 from civicpy.exports.civic_gks_writer import CivicGksWriter, GksAssertionError
 from civicpy.exports.civic_vcf_record import CivicVcfRecord
 from civicpy.exports.civic_vcf_writer import CivicVcfWriter
-from civicpy.exports.variation_normalizer import VariationNormalizerRESTDataProxy
 
 
 CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
@@ -100,26 +99,20 @@ def create_vcf(vcf_file_path, include_status):
         path_type=Path,
     ),
 )
-@click.option(
-    "--variation-normalizer-url",
-    envvar=VariationNormalizerRESTDataProxy.BASE_URL_ENV_VAR,
-    default=None,
-    help=(
-        "Base URL for the Variation Normalizer REST service. Uses "
-        f"{VariationNormalizerRESTDataProxy.DEFAULT_BASE_URL!r} by default."
-    ),
-    show_envvar=True,
-)
 def create_gks_json(
     organization_id: int,
     submission_type: ClinVarSubmissionType,
     output_json: Path,
-    variation_normalizer_url: str | None,
 ) -> None:
     """Create a JSON file for CIViC assertion records approved by a specific organization that are ready for ClinVar submission, represented as GKS objects.
 
     Supports simple molecular profiles and diagnostic, prognostic, predictive, or
     oncogenic assertions.
+
+    The Variation Normalizer REST service defaults to
+    ``http://127.0.0.1:8000/variation``. Set
+    ``CIVICPY_VARIATION_NORMALIZER_URL`` before running the command to use a
+    different endpoint.
 
     ClinVar only supports submitting records of the same submission type for a
     given assertion criteria:
@@ -131,8 +124,6 @@ def create_gks_json(
     :param submission_type: The ClinVar submission type to generate GKS JSON for.
         Defaults to clinical impact.
     :param output_json: The output file path to write the JSON file to
-    :param variation_normalizer_url: Base URL for the Variation Normalizer REST
-        service.
     """
     try:
         civic.get_organization_by_id(organization_id)
@@ -143,8 +134,6 @@ def create_gks_json(
     records: list[CivicGksClinSigAssertion] | list[CivicGksOncogenicAssertion] = []
     errors: list[GksAssertionError] = []
 
-    variation_normalizer_dp = VariationNormalizerRESTDataProxy(variation_normalizer_url)
-
     for approval in civic.get_all_approvals_ready_for_clinvar_submission_for_org(
         organization_id
     ):
@@ -153,7 +142,6 @@ def create_gks_json(
             try:
                 gks_record = create_gks_record_from_assertion(
                     assertion,
-                    variation_normalizer=variation_normalizer_dp,
                     approval=approval,
                     submission_type_filter=submission_type,
                 )

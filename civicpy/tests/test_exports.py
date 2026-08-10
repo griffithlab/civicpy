@@ -24,7 +24,6 @@ from civicpy.exports.civic_gks_record import (
     CivicGksTherapyGroup,
     ClinVarSubmissionType,
     create_gks_record_from_assertion,
-    resolve_variation_normalizer,
 )
 from civicpy.exports.civic_vcf_record import CivicVcfRecord
 from civicpy.exports.variation_normalizer import VariationNormalizerDataProxy
@@ -1328,6 +1327,7 @@ class TestCivicGksMolecularProfile(object):
         civic_mpid113,
         civic_mpid113_cdna_vrs,
         civic_mpid113_genomic_vrs,
+        monkeypatch,
     ):
 
         def normalize_side_effect(expr):
@@ -1356,10 +1356,10 @@ class TestCivicGksMolecularProfile(object):
             lambda molecular_profile: variation_normalizer.normalize("RET M918T")
         )
 
-        gks_mp = CivicGksMolecularProfile(
-            molecular_profile=mp,
-            variation_normalizer=variation_normalizer,
+        monkeypatch.setattr(
+            CivicGksMolecularProfile, "_variation_normalizer", variation_normalizer
         )
+        gks_mp = CivicGksMolecularProfile(molecular_profile=mp)
 
         assert variation_normalizer.normalize.call_count == 6
 
@@ -1389,9 +1389,7 @@ class TestCivicGksMolecularProfile(object):
                 new=None,
             ),
         ):
-            gks_mp = CivicGksMolecularProfile(
-                v600e_mp, variation_normalizer=mocked_normalizer
-            )
+            gks_mp = CivicGksMolecularProfile(v600e_mp)
             extensions = gks_mp.extensions
             assert extensions
 
@@ -1422,9 +1420,7 @@ class TestCivicGksMolecularProfile(object):
         variant = v600e_mp.variants[0]
 
         with patch.object(variant, "clinvar_entries", new=["N/A"]):
-            gks_mp = CivicGksMolecularProfile(
-                v600e_mp, variation_normalizer=mocked_normalizer
-            )
+            gks_mp = CivicGksMolecularProfile(v600e_mp)
             mappings = gks_mp.mappings
             assert mappings
             assert not any(
@@ -1434,7 +1430,7 @@ class TestCivicGksMolecularProfile(object):
 
     def test_build_constraints_gene_mutation(self, mocked_normalizer):
         mp = civic.get_molecular_profile_by_id(395)
-        gks_mp = CivicGksMolecularProfile(mp, mocked_normalizer)
+        gks_mp = CivicGksMolecularProfile(mp)
         constraints = gks_mp.constraints
         assert constraints
         assert len(constraints) == 1
@@ -1477,18 +1473,20 @@ class TestCivicGksMolecularProfile(object):
             CivicGksRecordError,
             match="Unable to retrieve mappings for gene 5",
         ):
-            CivicGksMolecularProfile(
-                mp,
-                mocked_normalizer,
-            )
+            CivicGksMolecularProfile(mp)
 
-    def test_build_constraints_normalization_failure(self, civic_mpid113_undefined):
+    def test_build_constraints_normalization_failure(
+        self, civic_mpid113_undefined, monkeypatch
+    ):
         mp = civic.get_molecular_profile_by_id(113)
 
         variation_normalizer = Mock()
         variation_normalizer.normalize_molecular_profile.return_value = None
 
-        gks_mp = CivicGksMolecularProfile(mp, variation_normalizer)
+        monkeypatch.setattr(
+            CivicGksMolecularProfile, "_variation_normalizer", variation_normalizer
+        )
+        gks_mp = CivicGksMolecularProfile(mp)
         diff = DeepDiff(
             gks_mp.model_dump(exclude_none=True),
             civic_mpid113_undefined,
@@ -1500,7 +1498,7 @@ class TestCivicGksMolecularProfile(object):
         mp = civic.get_molecular_profile_by_id(12)
         normalized_allele = braf_v600e_vrs.model_dump(exclude_none=True)
 
-        gks_mp = CivicGksMolecularProfile(mp, mocked_normalizer)
+        gks_mp = CivicGksMolecularProfile(mp)
         assert braf_v600e_vrs.model_dump(exclude_none=True) == normalized_allele
 
         constraints = gks_mp.constraints
@@ -1537,10 +1535,17 @@ class TestCivicGksMolecularProfile(object):
         expression = Expression(syntax=Syntax.HGVS_C, value="NM_004333.6:c.1799T>A")
         variation_normalizer = Mock()
         variation_normalizer.normalize.return_value = braf_v600e_vrs
+        original_normalizer = CivicGksMolecularProfile._variation_normalizer
 
-        members = CivicGksMolecularProfile._build_members(
-            [expression], [Syntax.HGVS_C], None, variation_normalizer
-        )
+        try:
+            CivicGksMolecularProfile.configure_variation_normalizer(
+                variation_normalizer
+            )
+            members = CivicGksMolecularProfile._build_members(
+                [expression], [Syntax.HGVS_C], None
+            )
+        finally:
+            CivicGksMolecularProfile._variation_normalizer = original_normalizer
 
         assert braf_v600e_vrs.model_dump(exclude_none=True) == normalized_allele
         assert len(members) == 1
@@ -1550,6 +1555,7 @@ class TestCivicGksMolecularProfile(object):
     def test_build_constraints_copy_number_change(
         self,
         braf_amplification_vrs,
+        monkeypatch,
     ):
         mp = civic.get_molecular_profile_by_id(1243)
 
@@ -1558,7 +1564,10 @@ class TestCivicGksMolecularProfile(object):
             braf_amplification_vrs
         )
 
-        gks_mp = CivicGksMolecularProfile(mp, variation_normalizer)
+        monkeypatch.setattr(
+            CivicGksMolecularProfile, "_variation_normalizer", variation_normalizer
+        )
+        gks_mp = CivicGksMolecularProfile(mp)
         constraints = gks_mp.constraints
         assert constraints
         assert len(constraints) == 2
@@ -1607,6 +1616,7 @@ class TestCivicGksMolecularProfile(object):
 
     def test_build_constraints_unsupported_vrs_type(
         self,
+        monkeypatch,
     ):
         # Need to pick non- Gene Mutation MP ID
         # Mocked value is dummy value purely for test purposes
@@ -1616,14 +1626,14 @@ class TestCivicGksMolecularProfile(object):
             copies=1, location=iriReference("#/location/1")
         )
 
+        monkeypatch.setattr(
+            CivicGksMolecularProfile, "_variation_normalizer", variation_normalizer
+        )
         with pytest.raises(
             CivicGksRecordError,
             match="Unsupported VRS variation type returned by Variation Normalizer. mpid=1243, type='CopyNumberCount'",
         ):
-            CivicGksMolecularProfile(
-                mp,
-                variation_normalizer,
-            )
+            CivicGksMolecularProfile(mp)
 
     def test_no_representative_coordinates(self):
         """Test that empty representative coordinates do not get an extension"""
@@ -1689,7 +1699,7 @@ class TestCivicGksClinSigAssertion(object):
 
     def test_valid_combination_therapy(self, aid7, mocked_normalizer):
         """Test that combination therapy works as expected"""
-        record = CivicGksClinSigAssertion(aid7, variation_normalizer=mocked_normalizer)
+        record = CivicGksClinSigAssertion(aid7)
         assert isinstance(record, VariantClinicalSignificanceStatement)
         assert len(record.hasEvidenceLines) == 1
         assert len(record.hasEvidenceLines[0].hasEvidenceItems) == 4
@@ -1752,7 +1762,7 @@ class TestCivicGksClinSigAssertion(object):
 
     def test_valid_prognostic(self, aid20, mocked_normalizer):
         """Test that valid prognostic assertion works as expected"""
-        record = CivicGksClinSigAssertion(aid20, variation_normalizer=mocked_normalizer)
+        record = CivicGksClinSigAssertion(aid20)
         assert isinstance(record, VariantClinicalSignificanceStatement)
         assert len(record.hasEvidenceLines) == 1
         assert len(record.hasEvidenceLines[0].hasEvidenceItems) == 6
@@ -1772,7 +1782,7 @@ class TestCivicGksClinSigAssertion(object):
         test_evidence_items.return_value = [civic.get_evidence_by_id(11881)]
         test_is_valid_for_gks_json.return_value = False
 
-        record = CivicGksClinSigAssertion(aid20, variation_normalizer=mocked_normalizer)
+        record = CivicGksClinSigAssertion(aid20)
         assert len(record.hasEvidenceLines) == 1
         assert record.hasEvidenceLines[0].hasEvidenceItems is None
 
@@ -1813,7 +1823,7 @@ class TestCivicGksDiagnosticAssertion(object):
         gks_aid115_object_condition,
     ):
         """Test that valid diagnostic assertion works as expected"""
-        record = CivicGksClinSigAssertion(aid9, variation_normalizer=mocked_normalizer)
+        record = CivicGksClinSigAssertion(aid9)
         assert isinstance(record, VariantClinicalSignificanceStatement)
         assert len(record.hasEvidenceLines) == 1
         assert len(record.hasEvidenceLines[0].hasEvidenceItems) == 2
@@ -1949,16 +1959,51 @@ class TestCivicGksOncogenicAssertion(object):
 class TestCivicGksRecord(object):
     """Test that GKS Record helper functions work correctly"""
 
-    def test_resolve_variation_normalizer_preserves_falsey_proxy(self):
-        class FalseyVariationNormalizer:
-            def __bool__(self):
-                return False
+    @patch("civicpy.exports.civic_gks_record.VariationNormalizerRESTDataProxy")
+    def test_configured_variation_normalizer_is_shared(self, mock_rest_normalizer):
+        original_normalizer = CivicGksMolecularProfile._variation_normalizer
+        variation_normalizer = Mock(spec=VariationNormalizerDataProxy)
 
-        variation_normalizer = FalseyVariationNormalizer()
+        try:
+            CivicGksMolecularProfile.configure_variation_normalizer(
+                variation_normalizer
+            )
 
-        assert (
-            resolve_variation_normalizer(variation_normalizer) is variation_normalizer
-        )
+            assert (
+                CivicGksMolecularProfile._get_variation_normalizer()
+                is variation_normalizer
+            )
+            assert (
+                CivicGksMolecularProfile._get_variation_normalizer()
+                is variation_normalizer
+            )
+            assert "_variation_normalizer" not in CivicGksMolecularProfile.model_fields
+            mock_rest_normalizer.assert_not_called()
+        finally:
+            CivicGksMolecularProfile._variation_normalizer = original_normalizer
+
+    @patch("civicpy.exports.civic_gks_record.VariationNormalizerRESTDataProxy")
+    def test_default_variation_normalizer_is_initialized_lazily(
+        self, mock_rest_normalizer
+    ):
+        original_normalizer = CivicGksMolecularProfile._variation_normalizer
+        variation_normalizer = Mock(spec=VariationNormalizerDataProxy)
+        mock_rest_normalizer.return_value = variation_normalizer
+
+        try:
+            CivicGksMolecularProfile._variation_normalizer = None
+
+            assert (
+                CivicGksMolecularProfile._get_variation_normalizer()
+                is variation_normalizer
+            )
+            assert (
+                CivicGksMolecularProfile._get_variation_normalizer()
+                is variation_normalizer
+            )
+            mock_rest_normalizer.assert_called_once_with()
+        finally:
+            CivicGksMolecularProfile._variation_normalizer = original_normalizer
 
     def test_unsupported_assertion_type(self, mocked_normalizer):
         """Test that unsupported assertion types raise NotImplementedError"""
@@ -1967,10 +2012,7 @@ class TestCivicGksRecord(object):
             NotImplementedError,
             match=r"Assertion type PREDISPOSING is not currently supported",
         ):
-            create_gks_record_from_assertion(
-                civic.get_assertion_by_id(17),
-                variation_normalizer=mocked_normalizer,
-            )
+            create_gks_record_from_assertion(civic.get_assertion_by_id(17))
 
     @patch("civicpy.exports.civic_gks_record.CivicGksClinSigAssertion")
     def test_factory_preserves_positional_approval(self, mock_gks_assertion, aid6):
@@ -1982,7 +2024,6 @@ class TestCivicGksRecord(object):
         mock_gks_assertion.assert_called_once_with(
             aid6,
             approval=approval,
-            variation_normalizer=None,
         )
 
     @pytest.mark.parametrize(
@@ -2052,13 +2093,11 @@ class TestCivicGksRecord(object):
                 create_gks_record_from_assertion(
                     civic_aid,
                     submission_type_filter=submission_type_filter,
-                    variation_normalizer=mocked_normalizer,
                 )
         else:
             assert create_gks_record_from_assertion(
                 civic_aid,
                 submission_type_filter=submission_type_filter,
-                variation_normalizer=mocked_normalizer,
             )
 
     def test_clinvar_accession_ext(self, mocked_normalizer):
@@ -2066,7 +2105,6 @@ class TestCivicGksRecord(object):
         record = create_gks_record_from_assertion(
             a,
             approval=a.approvals[0],
-            variation_normalizer=mocked_normalizer,
         )
         assert isinstance(record, VariantClinicalSignificanceStatement)
         assert [ext.model_dump(exclude_none=True) for ext in record.extensions] == [
@@ -2082,7 +2120,4 @@ class TestCivicGksRecord(object):
                 "Assertion type must be one of ['PREDICTIVE', 'PROGNOSTIC', 'DIAGNOSTIC']"
             ),
         ):
-            CivicGksClinSigAssertion(
-                aid117,
-                variation_normalizer=mocked_normalizer,
-            )
+            CivicGksClinSigAssertion(aid117)

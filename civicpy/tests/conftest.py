@@ -5,6 +5,7 @@ import pytest
 from ga4gh.vrs.models import Allele, CopyNumberChange
 
 from civicpy.exports.variation_normalizer import VariationNormalizerDataProxy
+from civicpy.exports.civic_gks_record import CivicGksMolecularProfile
 
 
 @pytest.fixture(scope="module")
@@ -59,10 +60,13 @@ def v600e_mp():
     return get_molecular_profile_by_id(12)
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture
 def mocked_normalizer(braf_v600e_vrs):
     """Provide a normalizer mock for GKS tests without a live service."""
     variation_normalizer = Mock(spec=VariationNormalizerDataProxy)
     variation_normalizer.normalize.return_value = None
     variation_normalizer.normalize_molecular_profile.return_value = braf_v600e_vrs
-    return variation_normalizer
+    original_normalizer = CivicGksMolecularProfile._variation_normalizer
+    CivicGksMolecularProfile.configure_variation_normalizer(variation_normalizer)
+    yield variation_normalizer
+    CivicGksMolecularProfile._variation_normalizer = original_normalizer
