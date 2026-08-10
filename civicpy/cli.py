@@ -1,22 +1,24 @@
-from pathlib import Path
-import click
 import logging
+from collections import OrderedDict
+from pathlib import Path
+
+import click
+import vcfpy
+
 from civicpy import civic
 from civicpy.__env__ import LOCAL_CACHE_PATH
+from civicpy.__version__ import __version__
+from civicpy.civic import CoordinateQuery
 from civicpy.exports.civic_gks_record import (
+    CivicGksClinSigAssertion,
     CivicGksRecordError,
     CivicGksOncogenicAssertion,
-    CivicGksClinSigAssertion,
     ClinVarSubmissionType,
     create_gks_record_from_assertion,
 )
 from civicpy.exports.civic_gks_writer import CivicGksWriter, GksAssertionError
-from civicpy.exports.civic_vcf_writer import CivicVcfWriter
 from civicpy.exports.civic_vcf_record import CivicVcfRecord
-from civicpy.civic import CoordinateQuery
-import vcfpy
-from collections import OrderedDict
-from civicpy.__version__ import __version__
+from civicpy.exports.civic_vcf_writer import CivicVcfWriter
 
 
 CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
@@ -25,6 +27,7 @@ CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 @click.group(context_settings=CONTEXT_SETTINGS)
 @click.version_option(__version__)
 def cli():
+    """Provide CIViCpy command-line tools."""
     pass
 
 
@@ -97,22 +100,25 @@ def create_vcf(vcf_file_path, include_status):
     ),
 )
 def create_gks_json(
-    organization_id: int, submission_type: ClinVarSubmissionType, output_json: Path
+    organization_id: int,
+    submission_type: ClinVarSubmissionType,
+    output_json: Path,
 ) -> None:
     """Create a JSON file for CIViC assertion records approved by a specific organization that are ready for ClinVar submission, represented as GKS objects.
 
-    For now, we will only support simple molecular profiles and diagnostic, prognostic,
-    predictive, or oncogenic assertions.
+    Supports simple molecular profiles and diagnostic, prognostic, predictive, or
+    oncogenic assertions.
+
+    The Variation Normalizer REST service defaults to
+    ``http://127.0.0.1:8000/variation``. Set
+    ``CIVICPY_VARIATION_NORMALIZER_URL`` before running the command to use a
+    different endpoint.
 
     ClinVar only supports submitting records of the same submission type for a
     given assertion criteria:
     * Clinical Impact -> diagnostic, prognostic, or predictive assertion
     * Oncogenicity -> oncogenic assertion
-    Therefore, you must create separate GKS JSON for each submission type
-
-    ClinVar only supports submitting records of the same submission type for a
-    given assertion criteria:
-    * Clinical Impact -> diagnostic, prognostic, or predictive assertion
+    Therefore, create separate GKS JSON files for each submission type.
 
     :param organization_id: The CIViC organization ID that approved the assertion(s) for submission to ClinVar
     :param submission_type: The ClinVar submission type to generate GKS JSON for.
@@ -135,7 +141,9 @@ def create_gks_json(
         if assertion.is_valid_for_gks_json(emit_warnings=True):
             try:
                 gks_record = create_gks_record_from_assertion(
-                    assertion, approval=approval, submission_type_filter=submission_type
+                    assertion,
+                    approval=approval,
+                    submission_type_filter=submission_type,
                 )
             except (CivicGksRecordError, NotImplementedError) as e:
                 errors.append(

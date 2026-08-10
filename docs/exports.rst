@@ -11,7 +11,7 @@ and :mod:`civic_vcf_record` modules in the civicpy.exports namespace::
     >>>from civicpy.exports.civic_vcf_writer import CivicVcfWriter
     >>>from civicpy.exports.civic_vcf_record import CivicVcfRecord
 
-CIViCPy also supports exporting of CIViC assertion records to JSON files, where
+CIViCpy also supports exporting of CIViC assertion records to JSON files, where
 assertions are represented as Global Alliance for Genomics and Health (GA4GH) Genomic
 Knowledge Standards (GKS) objects. GKS JSON exports are maintained via the
 :mod:`civic_gks_writer` and :mod:`civic_gks_record` modules in the civicpy.exports
@@ -220,6 +220,21 @@ In order to verify whether an assertion can be converted to a CivicGksClinSigAss
 or CivicGksOncogenicAssertion object, the convenience method ``is_valid_for_gks_json``
 can be called on a :class:`civic.Assertion` object.
 
+.. important::
+
+   GKS JSON export uses the `VICC Variation Normalizer
+   <https://github.com/cancervariants/variation-normalization/>`_ to build
+   categorical variants. The CLI and default Python integration use its REST API,
+   which requires a running service.
+
+   The recommended setup is the `Docker installation
+   <https://github.com/cancervariants/variation-normalization/#docker-installation-preferred>`_.
+   By default, CIViCpy expects the service to be available at
+   ``http://127.0.0.1:8000/variation``. To use a different endpoint, set the
+   ``CIVICPY_VARIATION_NORMALIZER_URL`` environment variable.
+   Python callers may instead pass a custom ``VariationNormalizerDataProxy`` backed
+   by the VICC Variation Normalizer Python API.
+
 CivicGksClinSigAssertion
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -228,7 +243,7 @@ CivicGksClinSigAssertion
    :show-inheritance:
 
 CivicGksOncogenicAssertion
-~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. autoclass:: civicpy.exports.civic_gks_record.CivicGksOncogenicAssertion
    :members:
@@ -246,16 +261,31 @@ Variation Normalization
 CIViC simple molecular profiles can be normalized to GA4GH VRS Allele or Copy
 Number Change objects using the `VICC Variation Normalizer`_.
 
-``VariationNormalizerDataProxy`` supports normalization through either the REST
-API or the Python API. CIViCpy includes a REST implementation. To use the Python
-API directly, subclass ``VariationNormalizerDataProxy`` and implement
-``normalize``. The base class handles the shared profile parsing and eligibility
-checks.
+By default, CIViCpy lazily creates one shared
+``VariationNormalizerRESTDataProxy`` when normalization is first needed. It uses
+``http://127.0.0.1:8000/variation`` by default. Set
+``CIVICPY_VARIATION_NORMALIZER_URL`` before constructing the first GKS molecular
+profile to use a different REST endpoint.
 
-``VariationNormalizerRESTDataProxy`` is the included implementation for the VICC
-Variation Normalizer REST API. It uses ``http://127.0.0.1:8000/variation`` by default.
-Pass a ``base_url`` argument or set ``CIVICPY_VARIATION_NORMALIZER_URL`` to use a
-different endpoint.
+The backend can instead be configured to use a downstream Python implementation.
+Subclass ``VariationNormalizerDataProxy``, implement ``normalize``, and configure
+an instance before creating any GKS molecular profiles::
+
+   from civicpy.exports.civic_gks_record import CivicGksMolecularProfile
+   from civicpy.exports.variation_normalizer import VariationNormalizerDataProxy
+
+
+   class PythonVariationNormalizer(VariationNormalizerDataProxy):
+       def normalize(self, expr: str):
+           return python_api_normalizer.normalize(expr)
+
+   CivicGksMolecularProfile.configure_variation_normalizer(
+       PythonVariationNormalizer()
+   )
+
+The configured backend is reused by all subsequently constructed
+``CivicGksMolecularProfile`` instances. The base data proxy handles the shared
+profile parsing and eligibility checks.
 
 .. _VICC Variation Normalizer: https://github.com/cancervariants/variation-normalization/
 
@@ -274,6 +304,10 @@ VariationNormalizerRESTDataProxy
 Examples
 ~~~~~~~~
 
+GKS records share a single variation normalizer data proxy. Set
+``CIVICPY_VARIATION_NORMALIZER_URL`` before running these examples to use an endpoint
+other than the default.
+
 Here's an example of how to export all assertions to GKS JSON::
 
     from pathlib import Path
@@ -290,7 +324,9 @@ Here's an example of how to export all assertions to GKS JSON::
     for assertion in civic.get_all_assertions():
         if assertion.is_valid_for_gks_json():
             try:
-                gks_record = create_gks_record_from_assertion(assertion)
+                gks_record = create_gks_record_from_assertion(
+                    assertion,
+                )
             except CivicGksRecordError:
                 continue
             else:
@@ -305,8 +341,8 @@ ready for submission to ClinVar.::
 
     from civicpy import civic
     from civicpy.exports.civic_gks_record import (
-      CivicGksRecordError,
-      create_gks_record_from_assertion,
+        CivicGksRecordError,
+        create_gks_record_from_assertion,
     )
     from civicpy.exports.civic_gks_writer import CivicGksWriter
 
@@ -318,7 +354,10 @@ ready for submission to ClinVar.::
 
         if assertion.is_valid_for_gks_json():
             try:
-                gks_record = create_gks_record_from_assertion(assertion, approval=approval)
+                gks_record = create_gks_record_from_assertion(
+                    assertion,
+                    approval=approval,
+                )
             except CivicGksRecordError:
                 continue
             else:

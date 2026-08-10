@@ -36,7 +36,9 @@ class TestCli(object):
 
     @patch("civicpy.civic.get_all_approvals_ready_for_clinvar_submission_for_org")
     @patch("civicpy.civic.get_assertion_by_id", wraps=civic.get_assertion_by_id)
-    def test_create_gks_json_assertions_found(self, mock_assertion, mock_approvals):
+    def test_create_gks_json_assertions_found(
+        self, mock_assertion, mock_approvals, mocked_normalizer
+    ):
         """Test that CLI create_gks_json works as expected when assertions are ready for clinvar submission"""
         mock_assertion.return_value = civic.get_assertion_by_id(6)
         mock_approvals.return_value = [
@@ -70,7 +72,9 @@ class TestCli(object):
                 assert gks_output["errors"] == []
 
     @patch("civicpy.civic.get_all_approvals_ready_for_clinvar_submission_for_org")
-    def test_create_gks_json_assertions_not_valid(self, mock_approvals):
+    def test_create_gks_json_assertions_not_valid(
+        self, mock_approvals, mocked_normalizer
+    ):
         """Test that CLI create_gks_json works as expected when assertion is not valid for GKS JSON"""
         mock_approvals.return_value = [
             civic.Approval(
