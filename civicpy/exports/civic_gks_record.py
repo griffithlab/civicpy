@@ -491,7 +491,7 @@ class CivicGksMolecularProfile(CategoricalVariant):
                 if variant_type.url is not None
             ]
             if variant_types:
-                extensions.append(Extension(name="variant_types", value=variant_types))
+                extensions.append(Extension(name="variantTypes", value=variant_types))
 
             return ConceptMapping(
                 coding=Coding(
@@ -628,7 +628,7 @@ class CivicGksMolecularProfile(CategoricalVariant):
 
         for ext_name, ext_value in [
             (
-                "CIViC Molecular Profile Score",
+                "molecularProfileScore",
                 molecular_profile.molecular_profile_score,
             ),
             ("hgvsDescriptions", variant.hgvs_expressions),
@@ -654,7 +654,7 @@ class CivicGksMolecularProfile(CategoricalVariant):
             if all(v is not None for v in ext_value.values()):
                 extensions.append(
                     Extension(
-                        name="CIViC representative coordinate",
+                        name="representativeVariantCoordinates",
                         value=ext_value,
                     )
                 )
@@ -1313,7 +1313,7 @@ class _CivicGksAssertionMixin:
         :param approval: Approval for assertion
         :return: List of contributions, with one item containing when the approval was
             last reviewed an organization.
-            Will include an extension, `is_approved_vcep`.
+            Will include an ``isApprovedVcep`` extension.
         """
         organization: Organization = approval.organization
         return [
@@ -1326,7 +1326,7 @@ class _CivicGksAssertionMixin:
                     description=organization.description,
                     extensions=[
                         Extension(
-                            name="is_approved_vcep", value=organization.is_approved_vcep
+                            name="isApprovedVcep", value=organization.is_approved_vcep
                         )
                     ],
                 ),
@@ -1344,7 +1344,7 @@ class _CivicGksAssertionMixin:
         extensions = []
         if approval and approval.clinvar_accession:
             extensions.append(
-                Extension(name="clinvar_accession", value=approval.clinvar_accession)
+                Extension(name="clinvarAccession", value=approval.clinvar_accession)
             )
         return extensions
 
