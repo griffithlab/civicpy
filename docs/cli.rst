@@ -31,3 +31,8 @@ Create referenced GKS Bundle JSON
 ---------------------------------
 
 .. program-output:: civicpy create-gks-bundle -h
+
+Create GKS Bundle JSON Schema
+-----------------------------
+
+.. program-output:: civicpy create-gks-bundle-schema -h

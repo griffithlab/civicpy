@@ -1,8 +1,9 @@
 """Define CIViCpy command-line workflows for cache management and data export."""
 
+import json
+import logging
 from collections import OrderedDict
 from collections.abc import Iterable, Iterator
-import logging
 from pathlib import Path
 from typing import TypeAlias
 
@@ -13,6 +14,10 @@ from civicpy import civic
 from civicpy.__env__ import LOCAL_CACHE_PATH
 from civicpy.__version__ import __version__
 from civicpy.civic import CoordinateQuery
+from civicpy.exports.civic_gks_bundle import (
+    GKS_BUNDLE_SCHEMA_FILENAME,
+    get_gks_bundle_json_schema,
+)
 from civicpy.exports.civic_gks_output import GksAssertionError, GksRecord
 from civicpy.exports.civic_gks_record import (
     CivicGksRecordError,
@@ -22,6 +27,7 @@ from civicpy.exports.civic_gks_record import (
 from civicpy.exports.civic_gks_writer import CivicGksWriter
 from civicpy.exports.civic_vcf_record import CivicVcfRecord
 from civicpy.exports.civic_vcf_writer import CivicVcfWriter
+
 CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 _ACCEPTED_STATUS = "accepted"
 # An Assertion may have approvals from more than one organization.
@@ -220,6 +226,20 @@ def create_gks_bundle(
         submission_type=None,
         bundle=True,
     )
+
+
+@cli.command(context_settings=CONTEXT_SETTINGS)
+def create_gks_bundle_schema() -> None:
+    """Write the CIViC GKS Bundle Format JSON Schema.
+
+    The schema describes the keyed bundle collections, their identifier patterns,
+    and the concrete VRS, Cat-VRS, and VA-Spec models accepted in each collection.
+    It is written to the current directory using a filename derived from the
+    bundle format name and version.
+    """
+    output_json = Path(GKS_BUNDLE_SCHEMA_FILENAME)
+    with output_json.open("w", encoding="utf-8") as write_file:
+        json.dump(get_gks_bundle_json_schema(), write_file, indent=2)
 
 
 def _create_gks_export(

@@ -245,6 +245,9 @@ differently::
     # Both supported Statement types as referenced GKS Bundle JSON
     civicpy create-gks-bundle -o civic-gks-bundle.json
 
+    # JSON Schema for the referenced GKS Bundle Format
+    civicpy create-gks-bundle-schema
+
 ``create-gks-json`` writes ClinVar-ready Assertions approved by the specified
 CIViC organization. ``--submission-type`` is required because the ClinVar
 Submission API accepts one submission type at a time.
@@ -255,6 +258,12 @@ includes accepted Approvals and their organizations when available. Each
 contribution stores its organization's ``clinvarAccession`` when one is
 available. A Statement uses ``clinvarAccession`` for one accession and
 ``clinvarAccessions`` for multiple unique accessions.
+
+``create-gks-bundle-schema`` writes the JSON Schema for the referenced bundle,
+including collection key patterns and the concrete GKS models accepted by each
+collection. It writes
+``civic-gks-bundle-v<bundle-format-version>.schema.json`` in the current directory
+and does not query CIViC or require a Variation Normalizer service.
 
 Use ``--organization-id`` to include only Assertions approved by one
 organization::

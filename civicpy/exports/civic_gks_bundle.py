@@ -47,7 +47,14 @@ from ga4gh.vrs.models import (
     SequenceLocation,
     SequenceReference,
 )
-from pydantic import BaseModel, Field, NonNegativeInt, SkipValidation, StringConstraints
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    NonNegativeInt,
+    SkipValidation,
+    StringConstraints,
+)
 
 from civicpy.exports.civic_gks_constants import (
     TYPE_FIELD,
@@ -60,6 +67,13 @@ from civicpy.exports.civic_gks_output import (
 
 GksBundleObject: TypeAlias = dict[str, Any]
 GksBundleReference: TypeAlias = str
+GKS_BUNDLE_SCHEMA_FILENAME = (
+    f"{CivicGksBundleFormat.NAME.value}-v"
+    f"{CivicGksBundleFormat.VERSION.value}.schema.json"
+)
+GKS_BUNDLE_SCHEMA_ID = (
+    f"urn:civic:gks-bundle:schema:{CivicGksBundleFormat.VERSION.value}"
+)
 
 # Bundle objects contain JSON Pointers in place of some nested model objects.
 # SkipValidation preserves those referenced dictionaries while retaining the
@@ -264,6 +278,17 @@ class GksBundleOutput(BaseModel):
     bundle-local ``id`` values; other value objects remain inline.
     """
 
+    model_config = ConfigDict(
+        title=(f"CIViC GKS Bundle v{CivicGksBundleFormat.VERSION.value}"),
+        json_schema_extra={
+            "$id": GKS_BUNDLE_SCHEMA_ID,
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "description": "CIViC data in the referenced GKS Bundle Format.",
+            "x-bundle-format": CivicGksBundleFormat.NAME.value,
+            "x-bundle-format-version": CivicGksBundleFormat.VERSION.value,
+        },
+    )
+
     sequenceReference: dict[
         GksSequenceReferenceId, SkipValidation[SequenceReference]
     ] = Field(json_schema_extra=_CLOSED_COLLECTION_SCHEMA)
@@ -318,3 +343,13 @@ class GksBundleOutput(BaseModel):
     metadata: GksBundleMetadata
     failed_assertion_ids: list[int]
     errors: list[GksAssertionError]
+
+
+def get_gks_bundle_json_schema() -> dict[str, Any]:
+    """Return the bundle schema with human-readable top-level key ordering."""
+    schema = GksBundleOutput.model_json_schema()
+    leading_keys = ("$id", "$schema", "title", "description", "$defs")
+    return {
+        **{key: schema[key] for key in leading_keys if key in schema},
+        **{key: value for key, value in schema.items() if key not in leading_keys},
+    }

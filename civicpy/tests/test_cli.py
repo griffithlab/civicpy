@@ -1,13 +1,19 @@
+import json
+import tempfile
 from datetime import datetime
 from pathlib import Path
 from typing import Any
-import pytest
 from unittest.mock import Mock, patch
-from civicpy import cli, civic
-import tempfile
-import json
 
-from civicpy.exports.civic_gks_bundle import GksBundleOutput
+import pytest
+
+from civicpy import civic, cli
+from civicpy.exports.civic_gks_bundle import (
+    GKS_BUNDLE_SCHEMA_FILENAME,
+    GKS_BUNDLE_SCHEMA_ID,
+    GksBundleOutput,
+    get_gks_bundle_json_schema,
+)
 from civicpy.exports.civic_gks_writer import GksOutput
 
 
@@ -45,6 +51,39 @@ def check_metadata(metadata: dict[str, Any], bundle: bool = False) -> None:
 
 
 class TestCli(object):
+    def test_create_gks_bundle_schema(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Write the public GKS bundle JSON Schema from the CLI."""
+        monkeypatch.chdir(tmp_path)
+        output_path = tmp_path / GKS_BUNDLE_SCHEMA_FILENAME
+
+        try:
+            cli.create_gks_bundle_schema([])
+        except SystemExit as error:
+            assert error.code == 0
+
+        with output_path.open() as read_file:
+            schema = json.load(read_file)
+
+        assert schema == GksBundleOutput.model_json_schema()
+        assert list(schema)[:5] == [
+            "$id",
+            "$schema",
+            "title",
+            "description",
+            "$defs",
+        ]
+        assert schema == get_gks_bundle_json_schema()
+        assert schema["$schema"] == "https://json-schema.org/draft/2020-12/schema"
+        assert schema["$id"] == GKS_BUNDLE_SCHEMA_ID
+        assert schema["title"] == "CIViC GKS Bundle v0.1.0"
+        assert schema["description"] == (
+            "CIViC data in the referenced GKS Bundle Format."
+        )
+        assert schema["x-bundle-format"] == "civic-gks-bundle"
+        assert schema["x-bundle-format-version"] == "0.1.0"
+
     @pytest.mark.skip(reason="Long running test")
     def test_create_cache(self):
         tmp_file = tempfile.NamedTemporaryFile("w", delete=False)
