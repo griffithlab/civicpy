@@ -12,6 +12,9 @@ from civicpy.civic import Assertion, get_assertion_by_id, get_molecular_profile_
 from civicpy.exports.civic_gks_record import CivicGksMolecularProfile
 from civicpy.exports.variation_normalizer import VariationNormalizerDataProxy
 
+from civicpy.exports.variation_normalizer import VariationNormalizerDataProxy
+from civicpy.exports.civic_gks_record import CivicGksMolecularProfile
+
 
 @pytest.fixture(scope="module")
 def braf_v600e_vrs():

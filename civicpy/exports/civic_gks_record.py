@@ -12,8 +12,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from enum import Enum
 from types import MappingProxyType
-from typing import TypeAlias
-from typing import ClassVar
+from typing import ClassVar, TypeAlias
 
 from ga4gh.cat_vrs.models import (
     CategoricalVariant,

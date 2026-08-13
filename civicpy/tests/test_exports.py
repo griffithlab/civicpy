@@ -249,7 +249,7 @@ def civic_mpid113_undefined(civic_mpid113):
     return mp
 
 
-class TestCivicVcfRecord(object):
+class TestCivicVcfRecord:
     def test_protein_altering(self, caplog, v600e):
         record = CivicVcfRecord(v600e)
         assert not caplog.records
@@ -321,7 +321,7 @@ class TestCivicVcfRecord(object):
         assert "Variant is not a GeneVariant" in str(context.value)
 
 
-class TestCivicGksMolecularProfile(object):
+class TestCivicGksMolecularProfile:
     """Test that CivicGksMolecularProfile works as expected"""
 
     def test_valid(
@@ -653,7 +653,7 @@ class TestCivicGksMolecularProfile(object):
         assert rep_coord_ext is None
 
 
-class TestCivicGksTherapyGroup(object):
+class TestCivicGksTherapyGroup:
     """Test that CivicGksTherapyGroup works as expected"""
 
     def test_no_therapies(self):
@@ -662,7 +662,7 @@ class TestCivicGksTherapyGroup(object):
             CivicGksTherapyGroup(therapies=[], therapy_interaction_type=None)
 
 
-class TestCivicGksEvidence(object):
+class TestCivicGksEvidence:
     """Test that CivicGksEvidence works as expected"""
 
     def test_invalid(self, eid9285):
@@ -673,7 +673,7 @@ class TestCivicGksEvidence(object):
             CivicGksEvidence(eid9285)
 
 
-class TestCivicGksClinSigAssertion(object):
+class TestCivicGksClinSigAssertion:
     """Test that CivicGksClinSigAssertion works as expected"""
 
     @patch("civicpy.exports.civic_gks_record.CivicGksMolecularProfile")
@@ -813,7 +813,7 @@ class TestCivicGksClinSigAssertion(object):
         ]
 
 
-class TestCivicGksDiagnosticAssertion(object):
+class TestCivicGksDiagnosticAssertion:
     """Test that CivicGksDiagnosticAssertion works as expected"""
 
     def test_valid(
@@ -881,7 +881,7 @@ class TestCivicGksDiagnosticAssertion(object):
             CivicGksClinSigAssertion(aid117)
 
 
-class TestCivicGksOncogenicAssertion(object):
+class TestCivicGksOncogenicAssertion:
     """Test that CivicGksOncogenicAssertion works as expected"""
 
     @pytest.mark.parametrize("criterion", ["OS2_moderate", "OS2_Moderate"])
@@ -976,7 +976,7 @@ class TestCivicGksOncogenicAssertion(object):
             CivicGksOncogenicAssertion(aid6)
 
 
-class TestCivicGksRecord(object):
+class TestCivicGksRecord:
     """Test that GKS Record helper functions work correctly"""
 
     @patch("civicpy.exports.civic_gks_record.VariationNormalizerRESTDataProxy")

@@ -70,7 +70,6 @@ class TestCli(object):
         mock_clinvar_approvals,
         mock_all_approvals,
         mock_all_assertions,
-        mocked_normalizer,
         bundle,
     ):
         """Test dereferenced and bundle CLI exports for eligible Assertions."""
