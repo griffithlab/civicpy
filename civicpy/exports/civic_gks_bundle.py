@@ -14,9 +14,40 @@ from collections import Counter
 from collections.abc import Mapping
 from enum import Enum
 from types import MappingProxyType
-from typing import Any, TypeAlias
+from typing import Annotated, Any, TypeAlias
 
-from pydantic import BaseModel, Field, NonNegativeInt
+from ga4gh.cat_vrs.models import CategoricalVariant
+from ga4gh.core.models import MappableConcept
+from ga4gh.va_spec.aac_2017 import (
+    DiagnosticEvidenceLine,
+    PrognosticEvidenceLine,
+    TherapeuticEvidenceLine,
+    VariantClinicalSignificanceStatement,
+)
+from ga4gh.va_spec.base import (
+    Agent,
+    ConditionSet,
+    Document,
+    Method,
+    TherapyGroup,
+    VariantClinicalSignificanceProposition,
+    VariantDiagnosticProposition,
+    VariantOncogenicityProposition,
+    VariantPrognosticProposition,
+    VariantTherapeuticResponseProposition,
+)
+from ga4gh.va_spec.ccv_2022 import (
+    VariantOncogenicityEvidenceLine,
+    VariantOncogenicityStatement,
+)
+from ga4gh.vrs.models import (
+    Allele,
+    CopyNumberChange,
+    CopyNumberCount,
+    SequenceLocation,
+    SequenceReference,
+)
+from pydantic import BaseModel, Field, NonNegativeInt, SkipValidation, StringConstraints
 
 from civicpy.exports.civic_gks_constants import (
     TYPE_FIELD,
@@ -29,7 +60,83 @@ from civicpy.exports.civic_gks_output import (
 
 GksBundleObject: TypeAlias = dict[str, Any]
 GksBundleReference: TypeAlias = str
-GksVariantRepresentations: TypeAlias = dict[str, dict[str, GksBundleObject]]
+
+# Bundle objects contain JSON Pointers in place of some nested model objects.
+# SkipValidation preserves those referenced dictionaries while retaining the
+# concrete upstream model in the generated JSON Schema.
+GksVrsVariation: TypeAlias = Allele | CopyNumberChange | CopyNumberCount
+GksProposition: TypeAlias = (
+    VariantClinicalSignificanceProposition
+    | VariantDiagnosticProposition
+    | VariantOncogenicityProposition
+    | VariantPrognosticProposition
+    | VariantTherapeuticResponseProposition
+)
+GksEvidence: TypeAlias = (
+    DiagnosticEvidenceLine
+    | PrognosticEvidenceLine
+    | TherapeuticEvidenceLine
+    | VariantOncogenicityEvidenceLine
+)
+GksAssertion: TypeAlias = (
+    VariantClinicalSignificanceStatement | VariantOncogenicityStatement
+)
+GksSequenceReferenceId: TypeAlias = Annotated[
+    str, StringConstraints(pattern=r"^SQ\.[A-Za-z0-9_-]+$")
+]
+GksLocationId: TypeAlias = Annotated[
+    str, StringConstraints(pattern=r"^ga4gh:SL\.[A-Za-z0-9_-]+$")
+]
+GksVariantId: TypeAlias = Annotated[
+    str, StringConstraints(pattern=r"^civic\.vid:[0-9]+$")
+]
+GksFeatureId: TypeAlias = Annotated[
+    str, StringConstraints(pattern=r"^civic\.gid:[0-9]+$")
+]
+GksMolecularProfileId: TypeAlias = Annotated[
+    str, StringConstraints(pattern=r"^civic\.mpid:[0-9]+$")
+]
+GksDiseaseId: TypeAlias = Annotated[
+    str, StringConstraints(pattern=r"^civic\.did:[0-9]+$")
+]
+GksPhenotypeId: TypeAlias = Annotated[
+    str, StringConstraints(pattern=r"^civic\.phenotype:[0-9]+$")
+]
+GksConditionSetId: TypeAlias = Annotated[
+    str, StringConstraints(pattern=r"^civic\.conditionSet:[A-Za-z0-9_-]+$")
+]
+GksTherapyId: TypeAlias = Annotated[
+    str, StringConstraints(pattern=r"^civic\.tid:[0-9]+$")
+]
+GksTherapyGroupId: TypeAlias = Annotated[
+    str, StringConstraints(pattern=r"^civic\.therapyGroup:[A-Za-z0-9_-]+$")
+]
+GksVariantOriginId: TypeAlias = Annotated[
+    str, StringConstraints(pattern=r"^civic\.variantOrigin:[A-Za-z0-9_-]+$")
+]
+GksSourceId: TypeAlias = Annotated[
+    str, StringConstraints(pattern=r"^(civic\.sid|pmid):[0-9]+$")
+]
+GksMethodId: TypeAlias = Annotated[
+    str, StringConstraints(pattern=r"^civic\.method:[A-Za-z0-9_-]+$")
+]
+GksOrganizationId: TypeAlias = Annotated[
+    str, StringConstraints(pattern=r"^civic\.organization:[A-Za-z0-9_-]+$")
+]
+GksPropositionId: TypeAlias = Annotated[
+    str, StringConstraints(pattern=r"^civic\.proposition:[A-Za-z0-9_-]+$")
+]
+GksEvidenceId: TypeAlias = Annotated[
+    str, StringConstraints(pattern=r"^civic\.eid:[0-9]+$")
+]
+GksAssertionId: TypeAlias = Annotated[
+    str, StringConstraints(pattern=r"^civic\.aid:[0-9]+$")
+]
+GksVariantRepresentations: TypeAlias = dict[
+    str, dict[str, SkipValidation[GksVrsVariation]]
+]
+
+_CLOSED_COLLECTION_SCHEMA = {"additionalProperties": False}
 
 
 class GksBundleCollection(str, Enum):
@@ -157,23 +264,57 @@ class GksBundleOutput(BaseModel):
     bundle-local ``id`` values; other value objects remain inline.
     """
 
-    sequenceReference: dict[str, GksBundleObject]
-    location: dict[str, GksBundleObject]
-    variant: dict[str, GksVariantRepresentations]
-    feature: dict[str, GksBundleObject]
-    molecularProfile: dict[str, GksBundleObject]
-    disease: dict[str, GksBundleObject]
-    phenotype: dict[str, GksBundleObject]
-    conditionSet: dict[str, GksBundleObject]
-    therapy: dict[str, GksBundleObject]
-    therapyGroup: dict[str, GksBundleObject]
-    variantOrigin: dict[str, GksBundleObject]
-    source: dict[str, GksBundleObject]
-    method: dict[str, GksBundleObject]
-    organization: dict[str, GksBundleObject]
-    proposition: dict[str, GksBundleObject]
-    evidence: dict[str, GksBundleObject]
-    assertion: dict[str, GksBundleObject]
+    sequenceReference: dict[
+        GksSequenceReferenceId, SkipValidation[SequenceReference]
+    ] = Field(json_schema_extra=_CLOSED_COLLECTION_SCHEMA)
+    location: dict[GksLocationId, SkipValidation[SequenceLocation]] = Field(
+        json_schema_extra=_CLOSED_COLLECTION_SCHEMA
+    )
+    variant: dict[GksVariantId, GksVariantRepresentations] = Field(
+        json_schema_extra=_CLOSED_COLLECTION_SCHEMA
+    )
+    feature: dict[GksFeatureId, SkipValidation[MappableConcept]] = Field(
+        json_schema_extra=_CLOSED_COLLECTION_SCHEMA
+    )
+    molecularProfile: dict[
+        GksMolecularProfileId, SkipValidation[CategoricalVariant]
+    ] = Field(json_schema_extra=_CLOSED_COLLECTION_SCHEMA)
+    disease: dict[GksDiseaseId, SkipValidation[MappableConcept]] = Field(
+        json_schema_extra=_CLOSED_COLLECTION_SCHEMA
+    )
+    phenotype: dict[GksPhenotypeId, SkipValidation[MappableConcept]] = Field(
+        json_schema_extra=_CLOSED_COLLECTION_SCHEMA
+    )
+    conditionSet: dict[GksConditionSetId, SkipValidation[ConditionSet]] = Field(
+        json_schema_extra=_CLOSED_COLLECTION_SCHEMA
+    )
+    therapy: dict[GksTherapyId, SkipValidation[MappableConcept]] = Field(
+        json_schema_extra=_CLOSED_COLLECTION_SCHEMA
+    )
+    therapyGroup: dict[GksTherapyGroupId, SkipValidation[TherapyGroup]] = Field(
+        json_schema_extra=_CLOSED_COLLECTION_SCHEMA
+    )
+    variantOrigin: dict[GksVariantOriginId, SkipValidation[MappableConcept]] = Field(
+        json_schema_extra=_CLOSED_COLLECTION_SCHEMA
+    )
+    source: dict[GksSourceId, SkipValidation[Document]] = Field(
+        json_schema_extra=_CLOSED_COLLECTION_SCHEMA
+    )
+    method: dict[GksMethodId, SkipValidation[Method]] = Field(
+        json_schema_extra=_CLOSED_COLLECTION_SCHEMA
+    )
+    organization: dict[GksOrganizationId, SkipValidation[Agent]] = Field(
+        json_schema_extra=_CLOSED_COLLECTION_SCHEMA
+    )
+    proposition: dict[GksPropositionId, SkipValidation[GksProposition]] = Field(
+        json_schema_extra=_CLOSED_COLLECTION_SCHEMA
+    )
+    evidence: dict[GksEvidenceId, SkipValidation[GksEvidence]] = Field(
+        json_schema_extra=_CLOSED_COLLECTION_SCHEMA
+    )
+    assertion: dict[GksAssertionId, SkipValidation[GksAssertion]] = Field(
+        json_schema_extra=_CLOSED_COLLECTION_SCHEMA
+    )
     metadata: GksBundleMetadata
     failed_assertion_ids: list[int]
     errors: list[GksAssertionError]

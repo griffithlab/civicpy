@@ -11,7 +11,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from civicpy.exports.civic_gks_bundle import (
     GksBundleOutput,
@@ -94,7 +94,7 @@ class CivicGksWriter:
 
         with filepath.open("w", encoding="utf-8") as write_file:
             json.dump(
-                output.model_dump(exclude_none=True),
+                output.model_dump(exclude_none=True, serialize_as_any=bundle),
                 write_file,
                 indent=2,
                 default=_serialize_json_default,

@@ -7,16 +7,55 @@ from deepdiff import DeepDiff
 from pydantic import ValidationError
 
 from civicpy.civic import Assertion
+from civicpy.exports.civic_gks_bundle import GksBundleOutput
 from civicpy.exports.civic_gks_bundle_builder import build_gks_bundle
-from civicpy.exports.civic_gks_record import create_gks_record_from_assertion
 from civicpy.exports.civic_gks_output import (
     GksAssertionError,
     GksOutputMetadata,
 )
+from civicpy.exports.civic_gks_record import create_gks_record_from_assertion
 
 
 class TestCivicGksBundleOutput:
     """Test the optional, reference-linked GKS Bundle Format export."""
+
+    def test_schema_describes_concrete_bundle_objects(self) -> None:
+        """Expose upstream GKS models instead of arbitrary JSON objects."""
+        schema = GksBundleOutput.model_json_schema()
+        properties = schema["properties"]
+
+        collection_key_patterns = {
+            "sequenceReference": r"^SQ\.[A-Za-z0-9_-]+$",
+            "location": r"^ga4gh:SL\.[A-Za-z0-9_-]+$",
+            "variant": r"^civic\.vid:[0-9]+$",
+            "feature": r"^civic\.gid:[0-9]+$",
+            "molecularProfile": r"^civic\.mpid:[0-9]+$",
+            "disease": r"^civic\.did:[0-9]+$",
+            "phenotype": r"^civic\.phenotype:[0-9]+$",
+            "conditionSet": r"^civic\.conditionSet:[A-Za-z0-9_-]+$",
+            "therapy": r"^civic\.tid:[0-9]+$",
+            "therapyGroup": r"^civic\.therapyGroup:[A-Za-z0-9_-]+$",
+            "variantOrigin": r"^civic\.variantOrigin:[A-Za-z0-9_-]+$",
+            "source": r"^(civic\.sid|pmid):[0-9]+$",
+            "method": r"^civic\.method:[A-Za-z0-9_-]+$",
+            "organization": r"^civic\.organization:[A-Za-z0-9_-]+$",
+            "proposition": r"^civic\.proposition:[A-Za-z0-9_-]+$",
+            "evidence": r"^civic\.eid:[0-9]+$",
+            "assertion": r"^civic\.aid:[0-9]+$",
+        }
+        for collection, key_pattern in collection_key_patterns.items():
+            collection_schema = properties[collection]
+            assert collection_schema["additionalProperties"] is False
+            assert key_pattern in collection_schema["patternProperties"]
+
+        assert (
+            len(
+                properties["assertion"]["patternProperties"][
+                    collection_key_patterns["assertion"]
+                ]["anyOf"]
+            )
+            == 2
+        )
 
     def test_builds_empty_bundle_with_errors(self) -> None:
         """Retain errors and zero counts when no Statements are available."""
@@ -58,7 +97,7 @@ class TestCivicGksBundleOutput:
 
         diff = DeepDiff(
             build_gks_bundle(actual_records, metadata, []).model_dump(
-                exclude_none=True
+                exclude_none=True, serialize_as_any=True
             ),
             gks_bundle_expected,
             ignore_order=True,
