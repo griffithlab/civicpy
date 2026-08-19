@@ -226,7 +226,7 @@ Use :class:`civicpy.exports.civic_gks_writer.CivicGksWriter` to write
 .. important::
 
    The CIViC GKS Bundle Format is experimental in ``0.1.0``. Check
-   ``bundle_format_version`` when reading a bundle.
+   ``bundleFormatVersion`` when reading a bundle.
 
 Choose the format when creating the writer::
 
@@ -261,7 +261,9 @@ available. A Statement uses ``clinvarAccession`` for one accession and
 
 ``create-gks-bundle-schema`` writes the JSON Schema for the referenced bundle,
 including collection key patterns and the concrete GKS models accepted by each
-collection. It writes
+collection. Upstream GKS types use versioned ``w3id`` schema references. VRS,
+Cat-VRS, and VA-Spec versions come from their Python packages; GKS-Core is
+currently pinned to ``1.1.0``. It writes
 ``civic-gks-bundle-v<bundle-format-version>.schema.json`` in the current directory
 and does not query CIViC or require a Variation Normalizer service.
 
@@ -339,9 +341,9 @@ field; its collection key and ``refgetAccession`` must match.
 Applications can compute these IDs without creating a bundle. The function
 accepts supported Pydantic GKS objects and does not modify them::
 
-    from civicpy.exports.civic_gks_identifier import compute_civic_gks_identifier
+    from civicpy.exports.gks.identifiers import compute_identifier
 
-    therapy_group_id = compute_civic_gks_identifier(therapy_group)
+    therapy_group_id = compute_identifier(therapy_group)
 
 If records contain different representations of the same object, the bundle
 keeps the first and logs a warning. Statements and collection keys are sorted so

@@ -8,11 +8,10 @@ from unittest.mock import Mock, patch
 import pytest
 
 from civicpy import civic, cli
-from civicpy.exports.civic_gks_bundle import (
-    GKS_BUNDLE_SCHEMA_FILENAME,
-    GKS_BUNDLE_SCHEMA_ID,
-    GksBundleOutput,
-    get_gks_bundle_json_schema,
+from civicpy.exports.gks.bundle import GksBundle
+from civicpy.exports.gks.bundle.models import (
+    BUNDLE_SCHEMA_FILENAME,
+    BUNDLE_SCHEMA_ID,
 )
 from civicpy.exports.civic_gks_writer import GksOutput
 
@@ -24,17 +23,17 @@ def _bundle_assertion_ids(bundle: dict[str, Any]) -> set[str]:
 
 def check_metadata(metadata: dict[str, Any], bundle: bool = False) -> None:
     """Check that metadata output is correct"""
-    expected_keys = {"va_spec_python_version", "created_at"}
+    expected_keys = {"VASpecPythonVersion", "createdAt"}
     if bundle:
         expected_keys.update(
             {
-                "bundle_format",
-                "bundle_format_version",
+                "bundleFormat",
+                "bundleFormatVersion",
                 "statistics",
             }
         )
-        assert metadata["bundle_format"] == "civic-gks-bundle"
-        assert metadata["bundle_format_version"] == "0.1.0"
+        assert metadata["bundleFormat"] == "civic-gks-bundle"
+        assert metadata["bundleFormatVersion"] == "0.1.0"
         statistics = metadata["statistics"]
         assert set(statistics) == {"collections"}
         assert all(
@@ -43,10 +42,10 @@ def check_metadata(metadata: dict[str, Any], bundle: bool = False) -> None:
             for collection in statistics["collections"].values()
         )
     assert set(metadata.keys()) == expected_keys
-    va_spec_python_version = metadata["va_spec_python_version"]
+    va_spec_python_version = metadata["VASpecPythonVersion"]
     assert isinstance(va_spec_python_version, str) and va_spec_python_version
 
-    created_at = metadata["created_at"]
+    created_at = metadata["createdAt"]
     assert datetime.strptime(created_at, "%Y-%m-%d")
 
 
@@ -56,7 +55,7 @@ class TestCli(object):
     ) -> None:
         """Write the public GKS bundle JSON Schema from the CLI."""
         monkeypatch.chdir(tmp_path)
-        output_path = tmp_path / GKS_BUNDLE_SCHEMA_FILENAME
+        output_path = tmp_path / BUNDLE_SCHEMA_FILENAME
 
         try:
             cli.create_gks_bundle_schema([])
@@ -66,23 +65,18 @@ class TestCli(object):
         with output_path.open() as read_file:
             schema = json.load(read_file)
 
-        assert schema == GksBundleOutput.model_json_schema()
-        assert list(schema)[:5] == [
-            "$id",
-            "$schema",
-            "title",
-            "description",
-            "$defs",
-        ]
-        assert schema == get_gks_bundle_json_schema()
+        assert schema == GksBundle.model_json_schema()
+        assert "Allele" not in schema["$defs"]
+        assert "VariantOncogenicityStatement" not in schema["$defs"]
+        assert "GksAllele" not in schema["$defs"]
+        assert "GksVariantOncogenicityStatement" not in schema["$defs"]
         assert schema["$schema"] == "https://json-schema.org/draft/2020-12/schema"
-        assert schema["$id"] == GKS_BUNDLE_SCHEMA_ID
-        assert schema["title"] == "CIViC GKS Bundle v0.1.0"
+        assert schema["$id"] == BUNDLE_SCHEMA_ID
         assert schema["description"] == (
             "CIViC data in the referenced GKS Bundle Format."
         )
-        assert schema["x-bundle-format"] == "civic-gks-bundle"
-        assert schema["x-bundle-format-version"] == "0.1.0"
+        assert schema["civicBundleFormat"] == "civic-gks-bundle"
+        assert schema["civicBundleFormatVersion"] == "0.1.0"
 
     @pytest.mark.skip(reason="Long running test")
     def test_create_cache(self):
@@ -167,11 +161,15 @@ class TestCli(object):
 
             with open(tmp_file.name, "r") as f:
                 gks_output = json.load(f)
-                expected_model = GksBundleOutput if bundle else GksOutput
-                assert set(gks_output.keys()) == set(expected_model.model_fields.keys())
+                expected_model = GksBundle if bundle else GksOutput
+                expected_json_keys = {
+                    field.alias or field_name
+                    for field_name, field in expected_model.model_fields.items()
+                }
+                assert set(gks_output) == expected_json_keys
                 check_metadata(gks_output["metadata"], bundle=bundle)
                 if bundle:
-                    GksBundleOutput.model_validate(gks_output)
+                    GksBundle.model_validate(gks_output)
                     statement = gks_output["assertion"]["civic.aid:6"]
                     accessions_by_contributor = {
                         contribution["contributor"]: contribution["extensions"][0]
@@ -202,8 +200,8 @@ class TestCli(object):
                         },
                     }
                 else:
-                    assert gks_output["failed_assertion_ids"] == [6]
-                    assert [record["id"] for record in gks_output["gks_records"]] == [
+                    assert gks_output["failedAssertionIds"] == [6]
+                    assert [record["id"] for record in gks_output["gksRecords"]] == [
                         "civic.aid:202"
                     ]
 
@@ -290,13 +288,13 @@ class TestCli(object):
             with open(tmp_file.name, "r") as f:
                 gks_output = json.load(f)
                 check_metadata(gks_output["metadata"])
-                assert [record["id"] for record in gks_output["gks_records"]] == [
+                assert [record["id"] for record in gks_output["gksRecords"]] == [
                     "civic.aid:6"
                 ]
-                assert gks_output["failed_assertion_ids"] == [4]
+                assert gks_output["failedAssertionIds"] == [4]
                 assert gks_output["errors"] == [
                     {
-                        "assertion_id": 4,
+                        "assertionId": 4,
                         "message": "Assertion is not valid for GKS JSON. See logs for more details.",
                     }
                 ]

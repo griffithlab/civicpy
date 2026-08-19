@@ -2192,10 +2192,10 @@ def gks_bundle_statement_objects() -> dict[str, Any]:
 def gks_bundle_metadata() -> dict[str, Any]:
     """Return the expected ``metadata`` bundle collection."""
     return {
-        "va_spec_python_version": "test",
-        "created_at": "2026-08-03",
-        "bundle_format": "civic-gks-bundle",
-        "bundle_format_version": "0.1.0",
+        "VASpecPythonVersion": "test",
+        "createdAt": "2026-08-03",
+        "bundleFormat": "civic-gks-bundle",
+        "bundleFormatVersion": "0.1.0",
         "statistics": {
             "collections": {
                 "sequenceReference": {"count": 1},
@@ -2274,6 +2274,6 @@ def gks_bundle_expected(
             if identifier.startswith("civic.aid:")
         },
         "metadata": gks_bundle_metadata,
-        "failed_assertion_ids": [],
+        "failedAssertionIds": [],
         "errors": [],
     }

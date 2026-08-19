@@ -89,8 +89,8 @@ from civicpy.civic import (
     Source,
     Therapy,
 )
-from civicpy.exports.civic_gks_constants import CivicGksCuriePrefix
-from civicpy.exports.civic_gks_identifier import CivicGksAlleleOriginQualifier
+from civicpy.exports.gks.constants import CuriePrefix
+from civicpy.exports.gks.identifiers import AlleleOriginQualifier
 from civicpy.exports.variation_normalizer import (
     VariationNormalizerDataProxy,
     VariationNormalizerRESTDataProxy,
@@ -271,7 +271,7 @@ class CivicGksSop(Method):
     def __init__(self) -> None:
         """Initialize CivicGksSop class"""
         super().__init__(
-            id=f"{CivicGksCuriePrefix.METHOD.value}:2019",
+            id=f"{CuriePrefix.METHOD}:2019",
             name="CIViC Curation SOP (2019)",
             reportedIn=Document(
                 id="pmid:31779674",
@@ -301,7 +301,7 @@ class CivicGksGene(MappableConcept):
         :param gene: CIViC gene record
         """
         super().__init__(
-            id=f"{CivicGksCuriePrefix.GENE.value}:{gene.id}",
+            id=f"{CuriePrefix.GENE}:{gene.id}",
             conceptType="Gene",
             name=gene.name,
             mappings=self.get_mappings(gene),
@@ -457,7 +457,7 @@ class CivicGksMolecularProfile(CategoricalVariant):
         )
 
         super().__init__(
-            id=f"{CivicGksCuriePrefix.MOLECULAR_PROFILE.value}:{molecular_profile.id}",
+            id=f"{CuriePrefix.MOLECULAR_PROFILE}:{molecular_profile.id}",
             name=molecular_profile.name,
             description=molecular_profile.description,
             aliases=aliases or None,
@@ -516,7 +516,7 @@ class CivicGksMolecularProfile(CategoricalVariant):
         mappings = [
             ConceptMapping(
                 coding=Coding(
-                    id=f"{CivicGksCuriePrefix.MOLECULAR_PROFILE.value}:{molecular_profile.id}",
+                    id=f"{CuriePrefix.MOLECULAR_PROFILE}:{molecular_profile.id}",
                     code=str(molecular_profile.id),
                     system=f"{LINKS_URL}/molecular_profile/",
                 ),
@@ -870,7 +870,7 @@ class CivicGksDisease(MappableConcept):
         :param disease: CIViC disease record
         """
         super().__init__(
-            id=f"{CivicGksCuriePrefix.DISEASE.value}:{disease.id}",
+            id=f"{CuriePrefix.DISEASE}:{disease.id}",
             conceptType="Disease",
             name=disease.name,
             mappings=self.get_mappings(disease),
@@ -912,7 +912,7 @@ class CivicGksPhenotype(MappableConcept):
         """
 
         super().__init__(
-            id=f"{CivicGksCuriePrefix.PHENOTYPE.value}:{phenotype.id}",
+            id=f"{CuriePrefix.PHENOTYPE}:{phenotype.id}",
             conceptType=phenotype.type.capitalize(),
             name=phenotype.name,
             mappings=self.get_mappings(phenotype),
@@ -950,7 +950,7 @@ class CivicGksTherapy(MappableConcept):
         :param therapy: CIViC therapy record
         """
         super().__init__(
-            id=f"{CivicGksCuriePrefix.THERAPY.value}:{therapy.id}",
+            id=f"{CuriePrefix.THERAPY}:{therapy.id}",
             name=therapy.name,
             conceptType="Therapy",
             mappings=self.get_mappings(therapy),
@@ -1031,7 +1031,7 @@ class _CivicGksEvidenceAssertionMixin:
     @staticmethod
     def get_allele_origin_qualifier(
         record: Evidence | Assertion,
-    ) -> CivicGksAlleleOriginQualifier:
+    ) -> AlleleOriginQualifier:
         """Create the mapped allele origin concept for a CIViC record.
 
         The first mapping code identifies the object in a CIViC GKS bundle.
@@ -1041,7 +1041,7 @@ class _CivicGksEvidenceAssertionMixin:
         """
         variant_origin = record.variant_origin
 
-        return CivicGksAlleleOriginQualifier(
+        return AlleleOriginQualifier(
             name=VARIANT_ORIGIN_TO_ALLELE_ORIGIN[variant_origin],
             mappings=[
                 ConceptMapping(
@@ -1239,7 +1239,7 @@ class CivicGksSource(Document):
             source_urls.append(f"https://www.ncbi.nlm.nih.gov/pmc/articles/{pmc_id}")
 
         super().__init__(
-            id=f"{CivicGksCuriePrefix.SOURCE.value}:{source.id}",
+            id=f"{CuriePrefix.SOURCE}:{source.id}",
             name=source.citation,
             title=source.title,
             pmid=pmid,
@@ -1298,7 +1298,7 @@ class CivicGksEvidence(Statement, _CivicGksEvidenceAssertionMixin):
             raise CivicGksRecordError(err_msg)
 
         super().__init__(
-            id=f"{CivicGksCuriePrefix.EVIDENCE.value}:{evidence_item.id}",
+            id=f"{CuriePrefix.EVIDENCE}:{evidence_item.id}",
             description=evidence_item.description,
             specifiedBy=CivicGksSop(),
             proposition=self.get_target_proposition(evidence_item),
@@ -1376,7 +1376,7 @@ class _CivicGksAssertionMixin:
                         else None
                     ),
                     contributor=Agent(
-                        id=f"{CivicGksCuriePrefix.ORGANIZATION.value}:{organization.id}",
+                        id=f"{CuriePrefix.ORGANIZATION}:{organization.id}",
                         name=organization.name,
                         description=organization.description,
                         extensions=[
@@ -1484,7 +1484,7 @@ class CivicGksClinSigAssertion(
         approvals = self._normalize_approvals(approval)
         contributions = self.get_contributions(approvals) or None
         super().__init__(
-            id=f"{CivicGksCuriePrefix.ASSERTION.value}:{assertion.id}",
+            id=f"{CuriePrefix.ASSERTION}:{assertion.id}",
             contributions=contributions,
             description=assertion.description,
             specifiedBy=CivicGksSop(),
@@ -1643,7 +1643,7 @@ class CivicGksOncogenicAssertion(
         )
 
         super().__init__(
-            id=f"{CivicGksCuriePrefix.ASSERTION.value}:{assertion.id}",
+            id=f"{CuriePrefix.ASSERTION}:{assertion.id}",
             contributions=contributions,
             description=assertion.description,
             specifiedBy=CCV_METHOD,

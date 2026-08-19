@@ -1,19 +1,24 @@
 """Tests for dereferenced and referenced CIViC GKS output documents."""
 
+from datetime import date
 from unittest.mock import Mock
 
 import pytest
 from deepdiff import DeepDiff
+from ga4gh.cat_vrs.models import CategoricalVariant
+from ga4gh.core.models import MappableConcept
+from ga4gh.va_spec.base import Statement
+from ga4gh.va_spec.ccv_2022 import VariantOncogenicityStatement
+from ga4gh.vrs.models import Allele, SequenceReference
 from pydantic import ValidationError
 
 from civicpy.civic import Assertion
-from civicpy.exports.civic_gks_bundle import GksBundleOutput
-from civicpy.exports.civic_gks_bundle_builder import build_gks_bundle
-from civicpy.exports.civic_gks_output import (
+from civicpy.exports.gks.models import (
     GksAssertionError,
     GksOutputMetadata,
 )
 from civicpy.exports.civic_gks_record import create_gks_record_from_assertion
+from civicpy.exports.gks.bundle import GksBundle, build_gks_bundle
 
 
 class TestCivicGksBundleOutput:
@@ -21,7 +26,7 @@ class TestCivicGksBundleOutput:
 
     def test_schema_describes_concrete_bundle_objects(self) -> None:
         """Expose upstream GKS models instead of arbitrary JSON objects."""
-        schema = GksBundleOutput.model_json_schema()
+        schema = GksBundle.model_json_schema()
         properties = schema["properties"]
 
         collection_key_patterns = {
@@ -56,6 +61,88 @@ class TestCivicGksBundleOutput:
             )
             == 2
         )
+        assert {
+            "Adjacency",
+            "CisPhasedBlock",
+            "CopyNumberCount",
+            "DerivativeMolecule",
+            "StudyResult",
+            "Terminus",
+            "Variation",
+        }.isdisjoint(schema["$defs"])
+
+        definition_references: set[str] = set()
+
+        def collect_definition_references(value: object) -> None:
+            if isinstance(value, dict):
+                reference = value.get("$ref")
+                if isinstance(reference, str) and reference.startswith("#/$defs/"):
+                    definition_references.add(reference.rsplit("/", 1)[-1])
+                for nested_value in value.values():
+                    collect_definition_references(nested_value)
+            elif isinstance(value, list):
+                for nested_value in value:
+                    collect_definition_references(nested_value)
+
+        collect_definition_references(schema)
+        assert definition_references <= schema["$defs"].keys()
+
+        public_schema = GksBundle.model_json_schema()
+        public_definition_references: set[str] = set()
+        definition_references = public_definition_references
+        collect_definition_references(public_schema)
+        assert public_definition_references <= public_schema["$defs"].keys()
+        assert "Allele" not in public_schema["$defs"]
+        assert "GksAllele" not in public_schema["$defs"]
+        assert "VariantOncogenicityStatement" not in public_schema["$defs"]
+        assert "GksVariantOncogenicityStatement" not in public_schema["$defs"]
+        assert "MappableConcept" not in public_schema["$defs"]
+        assert "LengthExpression" not in public_schema["$defs"]
+        assert "CopyChangeConstraint" not in public_schema["$defs"]
+        assert "DiagnosticPredicate" not in public_schema["$defs"]
+
+        external_references: set[str] = set()
+
+        def collect_external_references(value: object) -> None:
+            if isinstance(value, dict):
+                reference = value.get("$ref")
+                if isinstance(reference, str) and reference.startswith(
+                    "https://w3id.org/ga4gh/schema/"
+                ):
+                    external_references.add(reference)
+                for nested_value in value.values():
+                    collect_external_references(nested_value)
+            elif isinstance(value, list):
+                for nested_value in value:
+                    collect_external_references(nested_value)
+
+        collect_external_references(public_schema)
+        assert Allele.schema_id() in external_references
+        assert MappableConcept.schema_id() in external_references
+        assert SequenceReference.schema_id() in external_references
+        assert CategoricalVariant.schema_id() in external_references
+        assert Statement.schema_id() in external_references
+        assert VariantOncogenicityStatement.schema_id() in external_references
+
+        sequence_reference_schema = public_schema["properties"]["sequenceReference"][
+            "patternProperties"
+        ][collection_key_patterns["sequenceReference"]]
+        assert sequence_reference_schema == {"$ref": SequenceReference.schema_id()}
+
+        feature_schema = public_schema["properties"]["feature"]["patternProperties"][
+            collection_key_patterns["feature"]
+        ]
+        assert feature_schema == {
+            "allOf": [
+                {
+                    "$ref": MappableConcept.schema_id()
+                },
+                {
+                    "properties": {"conceptType": {"const": "Gene"}},
+                    "required": ["conceptType"],
+                },
+            ]
+        }
 
     def test_builds_empty_bundle_with_errors(self) -> None:
         """Retain errors and zero counts when no Statements are available."""
@@ -77,6 +164,14 @@ class TestCivicGksBundleOutput:
             for statistics in bundle.metadata.statistics.collections.values()
         )
 
+    def test_builds_with_default_metadata_and_errors(self) -> None:
+        """Provide convenient defaults for optional bundle context."""
+        bundle = build_gks_bundle([])
+
+        assert bundle.metadata.created_at == date.today().isoformat()
+        assert bundle.errors == []
+        assert bundle.failed_assertion_ids == []
+
     def test_builds_expected_referenced_bundle(
         self,
         aid6: Assertion,
@@ -97,7 +192,7 @@ class TestCivicGksBundleOutput:
 
         diff = DeepDiff(
             build_gks_bundle(actual_records, metadata, []).model_dump(
-                exclude_none=True, serialize_as_any=True
+                by_alias=True, exclude_none=True, serialize_as_any=True
             ),
             gks_bundle_expected,
             ignore_order=True,

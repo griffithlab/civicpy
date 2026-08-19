@@ -17,16 +17,16 @@ from ga4gh.va_spec.base import (
 )
 from pydantic import BaseModel
 
-from civicpy.exports.civic_gks_identifier import (
-    CivicGksAlleleOriginQualifier,
-    CivicGksIdentifierError,
-    compute_civic_gks_identifier,
+from civicpy.exports.gks.identifiers import (
+    AlleleOriginQualifier,
+    IdentifierError,
+    compute_identifier,
 )
 
 
 def _allele_origin_qualifier(
     name: str, codes: list[str], concept_type: str | None = None
-) -> CivicGksAlleleOriginQualifier:
+) -> AlleleOriginQualifier:
     """Create an allele origin qualifier for computed-identifier tests.
 
     :param name: Allele origin display name included in identity.
@@ -34,7 +34,7 @@ def _allele_origin_qualifier(
     :param concept_type: Non-identity concept type used to test exclusion.
     :return: Allele origin qualifier with CIViC mappings.
     """
-    return CivicGksAlleleOriginQualifier(
+    return AlleleOriginQualifier(
         name=name,
         conceptType=concept_type,
         mappings=[
@@ -63,13 +63,13 @@ def test_allele_origin_identifier_uses_only_name_and_mappings() -> None:
         }
     )
 
-    original_id = compute_civic_gks_identifier(original)
+    original_id = compute_identifier(original)
 
-    assert original_id == compute_civic_gks_identifier(reordered)
-    assert original_id != compute_civic_gks_identifier(
+    assert original_id == compute_identifier(reordered)
+    assert original_id != compute_identifier(
         _allele_origin_qualifier("germline", ["SOMATIC", "OTHER"])
     )
-    assert original_id != compute_civic_gks_identifier(
+    assert original_id != compute_identifier(
         _allele_origin_qualifier("somatic", ["GERMLINE", "OTHER"])
     )
 
@@ -106,10 +106,10 @@ def test_group_identifier_uses_member_ids_not_descriptive_content() -> None:
         ],
     )
 
-    original_id = compute_civic_gks_identifier(original)
+    original_id = compute_identifier(original)
 
     assert original_id.startswith("civic.therapyGroup:")
-    assert original_id == compute_civic_gks_identifier(updated)
+    assert original_id == compute_identifier(updated)
 
 
 def test_group_identifier_includes_membership_operator() -> None:
@@ -129,10 +129,10 @@ def test_group_identifier_includes_membership_operator() -> None:
         conditions=conditions,
     )
 
-    and_identifier = compute_civic_gks_identifier(and_group)
+    and_identifier = compute_identifier(and_group)
 
     assert and_identifier.startswith("civic.conditionSet:")
-    assert and_identifier != compute_civic_gks_identifier(or_group)
+    assert and_identifier != compute_identifier(or_group)
 
 
 def test_computes_proposition_identifier_from_pydantic_type() -> None:
@@ -150,11 +150,11 @@ def test_computes_proposition_identifier_from_pydantic_type() -> None:
         update={"objectTumorType": iriReference(root="civic.did:2")}
     )
 
-    identifier = compute_civic_gks_identifier(proposition)
+    identifier = compute_identifier(proposition)
 
     assert identifier.startswith("civic.proposition:")
-    assert identifier == compute_civic_gks_identifier(updated_proposition)
-    assert identifier != compute_civic_gks_identifier(different_object)
+    assert identifier == compute_identifier(updated_proposition)
+    assert identifier != compute_identifier(different_object)
 
 
 def test_proposition_identifier_uses_nested_group_identifier() -> None:
@@ -194,12 +194,12 @@ def test_proposition_identifier_uses_nested_group_identifier() -> None:
         }
     )
 
-    assert compute_civic_gks_identifier(original) == compute_civic_gks_identifier(
+    assert compute_identifier(original) == compute_identifier(
         updated
     )
 
 
 def test_rejects_unsupported_pydantic_model() -> None:
     """Reject Pydantic objects whose identities are supplied by another model."""
-    with pytest.raises(CivicGksIdentifierError, match="not supported"):
-        compute_civic_gks_identifier(_UnsupportedGksObject())
+    with pytest.raises(IdentifierError, match="not supported"):
+        compute_identifier(_UnsupportedGksObject())

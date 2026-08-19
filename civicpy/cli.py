@@ -14,11 +14,9 @@ from civicpy import civic
 from civicpy.__env__ import LOCAL_CACHE_PATH
 from civicpy.__version__ import __version__
 from civicpy.civic import CoordinateQuery
-from civicpy.exports.civic_gks_bundle import (
-    GKS_BUNDLE_SCHEMA_FILENAME,
-    get_gks_bundle_json_schema,
-)
-from civicpy.exports.civic_gks_output import GksAssertionError, GksRecord
+from civicpy.exports.gks.bundle import GksBundle
+from civicpy.exports.gks.bundle.models import BUNDLE_SCHEMA_FILENAME
+from civicpy.exports.gks.models import GksAssertionError, GksRecord
 from civicpy.exports.civic_gks_record import (
     CivicGksRecordError,
     ClinVarSubmissionType,
@@ -237,9 +235,9 @@ def create_gks_bundle_schema() -> None:
     It is written to the current directory using a filename derived from the
     bundle format name and version.
     """
-    output_json = Path(GKS_BUNDLE_SCHEMA_FILENAME)
+    output_json = Path(BUNDLE_SCHEMA_FILENAME)
     with output_json.open("w", encoding="utf-8") as write_file:
-        json.dump(get_gks_bundle_json_schema(), write_file, indent=2)
+        json.dump(GksBundle.model_json_schema(), write_file, indent=2)
 
 
 def _create_gks_export(

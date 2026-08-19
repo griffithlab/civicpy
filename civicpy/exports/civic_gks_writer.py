@@ -2,8 +2,8 @@
 
 This module owns the dereferenced output model and the file-writing entry point.
 It delegates referenced document construction to
-:mod:`civicpy.exports.civic_gks_bundle_builder` and uses the bundle models from
-:mod:`civicpy.exports.civic_gks_bundle`.
+:mod:`civicpy.exports.gks.bundle.builder` and uses the bundle models from
+:mod:`civicpy.exports.gks.bundle.models`.
 """
 
 import datetime
@@ -11,17 +11,13 @@ import json
 from pathlib import Path
 from typing import Any
 
-from pydantic import BaseModel
-
-from civicpy.exports.civic_gks_bundle import (
-    GksBundleOutput,
-)
-from civicpy.exports.civic_gks_bundle_builder import build_gks_bundle
-from civicpy.exports.civic_gks_output import (
+from civicpy.exports.gks.models import (
     GksAssertionError,
+    GksModel,
     GksOutputMetadata,
     GksRecord,
 )
+from civicpy.exports.gks.bundle import GksBundle, build_gks_bundle
 
 
 def _serialize_json_default(value: Any) -> str:
@@ -36,7 +32,7 @@ def _serialize_json_default(value: Any) -> str:
     raise TypeError(f"Object of type {type(value)} is not JSON serializable")
 
 
-class GksOutput(BaseModel):
+class GksOutput(GksModel):
     """Dereferenced export with each assertion's related objects inline."""
 
     gks_records: list[GksRecord]
@@ -81,7 +77,7 @@ class CivicGksWriter:
         export_errors = errors or []
 
         if bundle:
-            output: GksBundleOutput | GksOutput = build_gks_bundle(
+            output: GksBundle | GksOutput = build_gks_bundle(
                 gks_records, metadata, export_errors
             )
         else:
@@ -94,7 +90,11 @@ class CivicGksWriter:
 
         with filepath.open("w", encoding="utf-8") as write_file:
             json.dump(
-                output.model_dump(exclude_none=True, serialize_as_any=bundle),
+                output.model_dump(
+                    by_alias=True,
+                    exclude_none=True,
+                    serialize_as_any=bundle,
+                ),
                 write_file,
                 indent=2,
                 default=_serialize_json_default,

@@ -427,9 +427,9 @@ class TestMolecularProfiles(object):
 
     def test_properties(self):
         mp = civic.get_molecular_profile_by_id(4432)
-        assert len(mp.evidence_sources) == 11
+        assert len(mp.evidence_sources) == 12
         assert mp.summary == mp.description
-        assert len(mp.evidence_items) == 12
+        assert len(mp.evidence_items) == 13
         assert len(mp.assertions) == 0
         assert len(mp.variants) == 2
         assert len(mp.sources) == 0
