@@ -211,6 +211,16 @@ Here's an example of how to export all variants from CIViC to VCF::
 GKS JSON
 --------
 
+GKS is a standard way to represent genomic knowledge. CIViCpy converts CIViC
+Assertions and their supporting Evidence into GKS Statements. A Statement
+describes the evidence and provenance for a claim, while its Proposition
+describes the claim itself. Related concepts include molecular profiles,
+diseases, phenotypes, and therapies.
+
+When reading a bundle, start with an object in ``assertion``, follow its
+``proposition`` reference, then follow the Proposition's references to its
+molecular profile, condition, or therapy.
+
 Use :class:`civicpy.exports.civic_gks_writer.CivicGksWriter` to write
 :class:`civicpy.exports.civic_gks_record.CivicGksClinSigAssertion` and
 :class:`civicpy.exports.civic_gks_record.CivicGksOncogenicAssertion` records.
@@ -222,6 +232,41 @@ Use :class:`civicpy.exports.civic_gks_writer.CivicGksWriter` to write
 * ``bundle=True`` writes **referenced GKS Bundle JSON**. Shared objects appear
   in keyed root collections and relationships use JSON Pointers such as
   ``#/molecularProfile/civic.mpid:33``.
+
+Use dereferenced JSON for simple record-by-record processing or ClinVar
+submission. Use a bundle for complete exports where shared objects, provenance,
+and relationships need to be preserved without duplication.
+
+These simplified excerpts show the difference. Dereferenced JSON includes the
+related object directly::
+
+    {
+      "proposition": {
+        "subjectVariant": {
+          "id": "civic.mpid:33",
+          "type": "CategoricalVariant"
+        }
+      }
+    }
+
+Dereferenced propositions do not receive computed identifiers. In a bundle,
+this same proposition receives a deterministic ID, and its molecular profile is
+stored once and referenced with a pointer::
+
+    {
+      "molecularProfile": {
+        "civic.mpid:33": {
+          "id": "civic.mpid:33",
+          "type": "CategoricalVariant"
+        }
+      },
+      "proposition": {
+        "civic.proposition:-AKWXtNluL_XZYk5cDaaV7bKw6fKlPmD": {
+          "id": "civic.proposition:-AKWXtNluL_XZYk5cDaaV7bKw6fKlPmD",
+          "subjectVariant": "#/molecularProfile/civic.mpid:33"
+        }
+      }
+    }
 
 .. important::
 
@@ -265,7 +310,9 @@ collection. Upstream GKS types use versioned ``w3id`` schema references. VRS,
 Cat-VRS, and VA-Spec versions come from their Python packages; GKS-Core is
 currently pinned to ``1.1.0``. It writes
 ``civic-gks-bundle-v<bundle-format-version>.schema.json`` in the current directory
-and does not query CIViC or require a Variation Normalizer service.
+and does not query CIViC or require a Variation Normalizer service. Because the
+schema contains remote ``$ref`` values, validation may require network access or
+a validator configured with local copies of the upstream schemas.
 
 Use ``--organization-id`` to include only Assertions approved by one
 organization::
@@ -277,7 +324,9 @@ What's in a GKS Bundle
 
 A bundle is one JSON object with keyed root collections. Shared variants,
 genes, sources, and propositions are stored once and linked with local JSON
-Pointers.
+Pointers. A value beginning with ``#/`` refers to another object in the same
+bundle. For example, ``#/molecularProfile/civic.mpid:33`` resolves to
+``bundle["molecularProfile"]["civic.mpid:33"]``.
 
 The ``metadata`` identifies the bundle format and version.
 ``statistics.collections`` gives the size of every collection. Collections
@@ -337,6 +386,17 @@ inline.
 
 ``SequenceReference`` is the only collection whose values do not carry an ``id``
 field; its collection key and ``refgetAccession`` must match.
+For every other collection, the collection key must match the object's ``id``,
+and each local JSON Pointer should resolve within the bundle.
+
+The ``variant`` collection has one extra level of nesting::
+
+    variant["civic.vid:1"]["genomic"]["ga4gh:VA..."]
+
+Exports may succeed even when individual Assertions cannot be transformed.
+Check ``failedAssertionIds`` for omitted CIViC Assertion IDs and ``errors`` for
+the corresponding messages; both are empty when all selected Assertions were
+exported.
 
 Applications can compute these IDs without creating a bundle. The function
 accepts supported Pydantic GKS objects and does not modify them::
@@ -404,8 +464,8 @@ Assertion Statements use ``civic.aid:{id}`` keys, while Evidence Statements use
 ``civic.eid:{id}`` keys. Evidence lines remain inline because they have no
 stable CIViC ID, but ``hasEvidenceItems`` points to supporting Statements. Follow
 each Statement's ``proposition`` pointer to find its interpretation. The full
-bundle links each proposition to its variant, feature, disease or phenotype, and therapy
-objects in the other root collections.
+bundle links each proposition to its variant, feature, disease or phenotype,
+and therapy objects in the other root collections.
 
 To check whether an Assertion can be transformed into a
 ``CivicGksClinSigAssertion`` or ``CivicGksOncogenicAssertion``, call
