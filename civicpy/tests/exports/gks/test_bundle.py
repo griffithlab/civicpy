@@ -60,6 +60,18 @@ class TestCivicGksBundleOutput:
             )
             == 2
         )
+        variant_schema = properties["variant"]["patternProperties"][
+            collection_key_patterns["variant"]
+        ]
+        assert variant_schema["additionalProperties"] is False
+        assert set(variant_schema["properties"]) == {
+            "protein",
+            "coding",
+            "genomic",
+            "unclassified",
+        }
+        for representation_schema in variant_schema["properties"].values():
+            assert len(representation_schema["additionalProperties"]["anyOf"]) == 2
         assert {
             "Adjacency",
             "CisPhasedBlock",

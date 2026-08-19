@@ -140,17 +140,6 @@ GksEvidenceId: TypeAlias = Annotated[
 GksAssertionId: TypeAlias = Annotated[
     str, StringConstraints(pattern=r"^civic\.aid:[0-9]+$")
 ]
-VariantRepresentations: TypeAlias = dict[
-    str,
-    dict[
-        str,
-        Annotated[
-            GksBundleObject,
-            _external_gks_schema(Allele, CopyNumberChange),
-        ],
-    ],
-]
-
 _CLOSED_COLLECTION_SCHEMA = {"additionalProperties": False}
 
 
@@ -183,6 +172,44 @@ class VariantRepresentation(str, Enum):
     CODING = "coding"
     GENOMIC = "genomic"
     UNCLASSIFIED = "unclassified"
+
+
+def _variant_representations_schema() -> WithJsonSchema:
+    """Describe the named coordinate levels containing VRS representations."""
+    representation_collection = {
+        "type": "object",
+        "additionalProperties": {
+            "anyOf": [
+                {"$ref": Allele.schema_id()},
+                {"$ref": CopyNumberChange.schema_id()},
+            ]
+        },
+    }
+    return WithJsonSchema(
+        {
+            "type": "object",
+            "properties": {
+                representation.value: representation_collection
+                for representation in VariantRepresentation
+            },
+            "additionalProperties": False,
+        }
+    )
+
+
+VariantRepresentations: TypeAlias = Annotated[
+    dict[
+        str,
+        dict[
+            str,
+            Annotated[
+                GksBundleObject,
+                _external_gks_schema(Allele, CopyNumberChange),
+            ],
+        ],
+    ],
+    _variant_representations_schema(),
+]
 
 
 # Include type counts only for collections that can contain more than one type.
