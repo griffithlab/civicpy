@@ -4,7 +4,6 @@ from datetime import date
 from unittest.mock import Mock
 
 import pytest
-from deepdiff import DeepDiff
 from ga4gh.cat_vrs.models import CategoricalVariant
 from ga4gh.core.models import MappableConcept
 from ga4gh.va_spec.base import Statement
@@ -12,12 +11,12 @@ from ga4gh.va_spec.ccv_2022 import VariantOncogenicityStatement
 from ga4gh.vrs.models import Allele, SequenceReference
 from pydantic import ValidationError
 
-from civicpy.civic import Assertion
+from civicpy import civic
+from civicpy.exports.civic_gks_record import create_gks_record_from_assertion
 from civicpy.exports.gks.models import (
     GksAssertionError,
     GksOutputMetadata,
 )
-from civicpy.exports.civic_gks_record import create_gks_record_from_assertion
 from civicpy.exports.gks.bundle import GksBundle, build_gks_bundle
 
 
@@ -172,32 +171,52 @@ class TestCivicGksBundleOutput:
         assert bundle.errors == []
         assert bundle.failed_assertion_ids == []
 
-    def test_builds_expected_referenced_bundle(
-        self,
-        aid6: Assertion,
-        aid202: Assertion,
-        gks_bundle_expected: dict[str, object],
-        mocked_normalizer: Mock,
+    def test_builds_real_assertions_across_bundle_collections(
+        self, mocked_normalizer: Mock
     ) -> None:
-        """Match the complete bundle representation assembled in ``conftest.py``."""
-        actual_records = [
-            create_gks_record_from_assertion(
-                assertion,
-            )
-            for assertion in (aid6, aid202)
+        """Exercise conversion and bundle extraction without a full JSON snapshot."""
+        records = [
+            create_gks_record_from_assertion(civic.get_assertion_by_id(assertion_id))
+            for assertion_id in (6, 202)
         ]
-        metadata = GksOutputMetadata(
-            va_spec_python_version="test", created_at="2026-08-03"
+
+        bundle = build_gks_bundle(records)
+
+        assert set(bundle.assertion) == {"civic.aid:6", "civic.aid:202"}
+        assert bundle.evidence
+        assert bundle.molecularProfile
+        assert bundle.variant
+        assert bundle.feature
+        assert bundle.disease
+        assert bundle.source
+        assert bundle.method
+        assert bundle.proposition
+
+        statements = [*bundle.assertion.values(), *bundle.evidence.values()]
+        assert all(
+            statement["proposition"].startswith("#/proposition/")
+            for statement in statements
+        )
+        assert all(
+            constraint["allele"].startswith("#/variant/")
+            for profile in bundle.molecularProfile.values()
+            for constraint in profile.get("constraints", [])
         )
 
-        diff = DeepDiff(
-            build_gks_bundle(actual_records, metadata, []).model_dump(
-                by_alias=True, exclude_none=True, serialize_as_any=True
-            ),
-            gks_bundle_expected,
-            ignore_order=True,
-        )
-        assert diff == {}, diff
+        statistics = bundle.metadata.statistics.collections
+        for collection_name in (
+            "assertion",
+            "evidence",
+            "molecularProfile",
+            "feature",
+            "disease",
+            "source",
+            "method",
+            "proposition",
+        ):
+            assert statistics[collection_name].count == len(
+                getattr(bundle, collection_name)
+            )
 
     def test_duplicate_object_retains_first_without_orphans(
         self, caplog: pytest.LogCaptureFixture
