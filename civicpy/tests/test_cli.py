@@ -104,6 +104,7 @@ class TestCli(object):
         mock_all_approvals,
         mock_all_assertions,
         bundle,
+        mocked_normalizer: Mock,
     ):
         """Test dereferenced and bundle CLI exports for eligible Assertions."""
         assertions = {
