@@ -1,140 +1,38 @@
-import re
 from copy import deepcopy
-from unittest.mock import Mock, PropertyMock, patch
+from typing import Any
+from unittest.mock import Mock
 
 import pytest
-from deepdiff import DeepDiff
-from ga4gh.cat_vrs.models import CategoricalVariant
-from ga4gh.core.models import Extension, iriReference
-from ga4gh.va_spec.aac_2017 import (
-    VariantClinicalSignificanceStatement,
-)
-from ga4gh.va_spec.base import Condition, ConditionSet, Statement, TherapyGroup
+from ga4gh.va_spec.aac_2017 import VariantClinicalSignificanceStatement
+from ga4gh.va_spec.base import Statement
 from ga4gh.va_spec.ccv_2022 import VariantOncogenicityStatement
-from ga4gh.vrs.models import Allele, CopyNumberCount, Expression, Syntax
 
-from civicpy import civic
-from civicpy.exports.civic_gks_record import (
-    CivicGksClinSigAssertion,
-    CivicGksEvidence,
-    CivicGksGene,
-    CivicGksMolecularProfile,
-    CivicGksOncogenicAssertion,
-    CivicGksRecordError,
-    CivicGksTherapyGroup,
-    ClinVarSubmissionType,
-    create_gks_record_from_assertion,
-)
-from civicpy.exports.civic_vcf_record import CivicVcfRecord
+from civicpy.civic import Assertion, get_assertion_by_id
+from civicpy.exports.civic_gks_record import CivicGksMolecularProfile
 from civicpy.exports.variation_normalizer import VariationNormalizerDataProxy
 
-
-# snv
 @pytest.fixture(scope="module")
-def v600e():
-    return civic.get_variant_by_id(12)
-
-
-# simple insertion
-@pytest.fixture(scope="module")
-def a56fs():
-    return civic.get_variant_by_id(1785)
-
-
-# simple deletion
-@pytest.fixture(scope="module")
-def v273fs():
-    return civic.get_variant_by_id(762)
-
-
-# complex insertion
-@pytest.fixture(scope="module")
-def v2444fs():
-    return civic.get_variant_by_id(137)
-
-
-# complex deletion
-@pytest.fixture(scope="module")
-def l158fs():
-    return civic.get_variant_by_id(2137)
+def aid6() -> Assertion:
+    """Return the predictive Assertion shared by GKS export tests."""
+    return get_assertion_by_id(6)
 
 
 @pytest.fixture(scope="module")
-def eid9285():
-    """Create test fixture for functional evidence"""
-    return civic.get_evidence_by_id(9285)
+def aid202() -> Assertion:
+    """Return the oncogenic Assertion shared by GKS export tests."""
+    return get_assertion_by_id(202)
 
 
 @pytest.fixture(scope="module")
-def aid6():
-    """Create test fixture for predictive assertion (single therapy)"""
-    return civic.get_assertion_by_id(6)
-
-
-@pytest.fixture(scope="module")
-def aid7():
-    """Create test fixture for predictive assertion (combination therapy)"""
-    return civic.get_assertion_by_id(7)
-
-
-@pytest.fixture(scope="module")
-def aid9():
-    """Create test fixture for diagnostic assertion"""
-    return civic.get_assertion_by_id(9)
-
-
-@pytest.fixture(scope="module")
-def aid19():
-    """Create test fixture for predictive assertion (substitution therapy)"""
-    return civic.get_assertion_by_id(19)
-
-
-@pytest.fixture(scope="module")
-def aid20():
-    """Create test fixture for prognostic assertion"""
-    return civic.get_assertion_by_id(20)
-
-
-@pytest.fixture(scope="module")
-def aid93():
-    """Create test fixture for assertion with single phenotype"""
-    return civic.get_assertion_by_id(93)
-
-
-@pytest.fixture(scope="module")
-def aid115():
-    """Create test fixture for assertion with phenotypes"""
-    return civic.get_assertion_by_id(115)
-
-
-@pytest.fixture(scope="module")
-def aid117():
-    """Create test fixture for assertion not supported for GKS"""
-    return civic.get_assertion_by_id(117)
-
-
-@pytest.fixture(scope="module")
-def aid202():
-    """Create test fixture for oncogenic assertion"""
-    return civic.get_assertion_by_id(202)
-
-
-@pytest.fixture(scope="module")
-def gks_contributions():
-    return [
-        {
-            "type": "Contribution",
-            "contributor": {
-                "id": "civic.organization:1",
-                "type": "Agent",
-                "name": "CIViC",
-                "description": "The CIViC Organization (formerly “The McDonnell Genome Institute” CIViC organization) comprises the founders, developers, editors, curators, and administrators who build and maintain the knowledgebase, based at Washington University in St. Louis. This group is dedicated to ensuring that high-quality cancer variant interpretations are broadly accessible for precision oncology. One of their main roles is evaluating and synthesizing crowdsourced community contributions into formal clinical Assertions. Once these Assertions meet the strict criteria of the CIViC standard operating procedure, core approval members approve them for 1-star submission to the ClinVar CIViC organization.",
-                "extensions": [{"name": "isApprovedVcep", "value": False}],
-            },
-            "activityType": "approval.last_reviewed",
-            "date": "2026-04-24",
-        }
-    ]
+def mocked_normalizer(braf_v600e_vrs):
+    """Provide a normalizer mock for GKS tests without a live service."""
+    variation_normalizer = Mock(spec=VariationNormalizerDataProxy)
+    variation_normalizer.normalize.return_value = None
+    variation_normalizer.normalize_molecular_profile.return_value = braf_v600e_vrs
+    previous_normalizer = CivicGksMolecularProfile._variation_normalizer
+    CivicGksMolecularProfile.configure_variation_normalizer(variation_normalizer)
+    yield variation_normalizer
+    CivicGksMolecularProfile._variation_normalizer = previous_normalizer
 
 
 @pytest.fixture(scope="module")
@@ -1246,878 +1144,1079 @@ def gks_aid202(gks_aid202_proposition):
     return VariantOncogenicityStatement(**params)
 
 
-class TestCivicVcfRecord(object):
-    def test_protein_altering(self, caplog, v600e):
-        record = CivicVcfRecord(v600e)
-        assert not caplog.records
-        assert record.POS == 140453136
-        assert record.REF == "A"
-        assert record.ALT[0].value == "T"
-
-    def test_simple_insertion(self, caplog, a56fs):
-        assert a56fs.is_insertion
-        record = CivicVcfRecord(a56fs)
-        assert not caplog.records
-        assert record.POS == 10183697
-        assert record.REF == "G"
-        assert record.ALT[0].value == "GA"
-
-    def test_simple_deletion(self, caplog, v273fs):
-        assert v273fs.is_deletion
-        record = CivicVcfRecord(v273fs)
-        assert not caplog.records
-        assert record.POS == 47641432
-        assert record.REF == "GT"
-        assert record.ALT[0].value == "G"
-
-    def test_complex_insertion(self, caplog, v2444fs):
-        assert v2444fs.is_insertion
-        record = CivicVcfRecord(v2444fs)
-        assert not caplog.records
-        assert record.POS == 139390861
-        assert record.REF == "GG"
-        assert record.ALT[0].value == "GTGT"
-
-    def test_complex_deletion(self, caplog, l158fs):
-        assert l158fs.is_deletion
-        record = CivicVcfRecord(l158fs)
-        assert not caplog.records
-        assert record.POS == 10191480
-        assert record.REF == "TGAA"
-        assert record.ALT[0].value == "TC"
-
-    def test_addrecord_from_gene(self):
-        gene = civic.get_gene_by_id(24)
-        records = [CivicVcfRecord(v) for v in gene.variants if v.is_valid_for_vcf()]
-        assert len(records) <= len(gene.variants)
-
-    def test_addrecord_from_evidence(self):
-        evidence = civic._get_element_by_id("evidence", 12)
-        records = [CivicVcfRecord(v) for v in evidence.variants if v.is_valid_for_vcf()]
-        assert len(records) == 1
-        assert int(records[0].ID[0]) == evidence.molecular_profile.variants[0].id
-
-    def test_addrecord_from_assertion(self):
-        assertion = civic._get_element_by_id("assertion", 7)
-        records = [
-            CivicVcfRecord(v) for v in assertion.variants if v.is_valid_for_vcf()
-        ]
-        assert len(records) == 1
-        assert int(records[0].ID[0]) == assertion.molecular_profile.variants[0].id
-
-    def test_add_record_from_molecular_profile(self):
-        mp = civic._get_element_by_id("molecular_profile", 12)
-        records = [CivicVcfRecord(v) for v in mp.variants if v.is_valid_for_vcf()]
-        assert len(records) == 1
-        assert int(records[0].ID[0]) == mp.variants[0].id
-
-    def test_addrecord_wrong_type(self):
-        evidence = civic._get_element_by_id("evidence", 373)
-        with pytest.raises(Exception) as context:
-            CivicVcfRecord(evidence)
-        assert "Variant is not a GeneVariant" in str(context.value)
+def _find_gks_objects(value: Any, object_type: str) -> list[dict[str, Any]]:
+    """Find typed GKS objects nested in a fixture representation."""
+    matches: list[dict[str, Any]] = []
+    if isinstance(value, dict):
+        if value.get("type") == object_type and "id" in value:
+            matches.append(deepcopy(value))
+        for nested_value in value.values():
+            matches.extend(_find_gks_objects(nested_value, object_type))
+    elif isinstance(value, list):
+        for nested_value in value:
+            matches.extend(_find_gks_objects(nested_value, object_type))
+    return matches
 
 
-class TestCivicGksMolecularProfile(object):
-    """Test that CivicGksMolecularProfile works as expected"""
+@pytest.fixture(scope="module")
+def gks_bundle_sequence_references(braf_v600e_vrs) -> dict[str, Any]:
+    """Return the sequence reference from the shared normalized allele."""
+    allele = braf_v600e_vrs.model_dump(exclude_none=True)
+    sequence_reference = deepcopy(allele["location"]["sequenceReference"])
+    return {sequence_reference["refgetAccession"]: sequence_reference}
 
-    def test_valid(
-        self,
-        ret_m918t_vrs,
-        civic_mpid113,
-        civic_mpid113_cdna_vrs,
-        civic_mpid113_genomic_vrs,
-        monkeypatch,
-    ):
 
-        def normalize_side_effect(expr):
-            if expr == "RET M918T":
-                return Allele.model_validate(ret_m918t_vrs)
+@pytest.fixture(scope="module")
+def gks_bundle_locations(braf_v600e_vrs) -> dict[str, Any]:
+    """Reference the sequence used by the shared normalized allele location."""
+    allele = braf_v600e_vrs.model_dump(exclude_none=True)
+    location = deepcopy(allele["location"])
+    refget_accession = location["sequenceReference"]["refgetAccession"]
+    location["sequenceReference"] = f"#/sequenceReference/{refget_accession}"
+    return {location["id"]: location}
 
-            if expr == "NM_020975.4:c.2753T>C":
-                return Allele.model_validate(civic_mpid113_cdna_vrs)
 
-            if expr in ["NC_000010.10:g.43617416T>C", "NC_000010.11:g.43121968T>C"]:
-                return Allele.model_validate(civic_mpid113_genomic_vrs)
-
-            if expr in [
-                "ENST00000355710.3:c.2753T>C",
-                "ENST00000355710.8:c.2753T>C",
-            ]:
-                return None
-
-            raise AssertionError(f"Unexpected normalize query: {expr}")
-
-        mp = civic.get_molecular_profile_by_id(113)
-
-        variation_normalizer = Mock(spec=VariationNormalizerDataProxy)
-        variation_normalizer.normalize.side_effect = normalize_side_effect
-        variation_normalizer.normalize_molecular_profile.side_effect = (
-            lambda molecular_profile: variation_normalizer.normalize("RET M918T")
-        )
-
-        monkeypatch.setattr(
-            CivicGksMolecularProfile, "_variation_normalizer", variation_normalizer
-        )
-        gks_mp = CivicGksMolecularProfile(molecular_profile=mp)
-
-        assert variation_normalizer.normalize.call_count == 6
-
-        diff = DeepDiff(
-            gks_mp.model_dump(exclude_none=True),
-            civic_mpid113,
-            ignore_order=True,
-        )
-
-        assert diff == {}
-
-    def test_extensions_preserve_source_hgvs_descriptions(
-        self, v600e_mp, mocked_normalizer
-    ):
-        """Source HGVS descriptions are retained even when not VRS expressions."""
-        variant = v600e_mp.variants[0]
-
-        with (
-            patch.object(
-                variant,
-                "hgvs_expressions",
-                new=["N/A", "XR_001744858.1:n.1823-3918T>A"],
-            ),
-            patch.object(
-                variant,
-                "mane_select_transcript",
-                new=None,
-            ),
-        ):
-            gks_mp = CivicGksMolecularProfile(v600e_mp)
-            extensions = gks_mp.extensions
-            assert extensions
-
-            extension_values = {ext.name: ext.value for ext in extensions}
-            assert extension_values["hgvsDescriptions"] == [
-                "N/A",
-                "XR_001744858.1:n.1823-3918T>A",
-            ]
-            assert "maneSelectTranscript" not in extension_values
-
-    def test_expressions_deduplicate_mane_select(self, v600e_mp):
-        """A MANE Select expression already in HGVS descriptions is emitted once."""
-        variant = v600e_mp.variants[0]
-        mane_select = "NM_005228.5:c.1799T>A"
-
-        with (
-            patch.object(variant, "hgvs_expressions", new=[mane_select]),
-            patch.object(variant, "mane_select_transcript", new=mane_select),
-        ):
-            expressions = CivicGksMolecularProfile._get_expressions(variant)
-
-        assert len(expressions) == 1
-        assert expressions[0].value == mane_select
-        assert expressions[0].extensions == [Extension(name="isManeSelect", value=True)]
-
-    def test_na_clinvar_mapping(self, v600e_mp, mocked_normalizer):
-        """Test that get_aliases_and_mappings method works as expected when no clinvar entry found"""
-        variant = v600e_mp.variants[0]
-
-        with patch.object(variant, "clinvar_entries", new=["N/A"]):
-            gks_mp = CivicGksMolecularProfile(v600e_mp)
-            mappings = gks_mp.mappings
-            assert mappings
-            assert not any(
-                m.coding.system == "https://www.ncbi.nlm.nih.gov/clinvar/variation/"
-                for m in mappings
-            )
-
-    def test_build_constraints_gene_mutation(self, mocked_normalizer):
-        mp = civic.get_molecular_profile_by_id(395)
-        gks_mp = CivicGksMolecularProfile(mp)
-        constraints = gks_mp.constraints
-        assert constraints
-        assert len(constraints) == 1
-        assert gks_mp.members is None
-        assert constraints[0].model_dump(exclude_none=True) == {
-            "type": "FeatureContextConstraint",
-            "featureContext": {
-                "primaryCoding": {
-                    "code": "673",
-                    "id": "ncbigene:673",
-                    "system": "https://www.ncbi.nlm.nih.gov/gene/",
-                }
-            },
-        }
-
-        categorical_variation_type = next(
-            (
-                ext.value
-                for ext in gks_mp.extensions
-                if ext.name == "categoricalVariationType"
-            ),
-            None,
-        )
-        assert categorical_variation_type == "FeatureContext"
-
-    @patch.object(
-        CivicGksGene,
-        "get_mappings",
+@pytest.fixture(scope="module")
+def gks_bundle_variants(
+    braf_v600e_vrs,
+    gks_mpid33,
+    civic_mpid113,
+) -> dict[str, Any]:
+    """Return the VRS object under each associated CIViC variant ID."""
+    allele = braf_v600e_vrs.model_dump(exclude_none=True)
+    allele["location"] = f"#/location/{allele['location']['id']}"
+    allele_33 = deepcopy(allele)
+    allele_33["expressions"] = deepcopy(
+        gks_mpid33["constraints"][0]["allele"]["expressions"]
     )
-    def test_build_constraints_no_gene_mappings(
-        self,
-        test_get_mappings,
-        mocked_normalizer,
-    ):
-        test_get_mappings.return_value = []
+    allele_33["expressions"].append(
+        {"syntax": "hgvs.p", "value": "ENSP00000275493.2:p.Leu858Arg"}
+    )
+    allele["expressions"] = deepcopy(
+        civic_mpid113["constraints"][0]["allele"]["expressions"]
+    )
+    return {
+        "civic.vid:33": {"protein": {allele_33["id"]: allele_33}},
+        "civic.vid:113": {"protein": {allele["id"]: allele}},
+    }
 
-        mp = civic.get_molecular_profile_by_id(395)
 
-        with pytest.raises(
-            CivicGksRecordError,
-            match="Unable to retrieve mappings for gene 5",
-        ):
-            CivicGksMolecularProfile(mp)
+@pytest.fixture(scope="module")
+def gks_bundle_features(gks_gid19, gks_gid42) -> dict[str, Any]:
+    """Return genes already defined by the shared GKS record fixtures."""
+    return {gene["id"]: deepcopy(gene) for gene in (gks_gid19, gks_gid42)}
 
-    def test_build_constraints_normalization_failure(
-        self, civic_mpid113_undefined, monkeypatch
-    ):
-        mp = civic.get_molecular_profile_by_id(113)
 
-        variation_normalizer = Mock()
-        variation_normalizer.normalize_molecular_profile.return_value = None
-
-        monkeypatch.setattr(
-            CivicGksMolecularProfile, "_variation_normalizer", variation_normalizer
-        )
-        gks_mp = CivicGksMolecularProfile(mp)
-        diff = DeepDiff(
-            gks_mp.model_dump(exclude_none=True),
-            civic_mpid113_undefined,
-            ignore_order=True,
-        )
-        assert diff == {}
-
-    def test_build_constraints_allele(self, braf_v600e_vrs, mocked_normalizer):
-        mp = civic.get_molecular_profile_by_id(12)
-        normalized_allele = braf_v600e_vrs.model_dump(exclude_none=True)
-
-        gks_mp = CivicGksMolecularProfile(mp)
-        assert braf_v600e_vrs.model_dump(exclude_none=True) == normalized_allele
-
-        constraints = gks_mp.constraints
-        assert constraints
-        assert len(constraints) == 1
-        constraint = constraints[0].model_dump(exclude_none=True)
-        protein_expressions = constraint["allele"].pop("expressions")
-        assert constraint == {
-            "type": "DefiningAlleleConstraint",
-            "allele": normalized_allele,
-            "relations": [
+@pytest.fixture(scope="module")
+def gks_bundle_molecular_profiles() -> dict[str, Any]:
+    """Return the expected ``molecularProfile`` bundle collection."""
+    return {
+        "civic.mpid:113": {
+            "id": "civic.mpid:113",
+            "type": "CategoricalVariant",
+            "name": "RET M918T",
+            "description": "RET M918T is the most common somatically acquired "
+            "mutation in medullary thyroid cancer (MTC). While "
+            "there currently are no RET-specific inhibiting "
+            "agents, promiscuous kinase inhibitors have seen "
+            "some success in treating RET overactivity. Data "
+            "suggests however, that the M918T mutation may lead "
+            "to drug resistance, especially against the "
+            "VEGFR-inhibitor motesanib. It has also been "
+            "suggested that RET M918T leads to more aggressive "
+            "MTC with a poorer prognosis.",
+            "aliases": ["MET918THR"],
+            "extensions": [
+                {"name": "molecularProfileScore", "value": 139.0},
                 {
-                    "primaryCoding": {
-                        "code": "liftover_to",
-                        "system": "ga4gh-gks-term:allele-relation",
-                    }
+                    "name": "hgvsDescriptions",
+                    "value": [
+                        "NM_020975.4:c.2753T>C",
+                        "NP_065681.1:p.Met918Thr",
+                        "ENST00000355710.3:c.2753T>C",
+                        "NC_000010.10:g.43617416T>C",
+                        "NC_000010.11:g.43121968T>C",
+                        "ENSP00000347942.3:p.Met918Thr",
+                    ],
                 },
                 {
-                    "primaryCoding": {
-                        "code": "translation_of",
-                        "system": "http://www.sequenceontology.org",
-                    }
+                    "name": "maneSelectTranscript",
+                    "value": "ENST00000355710.8:c.2753T>C",
+                },
+                {
+                    "name": "representativeVariantCoordinates",
+                    "value": {
+                        "chromosome": "10",
+                        "start": 43617416,
+                        "stop": 43617416,
+                        "reference_bases": "T",
+                        "variant_bases": "C",
+                        "ensembl_version": 75,
+                        "representative_transcript": "ENST00000355710.3",
+                        "reference_build": "GRCh37",
+                        "type": "coordinates",
+                    },
+                },
+                {
+                    "name": "categoricalVariationType",
+                    "value": "ProteinSequenceConsequence",
                 },
             ],
-        }
-        assert protein_expressions
-        assert {expression["syntax"] for expression in protein_expressions} == {
-            "hgvs.p"
-        }
-
-    def test_build_members_does_not_mutate_normalized_variation(self, braf_v600e_vrs):
-        """Member metadata is added to a copy of the normalizer result."""
-        normalized_allele = braf_v600e_vrs.model_dump(exclude_none=True)
-        expression = Expression(syntax=Syntax.HGVS_C, value="NM_004333.6:c.1799T>A")
-        variation_normalizer = Mock()
-        variation_normalizer.normalize.return_value = braf_v600e_vrs
-        original_normalizer = CivicGksMolecularProfile._variation_normalizer
-
-        try:
-            CivicGksMolecularProfile.configure_variation_normalizer(
-                variation_normalizer
-            )
-            members = CivicGksMolecularProfile._build_members(
-                [expression], [Syntax.HGVS_C], None
-            )
-        finally:
-            CivicGksMolecularProfile._variation_normalizer = original_normalizer
-
-        assert braf_v600e_vrs.model_dump(exclude_none=True) == normalized_allele
-        assert len(members) == 1
-        assert members[0].root.name == expression.value
-        assert members[0].root.expressions == [expression]
-
-    def test_build_constraints_copy_number_change(
-        self,
-        braf_amplification_vrs,
-        monkeypatch,
-    ):
-        mp = civic.get_molecular_profile_by_id(1243)
-
-        variation_normalizer = Mock()
-        variation_normalizer.normalize_molecular_profile.return_value = (
-            braf_amplification_vrs
-        )
-
-        monkeypatch.setattr(
-            CivicGksMolecularProfile, "_variation_normalizer", variation_normalizer
-        )
-        gks_mp = CivicGksMolecularProfile(mp)
-        constraints = gks_mp.constraints
-        assert constraints
-        assert len(constraints) == 2
-        constraints_dict = [c.model_dump(exclude_none=True) for c in constraints]
-        diff = DeepDiff(
-            constraints_dict,
-            [
+            "members": [
+                "#/variant/civic.vid:113/protein/ga4gh:VA.j4XnsLZcdzDIYa5pvvXM7t1wn9OITr0L"
+            ],
+            "constraints": [
                 {
-                    "type": "CopyChangeConstraint",
-                    "copyChange": braf_amplification_vrs.copyChange,
-                },
-                {
-                    "type": "DefiningLocationConstraint",
-                    "location": braf_amplification_vrs.location.model_dump(
-                        exclude_none=True
-                    ),
+                    "type": "DefiningAlleleConstraint",
+                    "allele": "#/variant/civic.vid:113/protein/ga4gh:VA.j4XnsLZcdzDIYa5pvvXM7t1wn9OITr0L",
                     "relations": [
                         {
                             "primaryCoding": {
-                                "code": "liftover_to",
                                 "system": "ga4gh-gks-term:allele-relation",
+                                "code": "liftover_to",
                             }
-                        }
+                        },
+                        {
+                            "primaryCoding": {
+                                "system": "http://www.sequenceontology.org",
+                                "code": "translation_of",
+                            }
+                        },
                     ],
-                    "matchCharacteristic": {
+                }
+            ],
+            "mappings": [
+                {
+                    "coding": "#/molecularProfile/civic.mpid:113",
+                    "relation": "exactMatch",
+                },
+                {
+                    "coding": {
+                        "id": "civic.vid:113",
+                        "extensions": [
+                            {"name": "subtype", "value": "gene_variant"},
+                            {
+                                "name": "variantTypes",
+                                "value": [
+                                    {
+                                        "coding": {
+                                            "id": "civic.variant_type:47",
+                                            "name": "Missense Variant",
+                                            "system": "http://www.sequenceontology.org/browser/current_svn/term/",
+                                            "code": "SO:0001583",
+                                        },
+                                        "relation": "exactMatch",
+                                    }
+                                ],
+                            },
+                        ],
+                        "name": "M918T",
+                        "system": "https://civicdb.org/links/variant/",
+                        "code": "113",
+                    },
+                    "relation": "exactMatch",
+                },
+                {
+                    "coding": {
+                        "id": "clingen.allele:CA009082",
+                        "system": "https://reg.clinicalgenome.org/redmine/projects/registry/genboree_registry/by_canonicalid?canonicalid=",
+                        "code": "CA009082",
+                    },
+                    "relation": "relatedMatch",
+                },
+                {
+                    "coding": {
+                        "id": "clinvar:13919",
+                        "system": "https://www.ncbi.nlm.nih.gov/clinvar/variation/",
+                        "code": "13919",
+                    },
+                    "relation": "relatedMatch",
+                },
+                {
+                    "coding": {
+                        "id": "dbsnp:rs74799832",
+                        "system": "https://www.ncbi.nlm.nih.gov/snp/",
+                        "code": "rs74799832",
+                    },
+                    "relation": "relatedMatch",
+                },
+            ],
+        },
+        "civic.mpid:33": {
+            "id": "civic.mpid:33",
+            "type": "CategoricalVariant",
+            "name": "EGFR L858R",
+            "description": "EGFR L858R has long been recognized as a "
+            "functionally significant mutation in cancer, and is "
+            "one of the most prevalent single mutations in lung "
+            "cancer. Best described in non-small cell lung "
+            "cancer (NSCLC), the mutation seems to confer "
+            "sensitivity to first and second generation TKI's "
+            "like gefitinib and neratinib. NSCLC patients with "
+            "this mutation treated with TKI's show increased "
+            "overall and progression-free survival, as compared "
+            "to chemotherapy alone. Third generation TKI's are "
+            "currently in clinical trials that specifically "
+            "focus on mutant forms of EGFR, a few of which have "
+            "shown efficacy in treating patients that failed to "
+            "respond to earlier generation TKI therapies.",
+            "aliases": ["LEU858ARG", "L813R", "LEU813ARG"],
+            "extensions": [
+                {"name": "molecularProfileScore", "value": 379.0},
+                {
+                    "name": "hgvsDescriptions",
+                    "value": [
+                        "NC_000007.13:g.55259515T>G",
+                        "NM_005228.4:c.2573T>G",
+                        "ENST00000275493.2:c.2573T>G",
+                        "NP_005219.2:p.Leu858Arg",
+                        "NC_000007.14:g.55191822T>G",
+                        "ENSP00000275493.2:p.Leu858Arg",
+                    ],
+                },
+                {
+                    "name": "maneSelectTranscript",
+                    "value": "ENST00000275493.7:c.2573T>G",
+                },
+                {
+                    "name": "representativeVariantCoordinates",
+                    "value": {
+                        "chromosome": "7",
+                        "start": 55259515,
+                        "stop": 55259515,
+                        "reference_bases": "T",
+                        "variant_bases": "G",
+                        "ensembl_version": 75,
+                        "representative_transcript": "ENST00000275493.2",
+                        "reference_build": "GRCh37",
+                        "type": "coordinates",
+                    },
+                },
+                {
+                    "name": "categoricalVariationType",
+                    "value": "ProteinSequenceConsequence",
+                },
+            ],
+            "members": [
+                "#/variant/civic.vid:33/protein/ga4gh:VA.j4XnsLZcdzDIYa5pvvXM7t1wn9OITr0L"
+            ],
+            "constraints": [
+                {
+                    "type": "DefiningAlleleConstraint",
+                    "allele": "#/variant/civic.vid:33/protein/ga4gh:VA.j4XnsLZcdzDIYa5pvvXM7t1wn9OITr0L",
+                    "relations": [
+                        {
+                            "primaryCoding": {
+                                "system": "ga4gh-gks-term:allele-relation",
+                                "code": "liftover_to",
+                            }
+                        },
+                        {
+                            "primaryCoding": {
+                                "system": "http://www.sequenceontology.org",
+                                "code": "translation_of",
+                            }
+                        },
+                    ],
+                }
+            ],
+            "mappings": [
+                {
+                    "coding": "#/molecularProfile/civic.mpid:33",
+                    "relation": "exactMatch",
+                },
+                {
+                    "coding": {
+                        "id": "civic.vid:33",
+                        "extensions": [
+                            {"name": "subtype", "value": "gene_variant"},
+                            {
+                                "name": "variantTypes",
+                                "value": [
+                                    {
+                                        "coding": {
+                                            "id": "civic.variant_type:47",
+                                            "name": "Missense Variant",
+                                            "system": "http://www.sequenceontology.org/browser/current_svn/term/",
+                                            "code": "SO:0001583",
+                                        },
+                                        "relation": "exactMatch",
+                                    }
+                                ],
+                            },
+                        ],
+                        "name": "L858R",
+                        "system": "https://civicdb.org/links/variant/",
+                        "code": "33",
+                    },
+                    "relation": "exactMatch",
+                },
+                {
+                    "coding": {
+                        "id": "clingen.allele:CA126713",
+                        "system": "https://reg.clinicalgenome.org/redmine/projects/registry/genboree_registry/by_canonicalid?canonicalid=",
+                        "code": "CA126713",
+                    },
+                    "relation": "relatedMatch",
+                },
+                {
+                    "coding": {
+                        "id": "clinvar:16609",
+                        "system": "https://www.ncbi.nlm.nih.gov/clinvar/variation/",
+                        "code": "16609",
+                    },
+                    "relation": "relatedMatch",
+                },
+                {
+                    "coding": {
+                        "id": "clinvar:376282",
+                        "system": "https://www.ncbi.nlm.nih.gov/clinvar/variation/",
+                        "code": "376282",
+                    },
+                    "relation": "relatedMatch",
+                },
+                {
+                    "coding": {
+                        "id": "clinvar:376280",
+                        "system": "https://www.ncbi.nlm.nih.gov/clinvar/variation/",
+                        "code": "376280",
+                    },
+                    "relation": "relatedMatch",
+                },
+                {
+                    "coding": {
+                        "id": "dbsnp:rs121434568",
+                        "system": "https://www.ncbi.nlm.nih.gov/snp/",
+                        "code": "rs121434568",
+                    },
+                    "relation": "relatedMatch",
+                },
+            ],
+        },
+    }
+
+
+@pytest.fixture(scope="module")
+def gks_bundle_diseases(gks_did8) -> dict[str, Any]:
+    """Return diseases shared by the record and bundle expectations."""
+    diseases = {
+        "civic.did:15": {
+            "id": "civic.did:15",
+            "conceptType": "Disease",
+            "name": "Medullary Thyroid Carcinoma",
+            "mappings": [
+                {
+                    "coding": {
+                        "system": "https://disease-ontology.org/?id=",
+                        "code": "DOID:3973",
+                    },
+                    "relation": "exactMatch",
+                }
+            ],
+        },
+        "civic.did:30": {
+            "id": "civic.did:30",
+            "conceptType": "Disease",
+            "name": "Lung Adenocarcinoma",
+            "mappings": [
+                {
+                    "coding": {
+                        "system": "https://disease-ontology.org/?id=",
+                        "code": "DOID:3910",
+                    },
+                    "relation": "exactMatch",
+                }
+            ],
+        },
+    }
+    diseases[gks_did8["id"]] = deepcopy(gks_did8)
+    return diseases
+
+
+@pytest.fixture(scope="module")
+def gks_bundle_condition_sets() -> dict[str, Any]:
+    """Return the expected ``conditionSet`` bundle collection."""
+    return {}
+
+
+@pytest.fixture(scope="module")
+def gks_bundle_therapies(gks_tid146) -> dict[str, Any]:
+    """Return therapies already defined by the shared GKS record fixtures."""
+    return {gks_tid146["id"]: deepcopy(gks_tid146)}
+
+
+@pytest.fixture(scope="module")
+def gks_bundle_therapy_groups() -> dict[str, Any]:
+    """Return the expected ``therapyGroup`` bundle collection."""
+    return {}
+
+
+@pytest.fixture(scope="module")
+def gks_bundle_variant_origins() -> dict[str, Any]:
+    """Return the expected ``variantOrigin`` bundle collection."""
+    return {
+        "civic.variantOrigin:SOMATIC": {
+            "id": "civic.variantOrigin:SOMATIC",
+            "name": "somatic",
+            "mappings": [
+                {
+                    "coding": {
+                        "system": "https://civicdb.org",
+                        "code": "SOMATIC",
+                        "iris": [
+                            "https://civic.readthedocs.io/en/latest/model/evidence/origin.html"
+                        ],
+                    },
+                    "relation": "exactMatch",
+                }
+            ],
+        }
+    }
+
+
+@pytest.fixture(scope="module")
+def gks_bundle_sources(gks_method, gks_aid6, gks_aid202) -> dict[str, Any]:
+    """Collect documents from the shared dereferenced GKS fixtures."""
+    documents: dict[str, Any] = {}
+    for value in (
+        gks_method,
+        gks_aid6.model_dump(exclude_none=True),
+        gks_aid202.model_dump(exclude_none=True),
+    ):
+        for document in _find_gks_objects(value, "Document"):
+            documents[document["id"]] = document
+    return documents
+
+
+@pytest.fixture(scope="module")
+def gks_bundle_methods(gks_method) -> dict[str, Any]:
+    """Reference the document nested in the shared method fixture."""
+    method = deepcopy(gks_method)
+    method["reportedIn"] = f"#/source/{method['reportedIn']['id']}"
+    return {method["id"]: method}
+
+
+@pytest.fixture(scope="module")
+def gks_bundle_organizations() -> dict[str, Any]:
+    """Return the expected ``organization`` bundle collection."""
+    return {}
+
+
+@pytest.fixture(scope="module")
+def gks_bundle_propositions() -> dict[str, Any]:
+    """Return the expected ``proposition`` bundle collection."""
+    return {
+        "civic.proposition:-AKWXtNluL_XZYk5cDaaV7bKw6fKlPmD": {
+            "id": "civic.proposition:-AKWXtNluL_XZYk5cDaaV7bKw6fKlPmD",
+            "type": "VariantClinicalSignificanceProposition",
+            "subjectVariant": "#/molecularProfile/civic.mpid:33",
+            "geneContextQualifier": "#/feature/civic.gid:19",
+            "alleleOriginQualifier": "#/variantOrigin/civic.variantOrigin:SOMATIC",
+            "predicate": "hasClinicalSignificanceFor",
+            "objectCondition": "#/disease/civic.did:8",
+        },
+        "civic.proposition:lGNyTBSVq9ncomifdlwtOERYq7ZM37FX": {
+            "id": "civic.proposition:lGNyTBSVq9ncomifdlwtOERYq7ZM37FX",
+            "type": "VariantOncogenicityProposition",
+            "subjectVariant": "#/molecularProfile/civic.mpid:113",
+            "geneContextQualifier": "#/feature/civic.gid:42",
+            "alleleOriginQualifier": "#/variantOrigin/civic.variantOrigin:SOMATIC",
+            "predicate": "isOncogenicFor",
+            "objectTumorType": "#/disease/civic.did:15",
+        },
+        "civic.proposition:lzu38uLu_bvAPfb7Jo_ol8741OJaSdnu": {
+            "id": "civic.proposition:lzu38uLu_bvAPfb7Jo_ol8741OJaSdnu",
+            "type": "VariantTherapeuticResponseProposition",
+            "subjectVariant": "#/molecularProfile/civic.mpid:33",
+            "geneContextQualifier": "#/feature/civic.gid:19",
+            "alleleOriginQualifier": "#/variantOrigin/civic.variantOrigin:SOMATIC",
+            "predicate": "predictsSensitivityTo",
+            "objectTherapeutic": "#/therapy/civic.tid:146",
+            "conditionQualifier": "#/disease/civic.did:8",
+        },
+        "civic.proposition:nqvFeEaF3J52FxWjzgqxOoafka3s50pY": {
+            "id": "civic.proposition:nqvFeEaF3J52FxWjzgqxOoafka3s50pY",
+            "type": "VariantTherapeuticResponseProposition",
+            "subjectVariant": "#/molecularProfile/civic.mpid:33",
+            "geneContextQualifier": "#/feature/civic.gid:19",
+            "alleleOriginQualifier": "#/variantOrigin/civic.variantOrigin:SOMATIC",
+            "predicate": "predictsSensitivityTo",
+            "objectTherapeutic": "#/therapy/civic.tid:146",
+            "conditionQualifier": "#/disease/civic.did:30",
+        },
+    }
+
+
+@pytest.fixture(scope="module")
+def gks_bundle_statement_objects() -> dict[str, Any]:
+    """Return the expected ``statement`` bundle collection."""
+    return {
+        "civic.aid:202": {
+            "id": "civic.aid:202",
+            "type": "Statement",
+            "description": "Published sequencing studies have shown that RET "
+            "mutations are very common in medullary thryoid "
+            "carcinoma (MTC) and M918T is the most common "
+            "specific variant, especially in the MEN2B clinical "
+            "subtype of familial disease (civic.EID:78) but also "
+            "in sporadic cases(civic.EID:12800). M918T mutations "
+            "may predict worse outcomes (civic.EID:74). "
+            "Biochemical and functional characterization "
+            "demonstrates that the M918T mutation leads to "
+            "functional activation of RET relative to wild-type "
+            "through multiple complementary mechanisms, "
+            "including increased ATP affinity (>10-fold) and "
+            "complex stability, reduced conformational rigidity, "
+            "and the promotion of ligand-independent "
+            "dimerization and autophosphorylation "
+            "(civic.EID:12805). Exogenous expression has been "
+            "shown to induce transformation of Ba/F3 cells "
+            "(civic.EID:11723), and drive colony formation in "
+            "NIH3T3 cells (civic.EID:12709, OS2). RET M918T "
+            "occurs in the region of the tyrosine kinase domain "
+            "which is associated with multiple endocrine "
+            "neoplasia type 2 B (OM1). RET M918T is predicted to "
+            "be deleterious (CHASMplus score 0.314 > VECS "
+            "gene-specific cutoff of 0.22, OP1). Eleven "
+            "instances of the variant occur in "
+            "cancerhotspots.org (V2): 6 Thyroid, 4 Adrenal "
+            "Gland, 1 Breast (OP3). The variant is absent in "
+            "gnomAD database (v4.1.0, OP4). Together these "
+            "criteria indicate that M918T is likely oncogenic, "
+            "with a score of 9.",
+            "specifiedBy": {
+                "type": "Method",
+                "name": "ClinGen/CGC/VICC Guidelines for Oncogenicity, 2022",
+                "methodType": "guideline",
+                "reportedIn": "#/source/pmid:35101336",
+            },
+            "reportedIn": [
+                "https://civicdb.org/links/assertion/202",
+                "#/source/civic.sid:44",
+                "#/source/civic.sid:92",
+                "#/source/civic.sid:5458",
+                "#/source/civic.sid:5519",
+                "#/source/civic.sid:4870",
+                "#/source/civic.sid:4953",
+            ],
+            "proposition": "#/proposition/civic.proposition:lGNyTBSVq9ncomifdlwtOERYq7ZM37FX",
+            "direction": "supports",
+            "strength": {
+                "primaryCoding": {
+                    "system": "ClinGen/CGC/VICC Guidelines for Oncogenicity, 2022",
+                    "code": "likely",
+                }
+            },
+            "classification": {
+                "primaryCoding": {
+                    "system": "ClinGen/CGC/VICC Guidelines for Oncogenicity, 2022",
+                    "code": "likely oncogenic",
+                }
+            },
+            "hasEvidenceLines": [
+                {
+                    "type": "EvidenceLine",
+                    "specifiedBy": {
+                        "type": "Method",
+                        "name": "ClinGen/CGC/VICC Guidelines for Oncogenicity, 2022",
+                        "methodType": "functional_domain_location",
+                        "reportedIn": "#/source/pmid:35101336",
+                    },
+                    "directionOfEvidenceProvided": "supports",
+                    "strengthOfEvidenceProvided": {
                         "primaryCoding": {
-                            "code": "is_within",
-                            "system": "ga4gh-gks-term:location-match",
+                            "system": "ClinGen/CGC/VICC "
+                            "Guidelines "
+                            "for "
+                            "Oncogenicity, "
+                            "2022",
+                            "code": "moderate",
+                        }
+                    },
+                    "scoreOfEvidenceProvided": 2,
+                    "evidenceOutcome": {
+                        "primaryCoding": {
+                            "system": "ClinGen/CGC/VICC "
+                            "Guidelines "
+                            "for "
+                            "Oncogenicity, "
+                            "2022",
+                            "code": "OM1",
+                        }
+                    },
+                },
+                {
+                    "type": "EvidenceLine",
+                    "specifiedBy": {
+                        "type": "Method",
+                        "name": "ClinGen/CGC/VICC Guidelines for Oncogenicity, 2022",
+                        "methodType": "functional_assay",
+                        "reportedIn": "#/source/pmid:35101336",
+                    },
+                    "directionOfEvidenceProvided": "supports",
+                    "strengthOfEvidenceProvided": {
+                        "primaryCoding": {
+                            "system": "ClinGen/CGC/VICC "
+                            "Guidelines "
+                            "for "
+                            "Oncogenicity, "
+                            "2022",
+                            "code": "strong",
+                        }
+                    },
+                    "scoreOfEvidenceProvided": 4,
+                    "evidenceOutcome": {
+                        "primaryCoding": {
+                            "system": "ClinGen/CGC/VICC "
+                            "Guidelines "
+                            "for "
+                            "Oncogenicity, "
+                            "2022",
+                            "code": "OS2",
+                        }
+                    },
+                },
+                {
+                    "type": "EvidenceLine",
+                    "specifiedBy": {
+                        "type": "Method",
+                        "name": "ClinGen/CGC/VICC Guidelines for Oncogenicity, 2022",
+                        "methodType": "population_frequency",
+                        "reportedIn": "#/source/pmid:35101336",
+                    },
+                    "directionOfEvidenceProvided": "supports",
+                    "strengthOfEvidenceProvided": {
+                        "primaryCoding": {
+                            "system": "ClinGen/CGC/VICC "
+                            "Guidelines "
+                            "for "
+                            "Oncogenicity, "
+                            "2022",
+                            "code": "supporting",
+                        }
+                    },
+                    "scoreOfEvidenceProvided": 1,
+                    "evidenceOutcome": {
+                        "primaryCoding": {
+                            "system": "ClinGen/CGC/VICC "
+                            "Guidelines "
+                            "for "
+                            "Oncogenicity, "
+                            "2022",
+                            "code": "OP4",
+                        }
+                    },
+                },
+                {
+                    "type": "EvidenceLine",
+                    "specifiedBy": {
+                        "type": "Method",
+                        "name": "ClinGen/CGC/VICC Guidelines for Oncogenicity, 2022",
+                        "methodType": "computational_prediction",
+                        "reportedIn": "#/source/pmid:35101336",
+                    },
+                    "directionOfEvidenceProvided": "supports",
+                    "strengthOfEvidenceProvided": {
+                        "primaryCoding": {
+                            "system": "ClinGen/CGC/VICC "
+                            "Guidelines "
+                            "for "
+                            "Oncogenicity, "
+                            "2022",
+                            "code": "supporting",
+                        }
+                    },
+                    "scoreOfEvidenceProvided": 1,
+                    "evidenceOutcome": {
+                        "primaryCoding": {
+                            "system": "ClinGen/CGC/VICC "
+                            "Guidelines "
+                            "for "
+                            "Oncogenicity, "
+                            "2022",
+                            "code": "OP1",
+                        }
+                    },
+                },
+                {
+                    "type": "EvidenceLine",
+                    "specifiedBy": {
+                        "type": "Method",
+                        "name": "ClinGen/CGC/VICC Guidelines for Oncogenicity, 2022",
+                        "methodType": "somatic_hotspot_recurrence",
+                        "reportedIn": "#/source/pmid:35101336",
+                    },
+                    "directionOfEvidenceProvided": "supports",
+                    "strengthOfEvidenceProvided": {
+                        "primaryCoding": {
+                            "system": "ClinGen/CGC/VICC "
+                            "Guidelines "
+                            "for "
+                            "Oncogenicity, "
+                            "2022",
+                            "code": "supporting",
+                        }
+                    },
+                    "scoreOfEvidenceProvided": 1,
+                    "evidenceOutcome": {
+                        "primaryCoding": {
+                            "system": "ClinGen/CGC/VICC "
+                            "Guidelines "
+                            "for "
+                            "Oncogenicity, "
+                            "2022",
+                            "code": "OP3",
                         }
                     },
                 },
             ],
-            ignore_order=True,
-        )
-        assert diff == {}
-
-        categorical_variation_type = next(
-            (
-                ext.value
-                for ext in gks_mp.extensions
-                if ext.name == "categoricalVariationType"
-            ),
-            None,
-        )
-        assert categorical_variation_type == "CategoricalCnv"
-
-    def test_build_constraints_unsupported_vrs_type(
-        self,
-        monkeypatch,
-    ):
-        # Need to pick non- Gene Mutation MP ID
-        # Mocked value is dummy value purely for test purposes
-        mp = civic.get_molecular_profile_by_id(1243)
-        variation_normalizer = Mock()
-        variation_normalizer.normalize_molecular_profile.return_value = CopyNumberCount(
-            copies=1, location=iriReference("#/location/1")
-        )
-
-        monkeypatch.setattr(
-            CivicGksMolecularProfile, "_variation_normalizer", variation_normalizer
-        )
-        with pytest.raises(
-            CivicGksRecordError,
-            match="Unsupported VRS variation type returned by Variation Normalizer. mpid=1243, type='CopyNumberCount'",
-        ):
-            CivicGksMolecularProfile(mp)
-
-    def test_no_representative_coordinates(self):
-        """Test that empty representative coordinates do not get an extension"""
-        gks_mp = CivicGksMolecularProfile(civic.get_molecular_profile_by_id(2261))
-        assert gks_mp.extensions
-        rep_coord_ext = next(
-            (
-                ext
-                for ext in gks_mp.extensions
-                if ext.name == "representativeVariantCoordinates"
-            ),
-            None,
-        )
-        assert rep_coord_ext is None
-
-
-class TestCivicGksTherapyGroup(object):
-    """Test that CivicGksTherapyGroup works as expected"""
-
-    def test_no_therapies(self):
-        """Test that CivicGksTherapyGroup works as expected when no therapies provided"""
-        with pytest.raises(CivicGksRecordError, match=r"No therapies provided"):
-            CivicGksTherapyGroup(therapies=[], therapy_interaction_type=None)
-
-
-class TestCivicGksEvidence(object):
-    """Test that CivicGksEvidence works as expected"""
-
-    def test_invalid(self, eid9285):
-        """Test that invalid assertions raises custom exception"""
-        with pytest.raises(
-            CivicGksRecordError, match=r"Evidence 9285 is not valid for GKS."
-        ):
-            CivicGksEvidence(eid9285)
-
-
-class TestCivicGksClinSigAssertion(object):
-    """Test that CivicGksClinSigAssertion works as expected"""
-
-    @patch("civicpy.exports.civic_gks_record.CivicGksMolecularProfile")
-    def test_valid_single_therapy(self, test_mp, aid6, gks_aid6, gks_mpid33):
-        """Test that single therapy works as expected"""
-        test_mp.return_value = CategoricalVariant.model_validate(gks_mpid33)
-        record = CivicGksClinSigAssertion(aid6)
-        assert isinstance(record, VariantClinicalSignificanceStatement)
-        assert len(record.hasEvidenceLines) == 1
-
-        # Don't need to test ALL has evidence lines
-        check_evs = []
-        el = record.hasEvidenceLines[0]
-        assert len(el.hasEvidenceItems) == 6
-        for ev in el.hasEvidenceItems:
-            if ev.id == "civic.eid:2997":
-                check_evs.append(ev)
-
-        record_copy = record.model_copy(deep=True)
-        record_copy.hasEvidenceLines[0].hasEvidenceItems = check_evs
-        record_copy = record_copy.model_dump(exclude_none=True)
-        diff = DeepDiff(
-            record_copy, gks_aid6.model_dump(exclude_none=True), ignore_order=True
-        )
-        assert diff == {}, gks_aid6.id
-
-    def test_valid_combination_therapy(self, aid7, mocked_normalizer):
-        """Test that combination therapy works as expected"""
-        record = CivicGksClinSigAssertion(aid7)
-        assert isinstance(record, VariantClinicalSignificanceStatement)
-        assert len(record.hasEvidenceLines) == 1
-        assert len(record.hasEvidenceLines[0].hasEvidenceItems) == 4
-        therapy = record.hasEvidenceLines[0].targetProposition.objectTherapeutic.root
-        assert isinstance(therapy, TherapyGroup)
-        assert therapy.membershipOperator == "AND"
-        assert len(therapy.therapies) == 2
-        therapy_ids = {t.id for t in therapy.therapies}
-        assert therapy_ids == {"civic.tid:19", "civic.tid:22"}
-
-    @patch.object(civic.Assertion, "is_valid_for_gks_json")
-    @patch.object(civic.Assertion, "evidence_items")
-    @patch.object(civic.FusionVariant, "hgvs_expressions", create=True)
-    @patch.object(civic.FusionVariant, "mane_select_transcript", create=True)
-    @patch.object(
-        civic.FusionVariant,
-        "allele_registry_id",
-        create=True,
-        new_callable=PropertyMock,
-    )
-    @patch.object(
-        civic.FusionVariant, "clinvar_entries", create=True, new_callable=PropertyMock
-    )
-    @patch.object(civic.FusionVariant, "coordinates", create=True)
-    @patch.object(
-        civic.FusionVariant, "gene", new=civic.get_gene_by_id(1590), create=True
-    )
-    @patch("civicpy.exports.civic_gks_record.CivicGksMolecularProfile")
-    def test_valid_substitution_therapy(
-        self,
-        test_mp,
-        test_coordinates,
-        test_clinvar_entries,
-        test_allele_registry_id,
-        test_mane_select_transcript,
-        test_hgvs_expressions,
-        test_evidence_items,
-        test_is_valid_for_gks_json,
-        aid19,
-        civic_mpid113,
-    ):
-        """Test that substitution therapy works as expected"""
-        test_mp.return_value = CategoricalVariant.model_validate(civic_mpid113)
-        test_coordinates.return_value = None
-        test_clinvar_entries.return_value = []
-        test_allele_registry_id.return_value = None
-        test_is_valid_for_gks_json.return_value = True
-        test_evidence_items.return_value = []
-        test_hgvs_expressions.return_value = None
-        test_mane_select_transcript.return_value = None
-        record = CivicGksClinSigAssertion(aid19)
-        assert isinstance(record, VariantClinicalSignificanceStatement)
-        assert len(record.hasEvidenceLines) == 1
-        therapy = record.hasEvidenceLines[0].targetProposition.objectTherapeutic.root
-        assert isinstance(therapy, TherapyGroup)
-        assert therapy.membershipOperator == "OR"
-        assert len(therapy.therapies) == 2
-        therapy_ids = {t.id for t in therapy.therapies}
-        assert therapy_ids == {"civic.tid:5", "civic.tid:20"}
-
-    def test_valid_prognostic(self, aid20, mocked_normalizer):
-        """Test that valid prognostic assertion works as expected"""
-        record = CivicGksClinSigAssertion(aid20)
-        assert isinstance(record, VariantClinicalSignificanceStatement)
-        assert len(record.hasEvidenceLines) == 1
-        assert len(record.hasEvidenceLines[0].hasEvidenceItems) == 6
-        assert (
-            record.hasEvidenceLines[0].targetProposition.predicate
-            == "associatedWithWorseOutcomeFor"
-        )
-        assert record.strength.primaryCoding.code.root == "strong"
-        assert record.classification.primaryCoding.code.root == "tier i"
-
-    @patch.object(civic.Assertion, "evidence_items", new_callable=PropertyMock)
-    @patch.object(civic.Evidence, "is_valid_for_gks_json")
-    def test_citations(
-        self, test_is_valid_for_gks_json, test_evidence_items, aid20, mocked_normalizer
-    ):
-        """Test that citations extension is working correctly for EIDs that are not valid for GKS"""
-        test_evidence_items.return_value = [civic.get_evidence_by_id(11881)]
-        test_is_valid_for_gks_json.return_value = False
-
-        record = CivicGksClinSigAssertion(aid20)
-        assert len(record.hasEvidenceLines) == 1
-        assert record.hasEvidenceLines[0].hasEvidenceItems is None
-
-        reported_in = []
-        for r in record.reportedIn:
-            if isinstance(r, iriReference):
-                reported_in.append(r.root)
-            else:
-                reported_in.append(r.model_dump(exclude_none=True))
-
-        assert reported_in == [
-            "https://civicdb.org/links/assertion/20",
-            {
-                "type": "Document",
-                "id": "civic.sid:4914",
-                "name": "Grimwade et al., 1998",
-                "title": "The importance of diagnostic cytogenetics on outcome in AML: analysis of 1,612 patients entered into the MRC AML 10 trial. The Medical Research Council Adult and Children's Leukaemia Working Parties.",
-                "pmid": "9746770",
-                "urls": [
-                    "https://civicdb.org/links/evidence/11881",
-                    "https://civicdb.org/links/source/4914",
-                    "http://www.ncbi.nlm.nih.gov/pubmed/9746770",
+        },
+        "civic.aid:6": {
+            "id": "civic.aid:6",
+            "type": "Statement",
+            "description": "L858R is among the most common sensitizing EGFR "
+            "mutations in NSCLC, and is assessed via DNA "
+            "mutational analysis, including Sanger sequencing and "
+            "next generation sequencing methods. Tyrosine kinase "
+            "inhibitor afatinib is FDA approved as a first line "
+            "systemic therapy in NSCLC with sensitizing EGFR "
+            "mutation (civic.EID:2997).",
+            "specifiedBy": "#/method/civic.method:2019",
+            "reportedIn": [
+                "https://civicdb.org/links/assertion/6",
+                "#/source/civic.sid:1725",
+                "#/source/civic.sid:592",
+                "#/source/civic.sid:679",
+                "#/source/civic.sid:594",
+                "#/source/civic.sid:669",
+                "#/source/civic.sid:1525",
+            ],
+            "proposition": "#/proposition/civic.proposition:-AKWXtNluL_XZYk5cDaaV7bKw6fKlPmD",
+            "direction": "supports",
+            "strength": {
+                "primaryCoding": {
+                    "system": "AMP/ASCO/CAP Guidelines, 2017",
+                    "code": "strong",
+                }
+            },
+            "classification": {
+                "name": "Tier I",
+                "primaryCoding": {
+                    "system": "AMP/ASCO/CAP Guidelines, 2017",
+                    "code": "tier i",
+                },
+            },
+            "hasEvidenceLines": [
+                {
+                    "type": "EvidenceLine",
+                    "targetProposition": "#/proposition/civic.proposition:lzu38uLu_bvAPfb7Jo_ol8741OJaSdnu",
+                    "hasEvidenceItems": [
+                        "#/evidence/civic.eid:2997",
+                        "#/evidence/civic.eid:879",
+                        "#/evidence/civic.eid:982",
+                        "#/evidence/civic.eid:883",
+                        "#/evidence/civic.eid:968",
+                        "#/evidence/civic.eid:2629",
+                    ],
+                    "directionOfEvidenceProvided": "supports",
+                    "strengthOfEvidenceProvided": {
+                        "primaryCoding": {
+                            "system": "AMP/ASCO/CAP Guidelines, 2017",
+                            "code": "A",
+                        }
+                    },
+                }
+            ],
+        },
+        "civic.eid:2629": {
+            "id": "civic.eid:2629",
+            "type": "Statement",
+            "description": "In an in vitro study using NCI-H1666 cells "
+            "(wildtype EGFR) and NCI-H3255 cells (EGFR-L858R), "
+            "inhibition of cell growth was used as an assay to "
+            "determine sensitivity to irreversible tyrosine "
+            "kinase inhibitor (TKI) drugs. Cells with an EGFR "
+            "L858R mutation demonstrated an improved response "
+            "to afatinib (IC50: 0.7nM vs. 60nM) compared to "
+            "wildtype EGFR cells.",
+            "specifiedBy": "#/method/civic.method:2019",
+            "reportedIn": ["#/source/civic.sid:1525"],
+            "proposition": "#/proposition/civic.proposition:lzu38uLu_bvAPfb7Jo_ol8741OJaSdnu",
+            "direction": "supports",
+            "strength": {
+                "name": "Preclinical evidence",
+                "primaryCoding": {
+                    "system": "https://civic.readthedocs.io/en/latest/model/evidence/level.html",
+                    "code": "D",
+                },
+                "mappings": [
+                    {
+                        "coding": {
+                            "name": "preclinical evidence",
+                            "system": "https://go.osu.edu/evidence-codes",
+                            "code": "e000009",
+                        },
+                        "relation": "exactMatch",
+                    }
                 ],
             },
-        ]
+        },
+        "civic.eid:2997": {
+            "id": "civic.eid:2997",
+            "type": "Statement",
+            "description": "Afatinib, an irreversible inhibitor of the ErbB "
+            "family of tyrosine kinases has been approved in "
+            "the US for the first-line treatment of patients "
+            "with metastatic non-small-cell lung cancer (NSCLC) "
+            "who have tumours with EGFR exon 19 deletions or "
+            "exon 21 (L858R) substitution mutations as detected "
+            "by a US FDA-approved test",
+            "specifiedBy": "#/method/civic.method:2019",
+            "reportedIn": ["#/source/civic.sid:1725"],
+            "proposition": "#/proposition/civic.proposition:lzu38uLu_bvAPfb7Jo_ol8741OJaSdnu",
+            "direction": "supports",
+            "strength": {
+                "name": "Validated association",
+                "primaryCoding": {
+                    "system": "https://civic.readthedocs.io/en/latest/model/evidence/level.html",
+                    "code": "A",
+                },
+                "mappings": [
+                    {
+                        "coding": {
+                            "name": "authoritative evidence",
+                            "system": "https://go.osu.edu/evidence-codes",
+                            "code": "e000001",
+                        },
+                        "relation": "exactMatch",
+                    }
+                ],
+            },
+        },
+        "civic.eid:879": {
+            "id": "civic.eid:879",
+            "type": "Statement",
+            "description": "A phase III clinical trial (NCT00949650) found that "
+            "median progression free survival among patients "
+            "with exon 19 deletions or L858R EGFR mutations (n = "
+            "308) was 13.6 months for afatinib and 6.9 months "
+            "for chemotherapy (HR, 0.47; 95% CI, 0.34 to 0.65; P "
+            "= 0.001).",
+            "specifiedBy": "#/method/civic.method:2019",
+            "reportedIn": ["#/source/civic.sid:592"],
+            "proposition": "#/proposition/civic.proposition:nqvFeEaF3J52FxWjzgqxOoafka3s50pY",
+            "direction": "supports",
+            "strength": {
+                "name": "Clinical evidence",
+                "primaryCoding": {
+                    "system": "https://civic.readthedocs.io/en/latest/model/evidence/level.html",
+                    "code": "B",
+                },
+                "mappings": [
+                    {
+                        "coding": {
+                            "name": "clinical cohort evidence",
+                            "system": "https://go.osu.edu/evidence-codes",
+                            "code": "e000005",
+                        },
+                        "relation": "exactMatch",
+                    }
+                ],
+            },
+        },
+        "civic.eid:883": {
+            "id": "civic.eid:883",
+            "type": "Statement",
+            "description": "In a phase 2 study of patients with lung "
+            "adenocarcinoma (stage IIIb with pleural effusion or "
+            "stage IV) and EGFR mutations, treated with afatinib "
+            "were assessed by objective response. 129 patients "
+            "were treated with afatinib. 66% of the 106 patients "
+            "with two common activating EGFR mutations (deletion "
+            "19 or L858R) had an objective response compared to "
+            "39% of 23 patients with less common mutations.",
+            "specifiedBy": "#/method/civic.method:2019",
+            "reportedIn": ["#/source/civic.sid:594"],
+            "proposition": "#/proposition/civic.proposition:nqvFeEaF3J52FxWjzgqxOoafka3s50pY",
+            "direction": "supports",
+            "strength": {
+                "name": "Clinical evidence",
+                "primaryCoding": {
+                    "system": "https://civic.readthedocs.io/en/latest/model/evidence/level.html",
+                    "code": "B",
+                },
+                "mappings": [
+                    {
+                        "coding": {
+                            "name": "clinical cohort evidence",
+                            "system": "https://go.osu.edu/evidence-codes",
+                            "code": "e000005",
+                        },
+                        "relation": "exactMatch",
+                    }
+                ],
+            },
+        },
+        "civic.eid:968": {
+            "id": "civic.eid:968",
+            "type": "Statement",
+            "description": "Cells harboring L858R were sensitive to afatinib. "
+            "This study performed drug response assays using "
+            "five human NSCLC cell lines with various "
+            "combinations of EGFR mutations. In order to "
+            "directly compare the sensitivity of multiple EGFR "
+            "mutations to EGFR-TKIs the authors also generated "
+            "multiple EGFR transduced Ba/F3 stable cell lines "
+            "and evaluated sensitivity to EGFR-TKIs by MTS "
+            "assay.",
+            "specifiedBy": "#/method/civic.method:2019",
+            "reportedIn": ["#/source/civic.sid:669"],
+            "proposition": "#/proposition/civic.proposition:lzu38uLu_bvAPfb7Jo_ol8741OJaSdnu",
+            "direction": "supports",
+            "strength": {
+                "name": "Preclinical evidence",
+                "primaryCoding": {
+                    "system": "https://civic.readthedocs.io/en/latest/model/evidence/level.html",
+                    "code": "D",
+                },
+                "mappings": [
+                    {
+                        "coding": {
+                            "name": "preclinical evidence",
+                            "system": "https://go.osu.edu/evidence-codes",
+                            "code": "e000009",
+                        },
+                        "relation": "exactMatch",
+                    }
+                ],
+            },
+        },
+        "civic.eid:982": {
+            "id": "civic.eid:982",
+            "type": "Statement",
+            "description": "Afatinib is an irreversible covalent inhibitor of "
+            "EGFR (second generation). This Phase III clinical "
+            "trial (LUX-Lung 6; NCT01121393) was performed in "
+            "Asian patients with EGFR mutant advanced NSCLC. 364 "
+            "eligible patients with EGFR mutations were assigned "
+            "to afatinib (n=242) or gemcitabine and cisplatin "
+            "(n=122) treatment. The trial observed significantly "
+            "longer median progression-free survival with "
+            "afatinib vs. gemcitabine and cisplatin treatment "
+            "(11.0 vs. 5.6 months). Afatinib/Chemotherapy group "
+            "compositions: 51.2/50.8 % del 19; 38/37.7 % "
+            "Leu858Arg; 10.8/11.5 % Uncommon.",
+            "specifiedBy": "#/method/civic.method:2019",
+            "reportedIn": ["#/source/civic.sid:679"],
+            "proposition": "#/proposition/civic.proposition:nqvFeEaF3J52FxWjzgqxOoafka3s50pY",
+            "direction": "supports",
+            "strength": {
+                "name": "Clinical evidence",
+                "primaryCoding": {
+                    "system": "https://civic.readthedocs.io/en/latest/model/evidence/level.html",
+                    "code": "B",
+                },
+                "mappings": [
+                    {
+                        "coding": {
+                            "name": "clinical cohort evidence",
+                            "system": "https://go.osu.edu/evidence-codes",
+                            "code": "e000005",
+                        },
+                        "relation": "exactMatch",
+                    }
+                ],
+            },
+        },
+    }
 
 
-class TestCivicGksDiagnosticAssertion(object):
-    """Test that CivicGksDiagnosticAssertion works as expected"""
-
-    def test_valid(
-        self,
-        mocked_normalizer,
-        aid9,
-        aid93,
-        gks_aid93_object_condition,
-        aid115,
-        gks_aid115_object_condition,
-    ):
-        """Test that valid diagnostic assertion works as expected"""
-        record = CivicGksClinSigAssertion(aid9)
-        assert isinstance(record, VariantClinicalSignificanceStatement)
-        assert len(record.hasEvidenceLines) == 1
-        assert len(record.hasEvidenceLines[0].hasEvidenceItems) == 2
-        assert (
-            record.hasEvidenceLines[0].targetProposition.predicate
-            == "isDiagnosticInclusionCriterionFor"
-        )
-        assert record.strength.primaryCoding.code.root == "potential"
-        assert record.classification.primaryCoding.code.root == "tier ii"
-        assert (
-            record.hasEvidenceLines[
-                0
-            ].strengthOfEvidenceProvided.primaryCoding.code.root
-            == "C"
-        )
-
-        # Single phenotype (complex condition set)
-        record = CivicGksClinSigAssertion(aid93)
-        assert isinstance(record, VariantClinicalSignificanceStatement)
-        record_object_condition = record.proposition.objectCondition
-        assert isinstance(record_object_condition, Condition)
-        assert isinstance(record_object_condition.root, ConditionSet)
-        diff = DeepDiff(
-            record_object_condition.model_dump(exclude_none=True),
-            gks_aid93_object_condition,
-            ignore_order=True,
-        )
-        assert diff == {}
-
-        # Phenotypes (complex condition set)
-        record = CivicGksClinSigAssertion(aid115)
-        assert isinstance(record, VariantClinicalSignificanceStatement)
-        record_object_condition = record.proposition.objectCondition
-        assert isinstance(record_object_condition, Condition)
-        assert isinstance(record_object_condition.root, ConditionSet)
-        diff = DeepDiff(
-            record_object_condition.model_dump(exclude_none=True),
-            gks_aid115_object_condition,
-            ignore_order=True,
-        )
-        assert diff == {}
-
-    def test_invalid(self, aid117):
-        """Test that unsupported assertion types raise exceptions"""
-
-        with pytest.raises(
-            CivicGksRecordError,
-            match=re.escape(
-                "Assertion type must be one of ['PREDICTIVE', 'PROGNOSTIC', 'DIAGNOSTIC']"
-            ),
-        ):
-            CivicGksClinSigAssertion(aid117)
+@pytest.fixture(scope="module")
+def gks_bundle_metadata() -> dict[str, Any]:
+    """Return the expected ``metadata`` bundle collection."""
+    return {
+        "VASpecPythonVersion": "test",
+        "createdAt": "2026-08-03",
+        "bundleFormat": "civic-gks-bundle",
+        "bundleFormatVersion": "0.1.0",
+        "statistics": {
+            "collections": {
+                "sequenceReference": {"count": 1},
+                "location": {"count": 1, "types": {"SequenceLocation": 1}},
+                "variant": {"count": 2, "types": {"Allele": 2}},
+                "feature": {"count": 2},
+                "molecularProfile": {"count": 2},
+                "disease": {"count": 3},
+                "phenotype": {"count": 0},
+                "conditionSet": {"count": 0},
+                "therapy": {"count": 1},
+                "therapyGroup": {"count": 0},
+                "variantOrigin": {"count": 1},
+                "source": {"count": 14},
+                "method": {"count": 1},
+                "organization": {"count": 0},
+                "proposition": {
+                    "count": 4,
+                    "types": {
+                        "VariantClinicalSignificanceProposition": 1,
+                        "VariantOncogenicityProposition": 1,
+                        "VariantTherapeuticResponseProposition": 2,
+                    },
+                },
+                "evidence": {"count": 6},
+                "assertion": {"count": 2},
+            }
+        },
+    }
 
 
-class TestCivicGksOncogenicAssertion(object):
-    """Test that CivicGksOncogenicAssertion works as expected"""
-
-    @patch("civicpy.exports.civic_gks_record.CivicGksMolecularProfile")
-    def test_valid(
-        self,
-        test_mp,
-        civic_mpid113,
-        aid202,
-        gks_aid202,
-    ):
-        """Test that valid oncogenic assertions works as expected"""
-
-        def evidence_key(item: dict) -> str:
-            return item["evidenceOutcome"]["primaryCoding"]["code"]
-
-        test_mp.return_value = CategoricalVariant.model_validate(civic_mpid113)
-        record = CivicGksOncogenicAssertion(aid202, approval=None)
-
-        assert isinstance(record, VariantOncogenicityStatement)
-
-        actual = record.model_dump(exclude_none=True)
-        expected = gks_aid202.model_dump(exclude_none=True)
-
-        assert set(actual.keys()) == set(expected.keys())
-
-        # Split out due to large record
-        for key in expected:
-            if key == "hasEvidenceLines":
-                actual_evidence = actual[key]
-                expected_evidence = expected[key]
-
-                assert len(actual_evidence) == len(expected_evidence), (
-                    f"Mismatch in hasEvidenceLines length: "
-                    f"actual={len(actual_evidence)}, expected={len(expected_evidence)}"
-                )
-
-                actual_by_code = {evidence_key(item): item for item in actual_evidence}
-                expected_by_code = {
-                    evidence_key(item): item for item in expected_evidence
-                }
-
-                assert set(actual_by_code) == set(expected_by_code), (
-                    "Mismatch in hasEvidence evidenceOutcome.primaryCoding.code values"
-                )
-
-                for code in expected_by_code:
-                    diff = DeepDiff(
-                        actual_by_code[code],
-                        expected_by_code[code],
-                        ignore_order=True,
-                    )
-
-                    assert diff == {}, (
-                        "Mismatch in hasEvidence item with "
-                        f"evidenceOutcome.primaryCoding.code={code}"
-                    )
-
-                continue
-
-            diff = DeepDiff(
-                actual[key],
-                expected[key],
-                ignore_order=True,
-            )
-
-            assert diff == {}, f"Mismatch in key: {key}"
-
-    def test_invalid(self, aid6):
-        """Test that unsupported assertion types raise exceptions"""
-
-        with pytest.raises(
-            CivicGksRecordError,
-            match=re.escape("Assertion type must be one of ['ONCOGENIC']"),
-        ):
-            CivicGksOncogenicAssertion(aid6)
-
-
-class TestCivicGksRecord(object):
-    """Test that GKS Record helper functions work correctly"""
-
-    @patch("civicpy.exports.civic_gks_record.VariationNormalizerRESTDataProxy")
-    def test_configured_variation_normalizer_is_shared(self, mock_rest_normalizer):
-        original_normalizer = CivicGksMolecularProfile._variation_normalizer
-        variation_normalizer = Mock(spec=VariationNormalizerDataProxy)
-
-        try:
-            CivicGksMolecularProfile.configure_variation_normalizer(
-                variation_normalizer
-            )
-
-            assert (
-                CivicGksMolecularProfile._get_variation_normalizer()
-                is variation_normalizer
-            )
-            assert (
-                CivicGksMolecularProfile._get_variation_normalizer()
-                is variation_normalizer
-            )
-            assert "_variation_normalizer" not in CivicGksMolecularProfile.model_fields
-            mock_rest_normalizer.assert_not_called()
-        finally:
-            CivicGksMolecularProfile._variation_normalizer = original_normalizer
-
-    @patch("civicpy.exports.civic_gks_record.VariationNormalizerRESTDataProxy")
-    def test_default_variation_normalizer_is_initialized_lazily(
-        self, mock_rest_normalizer
-    ):
-        original_normalizer = CivicGksMolecularProfile._variation_normalizer
-        variation_normalizer = Mock(spec=VariationNormalizerDataProxy)
-        mock_rest_normalizer.return_value = variation_normalizer
-
-        try:
-            CivicGksMolecularProfile._variation_normalizer = None
-
-            assert (
-                CivicGksMolecularProfile._get_variation_normalizer()
-                is variation_normalizer
-            )
-            assert (
-                CivicGksMolecularProfile._get_variation_normalizer()
-                is variation_normalizer
-            )
-            mock_rest_normalizer.assert_called_once_with()
-        finally:
-            CivicGksMolecularProfile._variation_normalizer = original_normalizer
-
-    def test_unsupported_assertion_type(self, mocked_normalizer):
-        """Test that unsupported assertion types raise NotImplementedError"""
-
-        with pytest.raises(
-            NotImplementedError,
-            match=r"Assertion type PREDISPOSING is not currently supported",
-        ):
-            create_gks_record_from_assertion(civic.get_assertion_by_id(17))
-
-    @patch("civicpy.exports.civic_gks_record.CivicGksClinSigAssertion")
-    def test_factory_preserves_positional_approval(self, mock_gks_assertion, aid6):
-        """The factory retains its existing positional approval argument."""
-        approval = Mock()
-
-        create_gks_record_from_assertion(aid6, approval)
-
-        mock_gks_assertion.assert_called_once_with(
-            aid6,
-            approval=approval,
-        )
-
-    @pytest.mark.parametrize(
-        (
-            "civic_assertion_fixture_name",
-            "submission_type_filter",
-            "should_raise_error",
-        ),
-        (
-            [
-                "aid202",
-                ClinVarSubmissionType.ONCOGENICITY,
-                False,
-            ],
-            [
-                "aid202",
-                ClinVarSubmissionType.CLINICAL_IMPACT,
-                True,
-            ],
-            [
-                "aid9",
-                ClinVarSubmissionType.CLINICAL_IMPACT,
-                False,
-            ],
-            [
-                "aid9",
-                ClinVarSubmissionType.ONCOGENICITY,
-                True,
-            ],
-            [
-                "aid20",
-                ClinVarSubmissionType.CLINICAL_IMPACT,
-                False,
-            ],
-            [
-                "aid20",
-                ClinVarSubmissionType.ONCOGENICITY,
-                True,
-            ],
-            [
-                "aid6",
-                ClinVarSubmissionType.CLINICAL_IMPACT,
-                False,
-            ],
-            [
-                "aid6",
-                ClinVarSubmissionType.ONCOGENICITY,
-                True,
-            ],
-        ),
-    )
-    def test_create_gks_record_from_assertion_filter(
-        self,
-        request,
-        civic_assertion_fixture_name,
-        submission_type_filter,
-        should_raise_error,
-        mocked_normalizer,
-    ):
-        """Test that create_gks_record_from_assertion works correctly when submission filter is applied"""
-        civic_aid = request.getfixturevalue(civic_assertion_fixture_name)
-        if should_raise_error:
-            with pytest.raises(
-                NotImplementedError,
-                match=rf"Assertion type {civic_aid.assertion_type} is not supported for ClinVar submission type {submission_type_filter.value}",
-            ):
-                create_gks_record_from_assertion(
-                    civic_aid,
-                    submission_type_filter=submission_type_filter,
-                )
-        else:
-            assert create_gks_record_from_assertion(
-                civic_aid,
-                submission_type_filter=submission_type_filter,
-            )
-
-    def test_clinvar_accession_ext(self, mocked_normalizer):
-        a = civic.get_assertion_by_id(193)
-        record = create_gks_record_from_assertion(
-            a,
-            approval=a.approvals[0],
-        )
-        assert isinstance(record, VariantClinicalSignificanceStatement)
-        assert [ext.model_dump(exclude_none=True) for ext in record.extensions] == [
-            {"name": "clinvarAccession", "value": "SCV007542591"}
-        ]
-
-    def test_assertion_invalid(self, aid117, mocked_normalizer):
-        """Test that invalid assertion raise exceptions"""
-
-        with pytest.raises(
-            CivicGksRecordError,
-            match=re.escape(
-                "Assertion type must be one of ['PREDICTIVE', 'PROGNOSTIC', 'DIAGNOSTIC']"
-            ),
-        ):
-            CivicGksClinSigAssertion(aid117)
+@pytest.fixture(scope="module")
+def gks_bundle_expected(
+    gks_bundle_sequence_references,
+    gks_bundle_locations,
+    gks_bundle_variants,
+    gks_bundle_features,
+    gks_bundle_molecular_profiles,
+    gks_bundle_diseases,
+    gks_bundle_condition_sets,
+    gks_bundle_therapies,
+    gks_bundle_therapy_groups,
+    gks_bundle_variant_origins,
+    gks_bundle_sources,
+    gks_bundle_methods,
+    gks_bundle_organizations,
+    gks_bundle_propositions,
+    gks_bundle_statement_objects,
+    gks_bundle_metadata,
+) -> dict[str, Any]:
+    """Compose the complete expected bundle from its collection fixtures."""
+    return {
+        "sequenceReference": gks_bundle_sequence_references,
+        "location": gks_bundle_locations,
+        "variant": gks_bundle_variants,
+        "feature": gks_bundle_features,
+        "molecularProfile": gks_bundle_molecular_profiles,
+        "disease": gks_bundle_diseases,
+        "phenotype": {},
+        "conditionSet": gks_bundle_condition_sets,
+        "therapy": gks_bundle_therapies,
+        "therapyGroup": gks_bundle_therapy_groups,
+        "variantOrigin": gks_bundle_variant_origins,
+        "source": gks_bundle_sources,
+        "method": gks_bundle_methods,
+        "organization": gks_bundle_organizations,
+        "proposition": gks_bundle_propositions,
+        "evidence": {
+            identifier: statement
+            for identifier, statement in gks_bundle_statement_objects.items()
+            if identifier.startswith("civic.eid:")
+        },
+        "assertion": {
+            identifier: statement
+            for identifier, statement in gks_bundle_statement_objects.items()
+            if identifier.startswith("civic.aid:")
+        },
+        "metadata": gks_bundle_metadata,
+        "failedAssertionIds": [],
+        "errors": [],
+    }
