@@ -23,7 +23,11 @@ def _bundle_assertion_ids(bundle: dict[str, Any]) -> set[str]:
 
 def check_metadata(metadata: dict[str, Any], bundle: bool = False) -> None:
     """Check that metadata output is correct"""
-    expected_keys = {"VASpecPythonVersion", "createdAt"}
+    expected_keys = {
+        "implementationVersions",
+        "specificationVersions",
+        "createdAt",
+    }
     if bundle:
         expected_keys.update(
             {
@@ -42,8 +46,23 @@ def check_metadata(metadata: dict[str, Any], bundle: bool = False) -> None:
             for collection in statistics["collections"].values()
         )
     assert set(metadata.keys()) == expected_keys
-    va_spec_python_version = metadata["VASpecPythonVersion"]
-    assert isinstance(va_spec_python_version, str) and va_spec_python_version
+    implementation_versions = metadata["implementationVersions"]
+    assert set(implementation_versions) == {
+        "VRSPython",
+        "CatVRSPython",
+        "VASpecPython",
+    }
+    assert all(
+        isinstance(version, str) and version
+        for version in implementation_versions.values()
+    )
+
+    specification_versions = metadata["specificationVersions"]
+    assert set(specification_versions) == {"GKSCore", "VRS", "CatVRS", "VASpec"}
+    assert all(
+        isinstance(version, str) and version
+        for version in specification_versions.values()
+    )
 
     created_at = metadata["createdAt"]
     assert datetime.strptime(created_at, "%Y-%m-%d")

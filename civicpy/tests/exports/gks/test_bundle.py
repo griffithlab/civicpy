@@ -23,6 +23,27 @@ from civicpy.exports.gks.bundle import GksBundle, build_gks_bundle
 class TestCivicGksBundleOutput:
     """Test the optional, reference-linked GKS Bundle Format export."""
 
+    def test_metadata_schema_uses_public_version_aliases(self) -> None:
+        """Expose grouped version provenance with acronym-preserving names."""
+        schema = GksOutputMetadata.model_json_schema(by_alias=True)
+
+        assert set(schema["properties"]) == {
+            "implementationVersions",
+            "specificationVersions",
+            "createdAt",
+        }
+        assert set(schema["$defs"]["ImplementationVersions"]["properties"]) == {
+            "VRSPython",
+            "CatVRSPython",
+            "VASpecPython",
+        }
+        assert set(schema["$defs"]["SpecificationVersions"]["properties"]) == {
+            "GKSCore",
+            "VRS",
+            "CatVRS",
+            "VASpec",
+        }
+
     def test_schema_describes_concrete_bundle_objects(self) -> None:
         """Expose upstream GKS models instead of arbitrary JSON objects."""
         schema = GksBundle.model_json_schema()
@@ -164,7 +185,7 @@ class TestCivicGksBundleOutput:
 
         bundle = build_gks_bundle(
             [],
-            GksOutputMetadata(va_spec_python_version="test", created_at="2026-08-03"),
+            GksOutputMetadata(created_at="2026-08-03"),
             [error],
         )
 
@@ -260,7 +281,7 @@ class TestCivicGksBundleOutput:
 
         bundle = build_gks_bundle(
             [second_record, first_record],
-            GksOutputMetadata(va_spec_python_version="test", created_at="2026-08-03"),
+            GksOutputMetadata(created_at="2026-08-03"),
             [],
         )
 
@@ -303,7 +324,7 @@ class TestCivicGksBundleOutput:
 
         bundle = build_gks_bundle(
             [record],
-            GksOutputMetadata(va_spec_python_version="test", created_at="2026-08-03"),
+            GksOutputMetadata(created_at="2026-08-03"),
             [],
         )
 
@@ -373,7 +394,7 @@ class TestCivicGksBundleOutput:
 
         bundle = build_gks_bundle(
             [record],
-            GksOutputMetadata(va_spec_python_version="test", created_at="2026-08-03"),
+            GksOutputMetadata(created_at="2026-08-03"),
             [],
         )
 
@@ -407,8 +428,6 @@ class TestCivicGksBundleOutput:
         with pytest.raises(ValidationError):
             build_gks_bundle(
                 [record],
-                GksOutputMetadata(
-                    va_spec_python_version="test", created_at="2026-08-03"
-                ),
+                GksOutputMetadata(created_at="2026-08-03"),
                 [],
             )
