@@ -104,11 +104,30 @@ class TestCivicGksBundleOutput:
             "protein",
             "coding",
             "genomic",
-            "unclassified",
+            "other",
+            "unsupported",
         }
-        for representation_schema in variant_schema["properties"].values():
+        vrs_representation_schemas = {
+            key: value
+            for key, value in variant_schema["properties"].items()
+            if key != "unsupported"
+        }
+        for representation_schema in vrs_representation_schemas.values():
             assert representation_schema["description"]
             assert len(representation_schema["additionalProperties"]["anyOf"]) == 2
+        assert variant_schema["properties"]["unsupported"][
+            "description"
+        ] == (
+            "Original variant identifier and label used when current tooling "
+            "cannot represent the variant using VRS."
+        )
+        assert variant_schema["properties"]["unsupported"]["$ref"].endswith(
+            "/Coding"
+        )
+        assert variant_schema["properties"]["other"]["description"] == (
+            "VRS representations that are not clearly protein, coding, or "
+            "genomic."
+        )
         assert {
             "Adjacency",
             "CisPhasedBlock",
@@ -382,6 +401,68 @@ class TestCivicGksBundleOutput:
             "#/variant/civic.vid:42/protein/ga4gh:VA.allele",
         ]
         assert bundle.metadata.statistics.collections["variant"].types == {"Allele": 2}
+
+    def test_represents_non_vrs_variant_as_coding(self) -> None:
+        """Keep CIViC variants without VRS representations as Coding."""
+        record = Mock()
+        record.model_dump.return_value = {
+            "id": "civic.aid:1",
+            "type": "Statement",
+            "subject": {
+                "id": "civic.mpid:1937",
+                "type": "CategoricalVariant",
+                "mappings": [
+                    {
+                        "coding": {
+                            "id": "civic.vid:2061",
+                            "code": "2061",
+                            "name": "Gain-of-Function",
+                            "system": "https://civicdb.org/links/variant/",
+                            "extensions": [
+                                {
+                                    "name": "subtype",
+                                    "value": "gene_variant",
+                                }
+                            ],
+                        },
+                        "relation": "exactMatch",
+                    }
+                ],
+                "extensions": [
+                    {
+                        "name": "categoricalVariationType",
+                        "value": "Undefined",
+                    }
+                ],
+            },
+        }
+
+        bundle = build_gks_bundle(
+            [record],
+            GksOutputMetadata(created_at="2026-08-03"),
+            [],
+        )
+
+        assert bundle.variant == {
+            "civic.vid:2061": {
+                "unsupported": {
+                    "id": "civic.vid:2061",
+                    "code": "2061",
+                    "name": "Gain-of-Function",
+                    "system": "https://civicdb.org/links/variant/",
+                    "extensions": [
+                        {
+                            "name": "subtype",
+                            "value": "gene_variant",
+                        }
+                    ],
+                }
+            }
+        }
+        assert bundle.metadata.statistics.collections["variant"].count == 1
+        assert bundle.metadata.statistics.collections["variant"].types == {
+            "Coding": 1
+        }
 
     def test_references_condition_and_therapy_groups_without_ids(self) -> None:
         """Assign deterministic local IDs to referenceable group value objects."""

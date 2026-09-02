@@ -16,7 +16,7 @@ from enum import Enum
 from typing import Annotated, Any, TypeAlias
 
 from ga4gh.cat_vrs.models import CategoricalVariant
-from ga4gh.core.models import MappableConcept
+from ga4gh.core.models import Coding, MappableConcept
 from ga4gh.va_spec.aac_2017 import VariantClinicalSignificanceStatement
 from ga4gh.va_spec.base import (
     Agent,
@@ -166,12 +166,13 @@ class Collection(str, Enum):
 
 
 class VariantRepresentation(str, Enum):
-    """Coordinate levels used to group VRS representations of a CIViC variant."""
+    """Representation levels used to group CIViC variants."""
 
     PROTEIN = "protein"
     CODING = "coding"
     GENOMIC = "genomic"
-    UNCLASSIFIED = "unclassified"
+    OTHER = "other"
+    UNSUPPORTED = "unsupported"
 
 
 _COLLECTION_DESCRIPTIONS: Mapping[Collection, str] = {
@@ -265,9 +266,12 @@ _VARIANT_REPRESENTATION_DESCRIPTIONS: Mapping[VariantRepresentation, str] = {
     VariantRepresentation.GENOMIC: (
         "HGVS genomic expressions and representative genomic coordinates."
     ),
-    VariantRepresentation.UNCLASSIFIED: (
-        "Variant representations that could not be assigned to protein, coding, "
-        "or genomic coordinates."
+    VariantRepresentation.OTHER: (
+        "VRS representations that are not clearly protein, coding, or genomic."
+    ),
+    VariantRepresentation.UNSUPPORTED: (
+        "Original variant identifier and label used when current tooling "
+        "cannot represent the variant using VRS."
     ),
 }
 
@@ -299,36 +303,61 @@ def _variant_representations_schema() -> WithJsonSchema:
             ]
         },
     }
+    properties = {
+        representation.value: {
+            **representation_collection,
+            "description": _VARIANT_REPRESENTATION_DESCRIPTIONS[
+                representation
+            ],
+        }
+        for representation in VariantRepresentation
+        if representation is not VariantRepresentation.UNSUPPORTED
+    }
+    properties[VariantRepresentation.UNSUPPORTED.value] = {
+        "$ref": Coding.schema_id(),
+        "description": _VARIANT_REPRESENTATION_DESCRIPTIONS[
+            VariantRepresentation.UNSUPPORTED
+        ],
+    }
+
     return WithJsonSchema(
         {
             "type": "object",
-            "properties": {
-                representation.value: {
-                    **representation_collection,
-                    "description": _VARIANT_REPRESENTATION_DESCRIPTIONS[
-                        representation
-                    ],
-                }
-                for representation in VariantRepresentation
-            },
+            "properties": properties,
             "additionalProperties": False,
         }
     )
 
 
 VariantRepresentations: TypeAlias = Annotated[
-    dict[
-        str,
-        dict[
-            str,
-            Annotated[
-                GksBundleObject,
-                _external_gks_schema(Allele, CopyNumberChange),
-            ],
-        ],
-    ],
+    dict[str, Any],
     _variant_representations_schema(),
 ]
+
+
+def _count_variant_representation_types(
+    variants: Mapping[str, GksBundleObject],
+) -> dict[str, int]:
+    """Count concrete object types stored in variant representations.
+
+    :param variants: Variant representations keyed by CIViC variant ID.
+    :return: Counts keyed by representation object type.
+    """
+    type_counts: Counter[str] = Counter()
+    unsupported_field = VariantRepresentation.UNSUPPORTED.value
+
+    for representations in variants.values():
+        if unsupported_field in representations:
+            type_counts["Coding"] += 1
+
+        for representation, variations in representations.items():
+            if representation == unsupported_field:
+                continue
+
+            for variation in variations.values():
+                type_counts[variation[TYPE_FIELD]] += 1
+
+    return dict(sorted(type_counts.items()))
 
 
 # Include type counts only for collections that can contain more than one type.
@@ -370,16 +399,7 @@ class Statistics(GksModel):
             type_field = _TYPE_COUNT_FIELD_BY_COLLECTION.get(collection)
 
             if collection is Collection.VARIANT:
-                type_counts = dict(
-                    sorted(
-                        Counter(
-                            variation[TYPE_FIELD]
-                            for representations in objects.values()
-                            for variations in representations.values()
-                            for variation in variations.values()
-                        ).items()
-                    )
-                )
+                type_counts = _count_variant_representation_types(objects)
             elif type_field:
                 type_counts = dict(
                     sorted(

@@ -319,10 +319,24 @@ class _BundleBuilder:
         grouped = self._group_vrs_representations(
             variant_id, variations, defining_vrs_ids
         )
-        if self._is_duplicate(Collection.VARIANT, variant_id, grouped):
+        if not grouped:
+            original_variant = self._find_original_variant_coding(
+                molecular_profile, variant_id
+            )
+            if original_variant is None:
+                return
+
+            unsupported = {
+                key: self._replace_nested_objects_with_references(value, key)
+                for key, value in original_variant.items()
+            }
+            self._store_variant_representations(
+                variant_id,
+                {VariantRepresentation.UNSUPPORTED.value: unsupported},
+            )
             return
 
-        self._collections[Collection.VARIANT][variant_id] = {
+        transformed = {
             representation: {
                 vrs_id: {
                     key: self._replace_nested_objects_with_references(value, key)
@@ -332,6 +346,22 @@ class _BundleBuilder:
             }
             for representation, representations in grouped.items()
         }
+
+        self._store_variant_representations(variant_id, transformed)
+
+    def _store_variant_representations(
+        self, variant_id: str, representations: GksBundleObject
+    ) -> None:
+        """Store one CIViC variant's bundle representations.
+
+        :param variant_id: CIViC variant collection key.
+        :param representations: Variant representations to store.
+        :return: ``None``.
+        """
+        if self._is_duplicate(Collection.VARIANT, variant_id, representations):
+            return
+
+        self._collections[Collection.VARIANT][variant_id] = representations
 
     def _collect_vrs_representations(
         self, molecular_profile: Mapping[str, Any]
@@ -374,6 +404,27 @@ class _BundleBuilder:
         return grouped
 
     @staticmethod
+    def _find_original_variant_coding(
+        molecular_profile: Mapping[str, Any], variant_id: str
+    ) -> dict[str, Any] | None:
+        """Return the original variant coding mapped to a non-VRS profile.
+
+        :param molecular_profile: Serialized Cat-VRS molecular profile.
+        :param variant_id: CIViC variant identifier to find.
+        :return: Original variant coding, if the profile maps to it.
+        """
+        for mapping in molecular_profile.get(MAPPINGS_FIELD, []):
+            if not isinstance(mapping, Mapping):
+                continue
+            coding = mapping.get(CODING_FIELD)
+            if not isinstance(coding, Mapping):
+                continue
+            if coding.get(ID_FIELD) == variant_id:
+                return dict(coding)
+
+        return None
+
+    @staticmethod
     def _add_vrs_representation(
         variations: dict[str, dict[str, Any]], value: Any
     ) -> str | None:
@@ -411,7 +462,7 @@ class _BundleBuilder:
         if variation.get(TYPE_FIELD) in _VRS_COPY_NUMBER_TYPES:
             return VariantRepresentation.GENOMIC
 
-        return VariantRepresentation.UNCLASSIFIED
+        return VariantRepresentation.OTHER
 
     @staticmethod
     def _find_civic_variant_id(molecular_profile: Mapping[str, Any]) -> str | None:

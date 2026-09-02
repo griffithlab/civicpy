@@ -332,7 +332,8 @@ The ``metadata`` identifies the bundle format and version.
 ``statistics.collections`` gives the size of every collection. Collections
 that can contain several object types also include counts by type.
 For ``variant``, ``count`` is the number of CIViC variants, while ``types``
-counts their VRS representations as Alleles or copy-number objects.
+counts their representations as Alleles, copy-number objects, or original
+variant identifiers when VRS is unavailable.
 
 The root collections are:
 
@@ -348,8 +349,9 @@ The root collections are:
      - Reusable VRS locations, including sequence locations.
    * - ``variant``
      - VRS representations grouped by ``civic.vid``, then by protein, coding,
-       genomic, or unclassified coordinate level. Each representation retains
-       its GA4GH identifier.
+       genomic, or other level. Each VRS representation retains its GA4GH
+       identifier. Variants that current tooling cannot represent using VRS use
+       ``unsupported`` with the original variant identifier and label.
    * - ``molecularProfile``
      - CIViC molecular profiles represented as GKS categorical variants.
    * - ``feature``, ``disease``, ``phenotype``, and ``conditionSet``
@@ -414,6 +416,8 @@ Molecular-profile constraints and members point to the corresponding nested VRS
 representations, preserving protein, coding, and genomic HGVS forms.
 A defining Allele without an HGVS expression is treated as protein-level because
 CIViC uses it for the molecular profile's protein-sequence consequence.
+If current tooling cannot represent a molecular profile's variant using VRS,
+the original variant identifier and label are included as ``unsupported``.
 
 This excerpt uses computed CIViC GKS identifiers from the test data and
 shows only the Statement collections and ``proposition`` so the links are
