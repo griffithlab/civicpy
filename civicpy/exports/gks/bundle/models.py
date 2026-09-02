@@ -66,6 +66,7 @@ BUNDLE_SCHEMA_FILENAME = (
 BUNDLE_SCHEMA_ID = (
     f"urn:civic:gks-bundle:schema:{BUNDLE_FORMAT_VERSION}"
 )
+CIVIC_KNOWLEDGE_MODEL_URL = "https://civic.readthedocs.io/en/latest/model.html"
 
 
 def _external_gks_schema(
@@ -140,7 +141,6 @@ GksEvidenceId: TypeAlias = Annotated[
 GksAssertionId: TypeAlias = Annotated[
     str, StringConstraints(pattern=r"^civic\.aid:[0-9]+$")
 ]
-_CLOSED_COLLECTION_SCHEMA = {"additionalProperties": False}
 
 
 class Collection(str, Enum):
@@ -174,6 +174,120 @@ class VariantRepresentation(str, Enum):
     UNCLASSIFIED = "unclassified"
 
 
+_COLLECTION_DESCRIPTIONS: Mapping[Collection, str] = {
+    Collection.SEQUENCE_REFERENCE: (
+        "Reference sequences used by variant coordinates and HGVS expressions."
+    ),
+    Collection.LOCATION: (
+        "Representative sequence locations for CIViC Variant coordinates."
+    ),
+    Collection.VARIANT: (
+        "User-defined genomic alterations or related molecular events with "
+        "potential clinical relevance."
+    ),
+    Collection.FEATURE: (
+        "Genes associated with CIViC Variants and Molecular Profiles."
+    ),
+    Collection.MOLECULAR_PROFILE: (
+        "CIViC Molecular Profiles interpreted for clinical relevance; this "
+        "export currently includes profiles with one CIViC Variant."
+    ),
+    Collection.DISEASE: (
+        "Cancer types or subtypes associated with CIViC Evidence Items and "
+        "Assertions."
+    ),
+    Collection.PHENOTYPE: (
+        "Symptoms or abnormalities from the Human Phenotype Ontology that add "
+        "clinical context."
+    ),
+    Collection.CONDITION_SET: (
+        "Disease and phenotype context grouped for reuse in GKS propositions."
+    ),
+    Collection.THERAPY: (
+        "Drugs or treatment types associated with predictive Evidence Items and "
+        "Assertions."
+    ),
+    Collection.THERAPY_GROUP: (
+        "Groups of multiple therapies used in predictive interpretations."
+    ),
+    Collection.VARIANT_ORIGIN: (
+        "Presumed source of a variant in the study context, such as somatic, "
+        "germline, unknown, or not applicable."
+    ),
+    Collection.SOURCE: (
+        "Publications or abstracts cited as support for CIViC Evidence Items "
+        "and Assertions."
+    ),
+    Collection.METHOD: (
+        "Curation or classification method used to produce a CIViC GKS Statement."
+    ),
+    Collection.ORGANIZATION: (
+        "CIViC organizations connected to assertion approvals or submissions."
+    ),
+    Collection.PROPOSITION: (
+        "Structured clinical interpretation evaluated by CIViC Evidence Items "
+        "or Assertions."
+    ),
+    Collection.EVIDENCE: (
+        "Clinical evidence statements manually curated from a source publication."
+    ),
+    Collection.ASSERTION: (
+        "CIViC Assertions that summarize and classify evidence for a Molecular "
+        "Profile in a disease context."
+    ),
+}
+_COLLECTION_KEY_DESCRIPTIONS: Mapping[Collection, str] = {
+    Collection.SEQUENCE_REFERENCE: "refget sequence accessions",
+    Collection.LOCATION: "GA4GH SequenceLocation identifiers",
+    Collection.VARIANT: "CIViC Variant IDs",
+    Collection.FEATURE: "CIViC Gene IDs",
+    Collection.MOLECULAR_PROFILE: "CIViC Molecular Profile IDs",
+    Collection.DISEASE: "CIViC Disease IDs",
+    Collection.PHENOTYPE: "CIViC Phenotype IDs",
+    Collection.CONDITION_SET: "computed bundle-local condition set identifiers",
+    Collection.THERAPY: "CIViC Therapy IDs",
+    Collection.THERAPY_GROUP: "computed bundle-local therapy group identifiers",
+    Collection.VARIANT_ORIGIN: "computed identifiers based on CIViC variant origin codes",
+    Collection.SOURCE: "CIViC Source IDs or PubMed IDs",
+    Collection.METHOD: "CIViC curation method IDs, such as civic.method:2019",
+    Collection.ORGANIZATION: "CIViC Organization IDs",
+    Collection.PROPOSITION: "computed bundle-local proposition identifiers",
+    Collection.EVIDENCE: "CIViC Evidence IDs",
+    Collection.ASSERTION: "CIViC Assertion IDs",
+}
+_VARIANT_REPRESENTATION_DESCRIPTIONS: Mapping[VariantRepresentation, str] = {
+    VariantRepresentation.PROTEIN: (
+        "HGVS protein expressions and other protein-level representations."
+    ),
+    VariantRepresentation.CODING: (
+        "HGVS coding DNA expressions, usually relative to a transcript."
+    ),
+    VariantRepresentation.GENOMIC: (
+        "HGVS genomic expressions and representative genomic coordinates."
+    ),
+    VariantRepresentation.UNCLASSIFIED: (
+        "Variant representations that could not be assigned to protein, coding, "
+        "or genomic coordinates."
+    ),
+}
+
+
+def _closed_collection_schema(collection: Collection) -> dict[str, Any]:
+    """Return schema extras for a closed keyed bundle collection.
+
+    :param collection: Bundle collection to describe.
+    :return: JSON Schema extras that close the collection and describe its
+        contents.
+    """
+    return {
+        "additionalProperties": False,
+        "description": (
+            f"{_COLLECTION_DESCRIPTIONS[collection]} Collection keys are "
+            f"{_COLLECTION_KEY_DESCRIPTIONS[collection]}."
+        ),
+    }
+
+
 def _variant_representations_schema() -> WithJsonSchema:
     """Describe the named coordinate levels containing VRS representations."""
     representation_collection = {
@@ -189,7 +303,12 @@ def _variant_representations_schema() -> WithJsonSchema:
         {
             "type": "object",
             "properties": {
-                representation.value: representation_collection
+                representation.value: {
+                    **representation_collection,
+                    "description": _VARIANT_REPRESENTATION_DESCRIPTIONS[
+                        representation
+                    ],
+                }
                 for representation in VariantRepresentation
             },
             "additionalProperties": False,
@@ -305,7 +424,17 @@ class GksBundle(GksModel):
         json_schema_extra={
             "$id": BUNDLE_SCHEMA_ID,
             "$schema": "https://json-schema.org/draft/2020-12/schema",
-            "description": "CIViC data in the referenced GKS Bundle Format.",
+            "description": (
+                "CIViC organizes curated cancer variant knowledge around "
+                "variants and molecular profiles with evidence from source "
+                "publications, summary assertions, and clinical context such "
+                "as diseases, therapies, phenotypes, variant origins, and "
+                "curating organizations. This schema describes a GA4GH GKS "
+                "representation of those CIViC concepts. Top-level keys use "
+                "CIViC knowledge model terms where possible, with additional "
+                "keys for supporting GKS representation details. For the "
+                f"CIViC data model, see {CIVIC_KNOWLEDGE_MODEL_URL}."
+            ),
             "civicBundleFormat": BUNDLE_FORMAT_NAME,
             "civicBundleFormatVersion": BUNDLE_FORMAT_VERSION,
         },
@@ -317,7 +446,9 @@ class GksBundle(GksModel):
             GksBundleObject,
             _external_gks_schema(SequenceReference),
         ],
-    ] = Field(json_schema_extra=_CLOSED_COLLECTION_SCHEMA)
+    ] = Field(
+        json_schema_extra=_closed_collection_schema(Collection.SEQUENCE_REFERENCE)
+    )
     location: dict[
         GksLocationId,
         Annotated[
@@ -325,10 +456,10 @@ class GksBundle(GksModel):
             _external_gks_schema(SequenceLocation),
         ],
     ] = Field(
-        json_schema_extra=_CLOSED_COLLECTION_SCHEMA
+        json_schema_extra=_closed_collection_schema(Collection.LOCATION)
     )
     variant: dict[GksVariantId, VariantRepresentations] = Field(
-        json_schema_extra=_CLOSED_COLLECTION_SCHEMA
+        json_schema_extra=_closed_collection_schema(Collection.VARIANT)
     )
     feature: dict[
         GksFeatureId,
@@ -337,7 +468,7 @@ class GksBundle(GksModel):
             _external_gks_schema(MappableConcept, concept_type="Gene"),
         ],
     ] = Field(
-        json_schema_extra=_CLOSED_COLLECTION_SCHEMA
+        json_schema_extra=_closed_collection_schema(Collection.FEATURE)
     )
     molecularProfile: dict[
         GksMolecularProfileId,
@@ -345,7 +476,9 @@ class GksBundle(GksModel):
             GksBundleObject,
             _external_gks_schema(CategoricalVariant),
         ],
-    ] = Field(json_schema_extra=_CLOSED_COLLECTION_SCHEMA)
+    ] = Field(
+        json_schema_extra=_closed_collection_schema(Collection.MOLECULAR_PROFILE)
+    )
     disease: dict[
         GksDiseaseId,
         Annotated[
@@ -353,7 +486,7 @@ class GksBundle(GksModel):
             _external_gks_schema(MappableConcept, concept_type="Disease"),
         ],
     ] = Field(
-        json_schema_extra=_CLOSED_COLLECTION_SCHEMA
+        json_schema_extra=_closed_collection_schema(Collection.DISEASE)
     )
     phenotype: dict[
         GksPhenotypeId,
@@ -362,7 +495,7 @@ class GksBundle(GksModel):
             _external_gks_schema(MappableConcept, concept_type="Phenotype"),
         ],
     ] = Field(
-        json_schema_extra=_CLOSED_COLLECTION_SCHEMA
+        json_schema_extra=_closed_collection_schema(Collection.PHENOTYPE)
     )
     conditionSet: dict[
         GksConditionSetId,
@@ -371,7 +504,7 @@ class GksBundle(GksModel):
             _external_gks_schema(ConditionSet),
         ],
     ] = Field(
-        json_schema_extra=_CLOSED_COLLECTION_SCHEMA
+        json_schema_extra=_closed_collection_schema(Collection.CONDITION_SET)
     )
     therapy: dict[
         GksTherapyId,
@@ -380,7 +513,7 @@ class GksBundle(GksModel):
             _external_gks_schema(MappableConcept, concept_type="Therapy"),
         ],
     ] = Field(
-        json_schema_extra=_CLOSED_COLLECTION_SCHEMA
+        json_schema_extra=_closed_collection_schema(Collection.THERAPY)
     )
     therapyGroup: dict[
         GksTherapyGroupId,
@@ -389,7 +522,7 @@ class GksBundle(GksModel):
             _external_gks_schema(TherapyGroup),
         ],
     ] = Field(
-        json_schema_extra=_CLOSED_COLLECTION_SCHEMA
+        json_schema_extra=_closed_collection_schema(Collection.THERAPY_GROUP)
     )
     variantOrigin: dict[
         GksVariantOriginId,
@@ -397,24 +530,26 @@ class GksBundle(GksModel):
             GksBundleObject,
             _external_gks_schema(MappableConcept),
         ],
-    ] = Field(json_schema_extra=_CLOSED_COLLECTION_SCHEMA)
+    ] = Field(
+        json_schema_extra=_closed_collection_schema(Collection.VARIANT_ORIGIN)
+    )
     source: dict[
         GksSourceId,
         Annotated[GksBundleObject, _external_gks_schema(Document)],
     ] = Field(
-        json_schema_extra=_CLOSED_COLLECTION_SCHEMA
+        json_schema_extra=_closed_collection_schema(Collection.SOURCE)
     )
     method: dict[
         GksMethodId,
         Annotated[GksBundleObject, _external_gks_schema(Method)],
     ] = Field(
-        json_schema_extra=_CLOSED_COLLECTION_SCHEMA
+        json_schema_extra=_closed_collection_schema(Collection.METHOD)
     )
     organization: dict[
         GksOrganizationId,
         Annotated[GksBundleObject, _external_gks_schema(Agent)],
     ] = Field(
-        json_schema_extra=_CLOSED_COLLECTION_SCHEMA
+        json_schema_extra=_closed_collection_schema(Collection.ORGANIZATION)
     )
     proposition: dict[
         GksPropositionId,
@@ -429,13 +564,13 @@ class GksBundle(GksModel):
             ),
         ],
     ] = Field(
-        json_schema_extra=_CLOSED_COLLECTION_SCHEMA
+        json_schema_extra=_closed_collection_schema(Collection.PROPOSITION)
     )
     evidence: dict[
         GksEvidenceId,
         Annotated[GksBundleObject, _external_gks_schema(Statement)],
     ] = Field(
-        json_schema_extra=_CLOSED_COLLECTION_SCHEMA
+        json_schema_extra=_closed_collection_schema(Collection.EVIDENCE)
     )
     assertion: dict[
         GksAssertionId,
@@ -447,8 +582,14 @@ class GksBundle(GksModel):
             ),
         ],
     ] = Field(
-        json_schema_extra=_CLOSED_COLLECTION_SCHEMA
+        json_schema_extra=_closed_collection_schema(Collection.ASSERTION)
     )
-    metadata: Metadata
-    failed_assertion_ids: list[int]
-    errors: list[GksAssertionError]
+    metadata: Metadata = Field(
+        description="Bundle format, version, creation, and collection summary information."
+    )
+    failed_assertion_ids: list[int] = Field(
+        description="CIViC Assertion IDs skipped because they could not be converted.",
+    )
+    errors: list[GksAssertionError] = Field(
+        description="Export errors explaining why specific CIViC Assertions were skipped.",
+    )

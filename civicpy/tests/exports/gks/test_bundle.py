@@ -18,6 +18,13 @@ from civicpy.exports.gks.models import (
     GksOutputMetadata,
 )
 from civicpy.exports.gks.bundle import GksBundle, build_gks_bundle
+from civicpy.exports.gks.bundle.models import (
+    _COLLECTION_DESCRIPTIONS,
+    _COLLECTION_KEY_DESCRIPTIONS,
+    _VARIANT_REPRESENTATION_DESCRIPTIONS,
+    Collection,
+    VariantRepresentation,
+)
 
 
 class TestCivicGksBundleOutput:
@@ -70,8 +77,16 @@ class TestCivicGksBundleOutput:
         }
         for collection, key_pattern in collection_key_patterns.items():
             collection_schema = properties[collection]
+            assert collection_schema["description"]
             assert collection_schema["additionalProperties"] is False
             assert key_pattern in collection_schema["patternProperties"]
+
+        for property_name in (
+            "metadata",
+            "failedAssertionIds",
+            "errors",
+        ):
+            assert properties[property_name]["description"]
 
         assert (
             len(
@@ -92,6 +107,7 @@ class TestCivicGksBundleOutput:
             "unclassified",
         }
         for representation_schema in variant_schema["properties"].values():
+            assert representation_schema["description"]
             assert len(representation_schema["additionalProperties"]["anyOf"]) == 2
         assert {
             "Adjacency",
@@ -175,6 +191,19 @@ class TestCivicGksBundleOutput:
                 },
             ]
         }
+
+    def test_bundle_schema_description_mappings_cover_all_enums(self) -> None:
+        """Require schema descriptions when bundle enum values are added."""
+        assert set(_COLLECTION_DESCRIPTIONS) == set(Collection)
+        assert all(_COLLECTION_DESCRIPTIONS.values())
+
+        assert set(_COLLECTION_KEY_DESCRIPTIONS) == set(Collection)
+        assert all(_COLLECTION_KEY_DESCRIPTIONS.values())
+
+        assert set(_VARIANT_REPRESENTATION_DESCRIPTIONS) == set(
+            VariantRepresentation
+        )
+        assert all(_VARIANT_REPRESENTATION_DESCRIPTIONS.values())
 
     def test_builds_empty_bundle_with_errors(self) -> None:
         """Retain errors and zero counts when no Statements are available."""

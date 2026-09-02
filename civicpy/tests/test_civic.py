@@ -813,7 +813,7 @@ class TestSource(object):
     def test_get_asco_source_by_id(self):
         s = civic.get_asco_source_by_id("144555")
         assert s.citation_id == "144555"
-        assert s.asco_abstract_id == 5005
+        assert s.asco_abstract_id == "5005"
         assert s.source_type == "ASCO"
 
 

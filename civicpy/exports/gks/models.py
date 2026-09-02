@@ -92,17 +92,23 @@ class GksOutputMetadata(GksModel):
 
     implementation_versions: ImplementationVersions = Field(
         alias="implementationVersions",
+        description="Reference implementation package versions used to create this export.",
         default_factory=ImplementationVersions,
     )
     specification_versions: SpecificationVersions = Field(
         alias="specificationVersions",
+        description="GA4GH specification versions represented in this export.",
         default_factory=SpecificationVersions,
     )
-    created_at: str
+    created_at: str = Field(description="Date this export was created.")
 
 
 class GksAssertionError(GksModel):
     """Describe a CIViC Assertion that could not become a GKS Statement."""
 
-    assertion_id: int
-    message: str
+    assertion_id: int = Field(
+        description="CIViC Assertion ID that could not be exported.",
+    )
+    message: str = Field(
+        description="Short explanation of why the Assertion could not be exported.",
+    )

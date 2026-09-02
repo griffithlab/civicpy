@@ -12,6 +12,7 @@ from civicpy.exports.gks.bundle import GksBundle
 from civicpy.exports.gks.bundle.models import (
     BUNDLE_SCHEMA_FILENAME,
     BUNDLE_SCHEMA_ID,
+    CIVIC_KNOWLEDGE_MODEL_URL,
 )
 from civicpy.exports.civic_gks_writer import GksOutput
 
@@ -92,7 +93,15 @@ class TestCli(object):
         assert schema["$schema"] == "https://json-schema.org/draft/2020-12/schema"
         assert schema["$id"] == BUNDLE_SCHEMA_ID
         assert schema["description"] == (
-            "CIViC data in the referenced GKS Bundle Format."
+            "CIViC organizes curated cancer variant knowledge around "
+            "variants and molecular profiles with evidence from source "
+            "publications, summary assertions, and clinical context such "
+            "as diseases, therapies, phenotypes, variant origins, and "
+            "curating organizations. This schema describes a GA4GH GKS "
+            "representation of those CIViC concepts. Top-level keys use "
+            "CIViC knowledge model terms where possible, with additional "
+            "keys for supporting GKS representation details. For the "
+            f"CIViC data model, see {CIVIC_KNOWLEDGE_MODEL_URL}."
         )
         assert schema["civicBundleFormat"] == "civic-gks-bundle"
         assert schema["civicBundleFormatVersion"] == "0.1.0"
