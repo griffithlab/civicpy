@@ -60,12 +60,8 @@ from civicpy.exports.gks.models import (
 
 GksBundleObject: TypeAlias = dict[str, Any]
 GksBundleReference: TypeAlias = str
-BUNDLE_SCHEMA_FILENAME = (
-    f"{BUNDLE_FORMAT_NAME}-v{BUNDLE_FORMAT_VERSION}.schema.json"
-)
-BUNDLE_SCHEMA_ID = (
-    f"urn:civic:gks-bundle:schema:{BUNDLE_FORMAT_VERSION}"
-)
+BUNDLE_SCHEMA_FILENAME = f"{BUNDLE_FORMAT_NAME}-v{BUNDLE_FORMAT_VERSION}.schema.json"
+BUNDLE_SCHEMA_ID = f"urn:civic:gks-bundle:schema:{BUNDLE_FORMAT_VERSION}"
 CIVIC_KNOWLEDGE_MODEL_URL = "https://civic.readthedocs.io/en/latest/model.html"
 
 
@@ -194,8 +190,7 @@ _COLLECTION_DESCRIPTIONS: Mapping[Collection, str] = {
         "export currently includes profiles with one CIViC Variant."
     ),
     Collection.DISEASE: (
-        "Cancer types or subtypes associated with CIViC Evidence Items and "
-        "Assertions."
+        "Cancer types or subtypes associated with CIViC Evidence Items and Assertions."
     ),
     Collection.PHENOTYPE: (
         "Symptoms or abnormalities from the Human Phenotype Ontology that add "
@@ -306,9 +301,7 @@ def _variant_representations_schema() -> WithJsonSchema:
     properties = {
         representation.value: {
             **representation_collection,
-            "description": _VARIANT_REPRESENTATION_DESCRIPTIONS[
-                representation
-            ],
+            "description": _VARIANT_REPRESENTATION_DESCRIPTIONS[representation],
         }
         for representation in VariantRepresentation
         if representation is not VariantRepresentation.UNSUPPORTED
@@ -400,6 +393,7 @@ class Statistics(GksModel):
 
             if collection is Collection.VARIANT:
                 type_counts = _count_variant_representation_types(objects)
+                count = sum(len(values) for values in objects.values())
             elif type_field:
                 type_counts = dict(
                     sorted(
@@ -409,11 +403,13 @@ class Statistics(GksModel):
                         ).items()
                     )
                 )
+                count = len(objects)
             else:
                 type_counts = None
+                count = len(objects)
 
             statistics[collection.value] = CollectionStatistics(
-                count=len(objects),
+                count=count,
                 types=type_counts,
             )
 
@@ -475,9 +471,7 @@ class GksBundle(GksModel):
             GksBundleObject,
             _external_gks_schema(SequenceLocation),
         ],
-    ] = Field(
-        json_schema_extra=_closed_collection_schema(Collection.LOCATION)
-    )
+    ] = Field(json_schema_extra=_closed_collection_schema(Collection.LOCATION))
     variant: dict[GksVariantId, VariantRepresentations] = Field(
         json_schema_extra=_closed_collection_schema(Collection.VARIANT)
     )
@@ -487,90 +481,68 @@ class GksBundle(GksModel):
             GksBundleObject,
             _external_gks_schema(MappableConcept, concept_type="Gene"),
         ],
-    ] = Field(
-        json_schema_extra=_closed_collection_schema(Collection.FEATURE)
-    )
+    ] = Field(json_schema_extra=_closed_collection_schema(Collection.FEATURE))
     molecularProfile: dict[
         GksMolecularProfileId,
         Annotated[
             GksBundleObject,
             _external_gks_schema(CategoricalVariant),
         ],
-    ] = Field(
-        json_schema_extra=_closed_collection_schema(Collection.MOLECULAR_PROFILE)
-    )
+    ] = Field(json_schema_extra=_closed_collection_schema(Collection.MOLECULAR_PROFILE))
     disease: dict[
         GksDiseaseId,
         Annotated[
             GksBundleObject,
             _external_gks_schema(MappableConcept, concept_type="Disease"),
         ],
-    ] = Field(
-        json_schema_extra=_closed_collection_schema(Collection.DISEASE)
-    )
+    ] = Field(json_schema_extra=_closed_collection_schema(Collection.DISEASE))
     phenotype: dict[
         GksPhenotypeId,
         Annotated[
             GksBundleObject,
             _external_gks_schema(MappableConcept, concept_type="Phenotype"),
         ],
-    ] = Field(
-        json_schema_extra=_closed_collection_schema(Collection.PHENOTYPE)
-    )
+    ] = Field(json_schema_extra=_closed_collection_schema(Collection.PHENOTYPE))
     conditionSet: dict[
         GksConditionSetId,
         Annotated[
             GksBundleObject,
             _external_gks_schema(ConditionSet),
         ],
-    ] = Field(
-        json_schema_extra=_closed_collection_schema(Collection.CONDITION_SET)
-    )
+    ] = Field(json_schema_extra=_closed_collection_schema(Collection.CONDITION_SET))
     therapy: dict[
         GksTherapyId,
         Annotated[
             GksBundleObject,
             _external_gks_schema(MappableConcept, concept_type="Therapy"),
         ],
-    ] = Field(
-        json_schema_extra=_closed_collection_schema(Collection.THERAPY)
-    )
+    ] = Field(json_schema_extra=_closed_collection_schema(Collection.THERAPY))
     therapyGroup: dict[
         GksTherapyGroupId,
         Annotated[
             GksBundleObject,
             _external_gks_schema(TherapyGroup),
         ],
-    ] = Field(
-        json_schema_extra=_closed_collection_schema(Collection.THERAPY_GROUP)
-    )
+    ] = Field(json_schema_extra=_closed_collection_schema(Collection.THERAPY_GROUP))
     variantOrigin: dict[
         GksVariantOriginId,
         Annotated[
             GksBundleObject,
             _external_gks_schema(MappableConcept),
         ],
-    ] = Field(
-        json_schema_extra=_closed_collection_schema(Collection.VARIANT_ORIGIN)
-    )
+    ] = Field(json_schema_extra=_closed_collection_schema(Collection.VARIANT_ORIGIN))
     source: dict[
         GksSourceId,
         Annotated[GksBundleObject, _external_gks_schema(Document)],
-    ] = Field(
-        json_schema_extra=_closed_collection_schema(Collection.SOURCE)
-    )
+    ] = Field(json_schema_extra=_closed_collection_schema(Collection.SOURCE))
     method: dict[
         GksMethodId,
         Annotated[GksBundleObject, _external_gks_schema(Method)],
-    ] = Field(
-        json_schema_extra=_closed_collection_schema(Collection.METHOD)
-    )
+    ] = Field(json_schema_extra=_closed_collection_schema(Collection.METHOD))
     organization: dict[
         GksOrganizationId,
         Annotated[GksBundleObject, _external_gks_schema(Agent)],
-    ] = Field(
-        json_schema_extra=_closed_collection_schema(Collection.ORGANIZATION)
-    )
+    ] = Field(json_schema_extra=_closed_collection_schema(Collection.ORGANIZATION))
     proposition: dict[
         GksPropositionId,
         Annotated[
@@ -583,15 +555,11 @@ class GksBundle(GksModel):
                 VariantTherapeuticResponseProposition,
             ),
         ],
-    ] = Field(
-        json_schema_extra=_closed_collection_schema(Collection.PROPOSITION)
-    )
+    ] = Field(json_schema_extra=_closed_collection_schema(Collection.PROPOSITION))
     evidence: dict[
         GksEvidenceId,
         Annotated[GksBundleObject, _external_gks_schema(Statement)],
-    ] = Field(
-        json_schema_extra=_closed_collection_schema(Collection.EVIDENCE)
-    )
+    ] = Field(json_schema_extra=_closed_collection_schema(Collection.EVIDENCE))
     assertion: dict[
         GksAssertionId,
         Annotated[
@@ -601,9 +569,7 @@ class GksBundle(GksModel):
                 VariantOncogenicityStatement,
             ),
         ],
-    ] = Field(
-        json_schema_extra=_closed_collection_schema(Collection.ASSERTION)
-    )
+    ] = Field(json_schema_extra=_closed_collection_schema(Collection.ASSERTION))
     metadata: Metadata = Field(
         description="Bundle format, version, creation, and collection summary information."
     )
