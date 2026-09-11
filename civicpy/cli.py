@@ -1,6 +1,11 @@
+"""Define CIViCpy command-line workflows for cache management and data export."""
+
+import json
 import logging
 from collections import OrderedDict
+from collections.abc import Iterable, Iterator
 from pathlib import Path
+from typing import TypeAlias
 
 import click
 import vcfpy
@@ -9,19 +14,22 @@ from civicpy import civic
 from civicpy.__env__ import LOCAL_CACHE_PATH
 from civicpy.__version__ import __version__
 from civicpy.civic import CoordinateQuery
+from civicpy.exports.gks.bundle import GksBundle
+from civicpy.exports.gks.bundle.models import BUNDLE_SCHEMA_FILENAME
+from civicpy.exports.gks.models import GksAssertionError, GksRecord
 from civicpy.exports.civic_gks_record import (
-    CivicGksClinSigAssertion,
     CivicGksRecordError,
-    CivicGksOncogenicAssertion,
     ClinVarSubmissionType,
     create_gks_record_from_assertion,
 )
-from civicpy.exports.civic_gks_writer import CivicGksWriter, GksAssertionError
+from civicpy.exports.civic_gks_writer import CivicGksWriter
 from civicpy.exports.civic_vcf_record import CivicVcfRecord
 from civicpy.exports.civic_vcf_writer import CivicVcfWriter
 
-
 CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
+_ACCEPTED_STATUS = "accepted"
+# An Assertion may have approvals from more than one organization.
+_AssertionApprovals: TypeAlias = tuple[civic.Assertion, tuple[civic.Approval, ...]]
 
 
 @click.group(context_settings=CONTEXT_SETTINGS)
@@ -91,7 +99,7 @@ def create_vcf(vcf_file_path, include_status):
     "-o",
     "--output-json",
     required=True,
-    help="The output file path to write the JSON file to.",
+    help="The output file path to write the dereferenced GKS JSON to.",
     type=click.Path(
         exists=False,
         readable=True,
@@ -101,13 +109,17 @@ def create_vcf(vcf_file_path, include_status):
 )
 def create_gks_json(
     organization_id: int,
-    submission_type: ClinVarSubmissionType,
+    submission_type: str,
     output_json: Path,
 ) -> None:
-    """Create a JSON file for CIViC assertion records approved by a specific organization that are ready for ClinVar submission, represented as GKS objects.
+    """Export ClinVar-ready Assertions as dereferenced GKS JSON.
 
-    Supports simple molecular profiles and diagnostic, prognostic, predictive, or
-    oncogenic assertions.
+    Selects Assertions that the specified CIViC organization approved and marked
+    ready for ClinVar submission. Supports simple molecular profiles and diagnostic,
+    prognostic, predictive, or oncogenic Assertions. The ClinVar Submission API
+    accepts one submission type per request, so ``submission_type`` limits the
+    dereferenced output to either clinical impact (diagnostic, prognostic, and
+    predictive) or oncogenicity Assertions.
 
     The Variation Normalizer REST service defaults to
     ``http://127.0.0.1:8000/variation``. Set
@@ -125,47 +137,221 @@ def create_gks_json(
         Defaults to clinical impact.
     :param output_json: The output file path to write the JSON file to
     """
-    try:
-        civic.get_organization_by_id(organization_id)
-    except Exception:
-        logging.exception("Error getting organization %i", organization_id)
+    if not _organization_exists(organization_id):
         return
 
-    records: list[CivicGksClinSigAssertion] | list[CivicGksOncogenicAssertion] = []
+    submission_type_filter = ClinVarSubmissionType(submission_type)
+    approvals = tuple(
+        civic.get_all_approvals_ready_for_clinvar_submission_for_org(organization_id)
+    )
+    assertions = (approval.assertion for approval in approvals)
+    assertion_approvals = _pair_assertions_with_approvals(assertions, approvals)
+
+    _create_gks_export(
+        assertion_approvals,
+        output_json,
+        submission_type=submission_type_filter,
+        bundle=False,
+    )
+
+
+@cli.command(context_settings=CONTEXT_SETTINGS)
+@click.option(
+    "--organization-id",
+    required=False,
+    help="Only include Assertions approved by this CIViC organization.",
+    type=int,
+)
+@click.option(
+    "-o",
+    "--output-json",
+    required=True,
+    help="The output file path to write the referenced GKS bundle to.",
+    type=click.Path(
+        exists=False,
+        readable=True,
+        dir_okay=False,
+        path_type=Path,
+    ),
+)
+def create_gks_bundle(
+    organization_id: int | None,
+    output_json: Path,
+) -> None:
+    """Export all accepted CIViC Assertions as a referenced GKS bundle.
+
+    By default, selects every accepted Assertion and attaches all of its accepted
+    Approvals. ``organization_id`` instead limits the bundle to Assertions
+    approved by that organization. The bundle contains both clinical significance
+    and oncogenicity Statements.
+
+    Set ``CIVICPY_VARIATION_NORMALIZER_URL`` to use a Variation Normalizer
+    endpoint other than the default.
+
+    \f
+    :param organization_id: Optional CIViC organization whose approved Assertions
+        should be included.
+    :param output_json: Destination JSON filepath.
+    """
+    if organization_id is not None and not _organization_exists(organization_id):
+        return
+
+    assertions: Iterable[civic.Assertion] = civic.get_all_assertions(
+        include_status=[_ACCEPTED_STATUS]
+    )
+    approvals: Iterable[civic.Approval] = civic.get_all_approvals(
+        include_status=[_ACCEPTED_STATUS]
+    )
+
+    if organization_id is not None:
+        approvals = tuple(
+            approval
+            for approval in approvals
+            if approval.organization_id == organization_id
+        )
+        approved_assertion_ids = {approval.assertion_id for approval in approvals}
+        assertions = (
+            assertion
+            for assertion in assertions
+            if assertion.id in approved_assertion_ids
+        )
+
+    assertion_approvals = _pair_assertions_with_approvals(assertions, approvals)
+
+    _create_gks_export(
+        assertion_approvals,
+        output_json,
+        submission_type=None,
+        bundle=True,
+    )
+
+
+@cli.command(context_settings=CONTEXT_SETTINGS)
+def create_gks_bundle_schema() -> None:
+    """Write the CIViC GKS Bundle Format JSON Schema.
+
+    The schema describes the keyed bundle collections, their identifier patterns,
+    and the concrete VRS, Cat-VRS, and VA-Spec models accepted in each collection.
+    It is written to the current directory using a filename derived from the
+    bundle format name and version.
+    """
+    output_json = Path(BUNDLE_SCHEMA_FILENAME)
+    with output_json.open("w", encoding="utf-8") as write_file:
+        json.dump(GksBundle.model_json_schema(), write_file, indent=2)
+
+
+def _create_gks_export(
+    assertion_approvals: Iterable[_AssertionApprovals],
+    output_json: Path,
+    submission_type: ClinVarSubmissionType | None,
+    bundle: bool,
+) -> None:
+    """Transform eligible CIViC Assertions into GKS Statements and write JSON.
+
+    The Statements are written either as the default dereferenced document or as
+    a referenced CIViC GKS bundle, according to ``bundle``.
+
+    :param assertion_approvals: Assertions paired with their applicable approvals.
+    :param output_json: Destination JSON filepath.
+    :param submission_type: ClinVar submission filter, or ``None`` to include all
+        supported Statement types.
+    :param bundle: If ``True``, write a referenced CIViC GKS bundle; otherwise
+        write the default dereferenced GKS JSON document.
+    """
+    gks_records, errors = _transform_assertions_to_gks(
+        assertion_approvals,
+        submission_type,
+    )
+
+    if not gks_records:
+        logging.warning("No eligible Assertions found for GKS export")
+        return
+
+    CivicGksWriter(output_json, gks_records, errors=errors, bundle=bundle)
+
+
+def _transform_assertions_to_gks(
+    assertion_approvals: Iterable[_AssertionApprovals],
+    submission_type: ClinVarSubmissionType | None,
+) -> tuple[list[GksRecord], list[GksAssertionError]]:
+    """Transform eligible CIViC Assertions into VA-Spec GKS Statement models.
+
+    :param assertion_approvals: Assertions paired with their approvals.
+    :param submission_type: Optional ClinVar submission-type filter.
+    :return: Successfully transformed GKS Statements and errors for Assertions
+        that could not be transformed.
+    """
+    gks_records: list[GksRecord] = []
     errors: list[GksAssertionError] = []
 
-    for approval in civic.get_all_approvals_ready_for_clinvar_submission_for_org(
-        organization_id
-    ):
-        assertion = approval.assertion
-        if assertion.is_valid_for_gks_json(emit_warnings=True):
-            try:
-                gks_record = create_gks_record_from_assertion(
-                    assertion,
-                    approval=approval,
-                    submission_type_filter=submission_type,
-                )
-            except (CivicGksRecordError, NotImplementedError) as e:
-                errors.append(
-                    GksAssertionError(assertion_id=assertion.id, message=str(e))
-                )
-                continue
-            records.append(gks_record)
-        else:
+    for assertion, approvals in assertion_approvals:
+        if not assertion.is_valid_for_gks_json(emit_warnings=True):
             errors.append(
                 GksAssertionError(
                     assertion_id=assertion.id,
                     message="Assertion is not valid for GKS JSON. See logs for more details.",
                 )
             )
-    if not records:
-        logging.warning(
-            "No assertions ready for submission to ClinVar found for organization {}".format(
-                organization_id
+            continue
+
+        try:
+            gks_record = create_gks_record_from_assertion(
+                assertion,
+                approval=approvals,
+                submission_type_filter=submission_type,
+            )
+        except (CivicGksRecordError, NotImplementedError) as error:
+            errors.append(
+                GksAssertionError(assertion_id=assertion.id, message=str(error))
+            )
+            continue
+
+        gks_records.append(gks_record)
+
+    return gks_records, errors
+
+
+def _pair_assertions_with_approvals(
+    assertions: Iterable[civic.Assertion],
+    approvals: Iterable[civic.Approval],
+) -> Iterator[_AssertionApprovals]:
+    """Pair each unique Assertion with all of its approvals.
+
+    Assertions without approvals are retained. Assertions and approvals are
+    sorted to make output deterministic regardless of API response ordering.
+
+    :param assertions: Assertions to include.
+    :param approvals: CIViC Approvals to group.
+    :return: Assertions paired with their sorted approvals.
+    """
+    approvals_by_assertion: dict[int, list[civic.Approval]] = {}
+    for approval in approvals:
+        assertion_id = approval.assertion_id
+        approvals_by_assertion.setdefault(assertion_id, []).append(approval)
+
+    assertions_by_id = {assertion.id: assertion for assertion in assertions}
+    for assertion_id in sorted(assertions_by_id):
+        assertion_approvals = tuple(
+            sorted(
+                approvals_by_assertion.get(assertion_id, []),
+                key=lambda approval: (approval.organization_id, approval.id),
             )
         )
-    else:
-        CivicGksWriter(output_json, records, errors=errors)
+        yield assertions_by_id[assertion_id], assertion_approvals
+
+
+def _organization_exists(organization_id: int) -> bool:
+    """Return whether a CIViC organization can be retrieved.
+
+    :param organization_id: CIViC organization identifier to validate.
+    :return: ``True`` when the organization exists; otherwise ``False``.
+    """
+    try:
+        civic.get_organization_by_id(organization_id)
+    except Exception:
+        logging.exception("Error getting organization %i", organization_id)
+        return False
+    return True
 
 
 @cli.command(context_settings=CONTEXT_SETTINGS)

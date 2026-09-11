@@ -1,25 +1,111 @@
+import json
+import tempfile
 from datetime import datetime
 from pathlib import Path
-import pytest
-from unittest.mock import patch
-from civicpy import cli, civic
-import tempfile
-import json
+from typing import Any
+from unittest.mock import Mock, patch
 
+import pytest
+
+from civicpy import civic, cli
+from civicpy.exports.gks.bundle import GksBundle
+from civicpy.exports.gks.bundle.models import (
+    BUNDLE_SCHEMA_FILENAME,
+    BUNDLE_SCHEMA_ID,
+    CIVIC_KNOWLEDGE_MODEL_URL,
+)
 from civicpy.exports.civic_gks_writer import GksOutput
 
 
-def check_metadata(metadata: dict):
-    """Check that metadata output is correct"""
-    assert set(metadata.keys()) == {"va_spec_python_version", "created_at"}
-    va_spec_python_version = metadata["va_spec_python_version"]
-    assert isinstance(va_spec_python_version, str) and va_spec_python_version
+def _bundle_assertion_ids(bundle: dict[str, Any]) -> set[str]:
+    """Return the CIViC Assertion IDs stored in a bundle."""
+    return set(bundle["assertion"])
 
-    created_at = metadata["created_at"]
+
+def check_metadata(metadata: dict[str, Any], bundle: bool = False) -> None:
+    """Check that metadata output is correct"""
+    expected_keys = {
+        "implementationVersions",
+        "specificationVersions",
+        "createdAt",
+    }
+    if bundle:
+        expected_keys.update(
+            {
+                "bundleFormat",
+                "bundleFormatVersion",
+                "statistics",
+            }
+        )
+        assert metadata["bundleFormat"] == "civic-gks-bundle"
+        assert metadata["bundleFormatVersion"] == "0.1.0"
+        statistics = metadata["statistics"]
+        assert set(statistics) == {"collections"}
+        assert all(
+            collection["count"] >= 0
+            and all(count >= 0 for count in collection.get("types", {}).values())
+            for collection in statistics["collections"].values()
+        )
+    assert set(metadata.keys()) == expected_keys
+    implementation_versions = metadata["implementationVersions"]
+    assert set(implementation_versions) == {
+        "VRSPython",
+        "CatVRSPython",
+        "VASpecPython",
+    }
+    assert all(
+        isinstance(version, str) and version
+        for version in implementation_versions.values()
+    )
+
+    specification_versions = metadata["specificationVersions"]
+    assert set(specification_versions) == {"GKSCore", "VRS", "CatVRS", "VASpec"}
+    assert all(
+        isinstance(version, str) and version
+        for version in specification_versions.values()
+    )
+
+    created_at = metadata["createdAt"]
     assert datetime.strptime(created_at, "%Y-%m-%d")
 
 
 class TestCli(object):
+    def test_create_gks_bundle_schema(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Write the public GKS bundle JSON Schema from the CLI."""
+        monkeypatch.chdir(tmp_path)
+        output_path = tmp_path / BUNDLE_SCHEMA_FILENAME
+
+        try:
+            cli.create_gks_bundle_schema([])
+        except SystemExit as error:
+            assert error.code == 0
+
+        with output_path.open() as read_file:
+            schema = json.load(read_file)
+
+        assert schema == GksBundle.model_json_schema()
+        assert "Allele" not in schema["$defs"]
+        assert "VariantOncogenicityStatement" not in schema["$defs"]
+        assert "GksAllele" not in schema["$defs"]
+        assert "GksVariantOncogenicityStatement" not in schema["$defs"]
+        assert schema["$schema"] == "https://json-schema.org/draft/2020-12/schema"
+        assert schema["$id"] == BUNDLE_SCHEMA_ID
+        assert schema["description"] == (
+            "CIViC organizes curated cancer variant knowledge around "
+            "variants and molecular profiles with evidence from source "
+            "publications, summary assertions, and clinical context such "
+            "as diseases, therapies, phenotypes, variant origins, and "
+            "curating organizations. This schema describes a GA4GH GKS "
+            "representation of those CIViC concepts. Top-level keys use "
+            "CIViC knowledge model terms where possible, with additional "
+            "keys for supporting GKS representation details. For the "
+            f"CIViC data model, see {CIVIC_KNOWLEDGE_MODEL_URL}."
+        )
+        assert schema["civicBundleFormat"] == "civic-gks-bundle"
+        assert schema["civicBundleFormatVersion"] == "0.1.0"
+
     @pytest.mark.skip(reason="Long running test")
     def test_create_cache(self):
         tmp_file = tempfile.NamedTemporaryFile("w", delete=False)
@@ -34,42 +120,165 @@ class TestCli(object):
             ["-v", tmp_file.name, "--include-status", "accepted"], standalone_mode=False
         )
 
+    @patch("civicpy.civic.get_all_assertions")
+    @patch("civicpy.civic.get_all_approvals")
     @patch("civicpy.civic.get_all_approvals_ready_for_clinvar_submission_for_org")
     @patch("civicpy.civic.get_assertion_by_id", wraps=civic.get_assertion_by_id)
-    def test_create_gks_json_assertions_found(
-        self, mock_assertion, mock_approvals, mocked_normalizer
+    @pytest.mark.parametrize("bundle", [False, True])
+    def test_create_gks_exports_assertions_found(
+        self,
+        mock_assertion,
+        mock_clinvar_approvals,
+        mock_all_approvals,
+        mock_all_assertions,
+        bundle,
+        mocked_normalizer: Mock,
     ):
-        """Test that CLI create_gks_json works as expected when assertions are ready for clinvar submission"""
-        mock_assertion.return_value = civic.get_assertion_by_id(6)
-        mock_approvals.return_value = [
+        """Test dereferenced and bundle CLI exports for eligible Assertions."""
+        assertions = {
+            assertion_id: civic.get_assertion_by_id(assertion_id)
+            for assertion_id in (6, 202)
+        }
+        mock_assertion.side_effect = assertions.__getitem__
+        mock_all_assertions.return_value = list(assertions.values())
+        approvals = [
             civic.Approval(
                 type="approval",
-                id=1,
+                id=approval_id,
                 status="ACTIVE",
                 ready_for_clinvar_submission=True,
                 organization_id=1,
                 last_reviewed="2025-03-19T13:38:54Z",
-                assertion_id=6,
+                assertion_id=assertion_id,
+                clinvar_accession=("SCV000000001" if assertion_id == 6 else None),
                 partial=True,
             )
+            for approval_id, assertion_id in ((1, 6), (2, 202))
         ]
+        mock_all_approvals.return_value = [
+            approvals[0],
+            civic.Approval(
+                type="approval",
+                id=3,
+                status="ACTIVE",
+                ready_for_clinvar_submission=False,
+                organization_id=2,
+                last_reviewed="2025-04-20T10:30:00Z",
+                assertion_id=6,
+                clinvar_accession="SCV000000002",
+                partial=True,
+            ),
+        ]
+        mock_clinvar_approvals.return_value = approvals
 
         with tempfile.NamedTemporaryFile("w+", suffix=".json", delete=True) as tmp_file:
             try:
-                cli.create_gks_json(["--organization-id", 1, "-o", Path(tmp_file.name)])
+                command = ["-o", Path(tmp_file.name)]
+                if not bundle:
+                    command[0:0] = [
+                        "--organization-id",
+                        1,
+                        "--submission-type",
+                        "oncogenicity",
+                    ]
+                export_command = (
+                    cli.create_gks_bundle if bundle else cli.create_gks_json
+                )
+                export_command(command)
             except SystemExit as e:
                 assert e.code == 0
 
             with open(tmp_file.name, "r") as f:
                 gks_output = json.load(f)
-                assert set(gks_output.keys()) == set(GksOutput.model_fields.keys())
+                expected_model = GksBundle if bundle else GksOutput
+                expected_json_keys = {
+                    field.alias or field_name
+                    for field_name, field in expected_model.model_fields.items()
+                }
+                assert set(gks_output) == expected_json_keys
+                check_metadata(gks_output["metadata"], bundle=bundle)
+                if bundle:
+                    GksBundle.model_validate(gks_output)
+                    statement = gks_output["assertion"]["civic.aid:6"]
+                    accessions_by_contributor = {
+                        contribution["contributor"]: contribution["extensions"][0]
+                        for contribution in statement["contributions"]
+                    }
+                    assert _bundle_assertion_ids(gks_output) == {
+                        "civic.aid:6",
+                        "civic.aid:202",
+                    }
+                    assert set(gks_output["organization"]) == {
+                        "civic.organization:1",
+                        "civic.organization:2",
+                    }
+                    assert statement["extensions"] == [
+                        {
+                            "name": "clinvarAccessions",
+                            "value": ["SCV000000001", "SCV000000002"],
+                        }
+                    ]
+                    assert accessions_by_contributor == {
+                        "#/organization/civic.organization:1": {
+                            "name": "clinvarAccession",
+                            "value": "SCV000000001",
+                        },
+                        "#/organization/civic.organization:2": {
+                            "name": "clinvarAccession",
+                            "value": "SCV000000002",
+                        },
+                    }
+                else:
+                    assert gks_output["failedAssertionIds"] == [6]
+                    assert [record["id"] for record in gks_output["gksRecords"]] == [
+                        "civic.aid:202"
+                    ]
 
-                assert len(gks_output["gks_records"]) == 1
-                assert gks_output["gks_records"][0]["id"] == "civic.aid:6"
-                check_metadata(gks_output["metadata"])
+    @patch("civicpy.civic.get_all_assertions")
+    @patch("civicpy.civic.get_all_approvals")
+    @patch("civicpy.civic.get_assertion_by_id", wraps=civic.get_assertion_by_id)
+    def test_create_gks_bundle_filters_by_organization(
+        self,
+        mock_assertion: Mock,
+        mock_approvals: Mock,
+        mock_all_assertions: Mock,
+        mocked_normalizer: Mock,
+        tmp_path: Path,
+    ) -> None:
+        """Test the optional organization filter for bundle output."""
+        assertions = {
+            assertion_id: civic.get_assertion_by_id(assertion_id)
+            for assertion_id in (6, 202)
+        }
+        mock_assertion.side_effect = assertions.__getitem__
+        mock_all_assertions.return_value = list(assertions.values())
+        mock_approvals.return_value = [
+            civic.Approval(
+                type="approval",
+                id=approval_id,
+                status="ACTIVE",
+                ready_for_clinvar_submission=False,
+                organization_id=organization_id,
+                last_reviewed="2025-03-19T13:38:54Z",
+                assertion_id=assertion_id,
+                partial=True,
+            )
+            for approval_id, organization_id, assertion_id in (
+                (1, 1, 6),
+                (2, 2, 202),
+            )
+        ]
+        output_path = tmp_path / "civic-gks-bundle.json"
 
-                assert gks_output["failed_assertion_ids"] == []
-                assert gks_output["errors"] == []
+        try:
+            cli.create_gks_bundle(["--organization-id", 1, "-o", output_path])
+        except SystemExit as error:
+            assert error.code == 0
+
+        with output_path.open() as read_file:
+            bundle = json.load(read_file)
+        assert _bundle_assertion_ids(bundle) == {"civic.aid:6"}
+        assert set(bundle["organization"]) == {"civic.organization:1"}
 
     @patch("civicpy.civic.get_all_approvals_ready_for_clinvar_submission_for_org")
     def test_create_gks_json_assertions_not_valid(
@@ -107,15 +316,14 @@ class TestCli(object):
 
             with open(tmp_file.name, "r") as f:
                 gks_output = json.load(f)
-                assert set(gks_output.keys()) == set(GksOutput.model_fields.keys())
-
-                assert len(gks_output["gks_records"]) == 1
                 check_metadata(gks_output["metadata"])
-
-                assert gks_output["failed_assertion_ids"] == [4]
+                assert [record["id"] for record in gks_output["gksRecords"]] == [
+                    "civic.aid:6"
+                ]
+                assert gks_output["failedAssertionIds"] == [4]
                 assert gks_output["errors"] == [
                     {
-                        "assertion_id": 4,
+                        "assertionId": 4,
                         "message": "Assertion is not valid for GKS JSON. See logs for more details.",
                     }
                 ]
@@ -146,7 +354,4 @@ class TestCli(object):
             assert e.code == 0
 
         assert not output_file.exists()
-        assert (
-            "No assertions ready for submission to ClinVar found for organization 1"
-            in caplog.text
-        )
+        assert "No eligible Assertions found for GKS export" in caplog.text
