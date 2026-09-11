@@ -44,6 +44,7 @@ from ga4gh.va_spec.aac_2017 import (
 )
 from ga4gh.va_spec.base import (
     Agent,
+    Condition,
     CcvClassification,
     ConditionSet,
     Contribution,
@@ -57,6 +58,7 @@ from ga4gh.va_spec.base import (
     System,
     TherapeuticResponsePredicate,
     TherapyGroup,
+    Therapeutic,
     VariantClinicalSignificanceProposition,
     VariantDiagnosticProposition,
     VariantOncogenicityProposition,
@@ -858,8 +860,8 @@ class CivicGksMolecularProfile(CategoricalVariant):
         )
 
 
-class CivicGksDisease(MappableConcept):
-    """Class for representing CIViC Disease as MappableConcept
+class CivicGksDisease(Condition):
+    """Class for representing CIViC Disease as Condition
 
     :param disease: CIViC disease record
     """
@@ -870,10 +872,12 @@ class CivicGksDisease(MappableConcept):
         :param disease: CIViC disease record
         """
         super().__init__(
-            id=f"{CuriePrefix.DISEASE}:{disease.id}",
-            conceptType="Disease",
-            name=disease.name,
-            mappings=self.get_mappings(disease),
+            root=MappableConcept(
+                id=f"{CuriePrefix.DISEASE}:{disease.id}",
+                conceptType="Disease",
+                name=disease.name,
+                mappings=self.get_mappings(disease),
+            )
         )
 
     @staticmethod
@@ -899,8 +903,8 @@ class CivicGksDisease(MappableConcept):
         return mappings
 
 
-class CivicGksPhenotype(MappableConcept):
-    """Class for representing CIViC Phenotype as MappableConcept
+class CivicGksPhenotype(Condition):
+    """Class for representing CIViC Phenotype as Condition
 
     :param phenotype: CIViC phenotype record
     """
@@ -912,10 +916,12 @@ class CivicGksPhenotype(MappableConcept):
         """
 
         super().__init__(
-            id=f"{CuriePrefix.PHENOTYPE}:{phenotype.id}",
-            conceptType=phenotype.type.capitalize(),
-            name=phenotype.name,
-            mappings=self.get_mappings(phenotype),
+            root=MappableConcept(
+                id=f"{CuriePrefix.PHENOTYPE}:{phenotype.id}",
+                conceptType=phenotype.type.capitalize(),
+                name=phenotype.name,
+                mappings=self.get_mappings(phenotype),
+            )
         )
 
     @staticmethod
@@ -938,8 +944,8 @@ class CivicGksPhenotype(MappableConcept):
         ]
 
 
-class CivicGksTherapy(MappableConcept):
-    """Class for representing CIViC Therapy as MappableConcept
+class CivicGksTherapy(Therapeutic):
+    """Class for representing CIViC Therapy as Therapeutic
 
     :param therapy: CIViC therapy record
     """
@@ -950,11 +956,13 @@ class CivicGksTherapy(MappableConcept):
         :param therapy: CIViC therapy record
         """
         super().__init__(
-            id=f"{CuriePrefix.THERAPY}:{therapy.id}",
-            name=therapy.name,
-            conceptType="Therapy",
-            mappings=self.get_mappings(therapy),
-            extensions=self.get_extensions(therapy),
+            root=MappableConcept(
+                id=f"{CuriePrefix.THERAPY}:{therapy.id}",
+                name=therapy.name,
+                conceptType="Therapy",
+                mappings=self.get_mappings(therapy),
+                extensions=self.get_extensions(therapy),
+            )
         )
 
     @staticmethod
@@ -1020,7 +1028,9 @@ class CivicGksTherapyGroup(TherapyGroup):
             if therapy_interaction_type == CivicInteractionType.COMBINATION
             else MembershipOperator.OR
         )
-        therapies_mc: list[MappableConcept] = [CivicGksTherapy(t) for t in therapies]
+        therapies_mc: list[MappableConcept] = [
+            CivicGksTherapy(t).root for t in therapies
+        ]
 
         super().__init__(therapies=therapies_mc, membershipOperator=membership_operator)
 
@@ -1167,16 +1177,20 @@ class _CivicGksEvidenceAssertionMixin:
                     ConditionSet(
                         membershipOperator=MembershipOperator.OR,
                         conditions=[
-                            CivicGksPhenotype(phenotype)
+                            CivicGksPhenotype(phenotype).root
                             for phenotype in record.phenotypes
                         ],
                     )
                 )
             else:
-                conditions.append(CivicGksPhenotype(record.phenotypes[0]))
+                conditions.append(CivicGksPhenotype(record.phenotypes[0]).root)
 
             params[condition_key] = ConditionSet(
-                membershipOperator=MembershipOperator.AND, conditions=conditions
+                membershipOperator=MembershipOperator.AND,
+                conditions=[
+                    condition.root if isinstance(condition, Condition) else condition
+                    for condition in conditions
+                ],
             )
         else:
             params[condition_key] = gks_disease

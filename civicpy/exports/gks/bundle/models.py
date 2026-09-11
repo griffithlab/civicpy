@@ -20,10 +20,12 @@ from ga4gh.core.models import Coding, MappableConcept
 from ga4gh.va_spec.aac_2017 import VariantClinicalSignificanceStatement
 from ga4gh.va_spec.base import (
     Agent,
+    Condition,
     ConditionSet,
     Document,
     Method,
     Statement,
+    Therapeutic,
     TherapyGroup,
     VariantClinicalSignificanceProposition,
     VariantDiagnosticProposition,
@@ -493,14 +495,14 @@ class GksBundle(GksModel):
         GksDiseaseId,
         Annotated[
             GksBundleObject,
-            _external_gks_schema(MappableConcept, concept_type="Disease"),
+            _external_gks_schema(Condition, concept_type="Disease"),
         ],
     ] = Field(json_schema_extra=_closed_collection_schema(Collection.DISEASE))
     phenotype: dict[
         GksPhenotypeId,
         Annotated[
             GksBundleObject,
-            _external_gks_schema(MappableConcept, concept_type="Phenotype"),
+            _external_gks_schema(Condition, concept_type="Phenotype"),
         ],
     ] = Field(json_schema_extra=_closed_collection_schema(Collection.PHENOTYPE))
     conditionSet: dict[
@@ -514,7 +516,7 @@ class GksBundle(GksModel):
         GksTherapyId,
         Annotated[
             GksBundleObject,
-            _external_gks_schema(MappableConcept, concept_type="Therapy"),
+            _external_gks_schema(Therapeutic, concept_type="Therapy"),
         ],
     ] = Field(json_schema_extra=_closed_collection_schema(Collection.THERAPY))
     therapyGroup: dict[
