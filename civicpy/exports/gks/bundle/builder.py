@@ -510,6 +510,14 @@ class _BundleBuilder:
         if not isinstance(value, dict):
             return value
 
+        # ConceptMapping codings are metadata, not embedded GKS objects.
+        # E.g., civic.mpid:33 must not become a reference to itself.
+        if field_name == CODING_FIELD:
+            return {
+                key: self._replace_nested_objects_with_references(item, key)
+                for key, item in value.items()
+            }
+
         identifier = value.get(ID_FIELD)
         if isinstance(identifier, str):
             variant_reference = self._variant_reference_by_vrs_id.get(identifier)

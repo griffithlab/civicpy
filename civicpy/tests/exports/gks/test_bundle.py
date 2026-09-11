@@ -402,6 +402,45 @@ class TestCivicGksBundleOutput:
         ]
         assert bundle.metadata.statistics.collections["variant"].types == {"Allele": 2}
 
+    def test_preserves_molecular_profile_concept_mapping(self) -> None:
+        """Do not link a profile's own mapping back to the profile object."""
+        record = Mock()
+        record.model_dump.return_value = {
+            "id": "civic.aid:1",
+            "type": "Statement",
+            "subject": {
+                "id": "civic.mpid:33",
+                "type": "CategoricalVariant",
+                "mappings": [
+                    {
+                        "coding": {
+                            "id": "civic.mpid:33",
+                            "code": "33",
+                            "system": "https://civicdb.org/links/molecular_profile/",
+                        },
+                        "relation": "exactMatch",
+                    }
+                ],
+            },
+        }
+
+        bundle = build_gks_bundle(
+            [record],
+            GksOutputMetadata(created_at="2026-08-03"),
+            [],
+        )
+
+        assert bundle.molecularProfile["civic.mpid:33"]["mappings"] == [
+            {
+                "coding": {
+                    "id": "civic.mpid:33",
+                    "code": "33",
+                    "system": "https://civicdb.org/links/molecular_profile/",
+                },
+                "relation": "exactMatch",
+            }
+        ]
+
     def test_represents_non_vrs_variant_as_coding(self) -> None:
         """Keep CIViC variants without VRS representations as Coding."""
         record = Mock()
