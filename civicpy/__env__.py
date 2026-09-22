@@ -10,6 +10,8 @@ from importlib.metadata import version
 import urllib.request
 import json
 
+_logger = logging.getLogger(__name__)
+
 
 #get the currently installed civicpy version and warn if it is out of date
 PACKAGE = "civicpy"
@@ -19,15 +21,15 @@ with urllib.request.urlopen(f"https://pypi.org/pypi/{PACKAGE}/json") as r:
     latest_version = json.load(r)["info"]["version"]
 
 if Version(installed_version) < Version(latest_version):
-    logging.warning("The installed civicpy version is out of date.")
-    logging.warning(f"Latest version: {latest_version}")
-    logging.warning(f"Installed version: {installed_version}")
+    _logger.warning("The installed civicpy version is out of date.")
+    _logger.warning(f"Latest version: {latest_version}")
+    _logger.warning(f"Installed version: {installed_version}")
 
 REMOTE_CACHE_URL = os.getenv('CIVICPY_REMOTE_CACHE_URL', False)
 fallback_cache_timeout_days = 7
 
 if REMOTE_CACHE_URL:
-    logging.warning(f"Using REMOTE_CACHE_URL: {REMOTE_CACHE_URL}")
+    _logger.warning(f"Using REMOTE_CACHE_URL: {REMOTE_CACHE_URL}")
 else:
     versioned_url = f"https://civicdb.org/downloads/nightly/nightly-civicpy_cache-{__version__}.pkl"
     generic_url = "https://civicdb.org/downloads/nightly/nightly-civicpy_cache.pkl"
@@ -38,22 +40,22 @@ else:
         use_versioned_url = True
         last_modified = response.headers.get('Last-Modified')
     else:
-        logging.warning("Remote cache URL matching your installed civicpy version not found.")
+        _logger.warning("Remote cache URL matching your installed civicpy version not found.")
 
     if use_versioned_url:
         REMOTE_CACHE_URL = versioned_url
-        logging.warning(f"Using remote cache URL matching your installed civicpy version: {versioned_url}")
+        _logger.warning(f"Using remote cache URL matching your installed civicpy version: {versioned_url}")
         delta = (datetime.today()-datetime.strptime(last_modified, "%a, %d %b %Y %H:%M:%S GMT")).days
-        logging.warning(f"This remote cache was created on {last_modified} and is {delta} days old.")
+        _logger.warning(f"This remote cache was created on {last_modified} and is {delta} days old.")
         if Version(__version__) < Version(latest_version):
-            logging.warning("If a newer cache is desired, please update CIViCpy to the latest version and try again.")
+            _logger.warning("If a newer cache is desired, please update CIViCpy to the latest version and try again.")
         if delta >=7:
             fallback_cache_timeout_days = delta + 1
     else:
         REMOTE_CACHE_URL = generic_url
-        logging.warning(f"Using generic remote cache URL: {generic_url}")
+        _logger.warning(f"Using generic remote cache URL: {generic_url}")
         if Version(__version__) < Version(latest_version):
-            logging.warning("This cache might not be compatible with your civicpy version. If loading fails, please update CIViCpy to the latest version and try again.")
+            _logger.warning("This cache might not be compatible with your civicpy version. If loading fails, please update CIViCpy to the latest version and try again.")
 
 LOCAL_CACHE_PATH = os.getenv('CIVICPY_CACHE_FILE', False) or \
     str(Path.home() / '.civicpy' / 'cache.pkl')
@@ -65,4 +67,4 @@ try:
     CACHE_TIMEOUT_DAYS = int(CACHE_TIMEOUT_DAYS)
 except TypeError:
     CACHE_TIMEOUT_DAYS = fallback_cache_timeout_days
-logging.warning(f"Setting cache timeout days to {CACHE_TIMEOUT_DAYS}.")
+_logger.warning(f"Setting cache timeout days to {CACHE_TIMEOUT_DAYS}.")

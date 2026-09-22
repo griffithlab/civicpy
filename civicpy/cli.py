@@ -18,6 +18,9 @@ from collections import OrderedDict
 from civicpy.__version__ import __version__
 
 
+_logger = logging.getLogger(__name__)
+
+
 CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 
 
@@ -115,7 +118,7 @@ def create_gks_json(
     try:
         civic.get_organization_by_id(organization_id)
     except Exception:
-        logging.exception("Error getting organization %i", organization_id)
+        _logger.exception("Error getting organization %i", organization_id)
         return
 
     records: list[CivicGksClinSigAssertion] = []
@@ -144,7 +147,7 @@ def create_gks_json(
                 )
             )
     if not records:
-        logging.warning(
+        _logger.warning(
             "No assertions ready for submission to ClinVar found for organization {}".format(
                 organization_id
             )
