@@ -2475,7 +2475,7 @@ def get_variants_by_ids(variant_id_list):
         _logger.info("Caching fusion details...")
         _get_elements_by_ids("fusion", fusion_ids)
     if region_ids:
-        logging.info("Caching region details...")
+        _logger.info("Caching region details...")
         _get_elements_by_ids("region", region_ids)
     return variants
 
@@ -2657,7 +2657,7 @@ def get_regions_by_ids(region_id_list):
     :param list region_id_list: A list of CIViC region feature IDs to query against to cache and (as needed) CIViC.
     :returns: A list of :class:`Region` objects.
     """
-    logging.info("Getting regions...")
+    _logger.info("Getting regions...")
     regions = _get_elements_by_ids("region", region_id_list)
     variant_ids = set()
     for region in regions:
@@ -2665,7 +2665,7 @@ def get_regions_by_ids(region_id_list):
         for variant in region.variants:
             variant_ids.add(variant.id)
     if variant_ids:
-        logging.info("Caching variant details...")
+        _logger.info("Caching variant details...")
         _get_elements_by_ids("variant", variant_ids)
     for region in regions:
         for variant in region.variants:
