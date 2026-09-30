@@ -32,6 +32,7 @@ from civicpy.exports.gks.constants import (
     TYPE_FIELD,
     CuriePrefix,
 )
+from civicpy.exports.gks.groups import get_group_concept_types
 
 
 def _canonical_json(value: Any) -> str:
@@ -194,11 +195,13 @@ def _compute_nested_group_identifier(value: dict[str, Any]) -> str | None:
     if MEMBERSHIP_OPERATOR_FIELD not in value:
         return None
 
-    if CONDITIONS_FIELD in value:
-        group = ConditionSet.model_validate(value)
-    elif THERAPIES_FIELD in value:
-        group = TherapyGroup.model_validate(value)
-    else:
+    if CONDITIONS_FIELD not in value:
         return None
 
+    concept_types = get_group_concept_types(value)
+    group = (
+        TherapyGroup.model_validate(value)
+        if "Therapy" in concept_types
+        else ConditionSet.model_validate(value)
+    )
     return compute_identifier(group)

@@ -571,6 +571,62 @@ class TestCivicGksBundleOutput:
         assert statement["condition"] == f"#/conditionSet/{condition_set_id}"
         assert statement["therapeutic"] == f"#/therapyGroup/{therapy_group_id}"
 
+    def test_references_groups_nested_under_proposition_fields(self) -> None:
+        """Classify groups by their concepts when their parent is ambiguous."""
+        record = Mock()
+        record.model_dump.return_value = {
+            "id": "civic.aid:1",
+            "type": "Statement",
+            "object": {
+                "membershipOperator": "AND",
+                "concepts": [
+                    {
+                        "id": "civic.did:1",
+                        "type": "MappableConcept",
+                        "conceptType": "Disease",
+                        "name": "Disease",
+                    },
+                    {
+                        "id": "civic.phenotype:2",
+                        "type": "MappableConcept",
+                        "conceptType": "Phenotype",
+                        "name": "Phenotype",
+                    },
+                ],
+            },
+            "conditionQualifier": {
+                "membershipOperator": "AND",
+                "concepts": [
+                    {
+                        "id": "civic.tid:1",
+                        "type": "MappableConcept",
+                        "conceptType": "Therapy",
+                        "name": "Therapy",
+                    },
+                    {
+                        "id": "civic.tid:2",
+                        "type": "MappableConcept",
+                        "conceptType": "Therapy",
+                        "name": "Second therapy",
+                    },
+                ],
+            },
+        }
+
+        bundle = build_gkm_bundle(
+            [record],
+            GkmOutputMetadata(created_at="2026-08-03"),
+            [],
+        )
+
+        condition_set_id = next(iter(bundle.conditionSet))
+        therapy_group_id = next(iter(bundle.therapyGroup))
+        statement = bundle.assertion["civic.aid:1"]
+        assert statement["object"] == f"#/conditionSet/{condition_set_id}"
+        assert statement["conditionQualifier"] == (
+            f"#/therapyGroup/{therapy_group_id}"
+        )
+
     def test_rejects_invalid_group_without_id(self) -> None:
         """Reject malformed group-shaped data instead of leaving it inline."""
         record = Mock()

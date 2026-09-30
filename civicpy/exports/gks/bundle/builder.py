@@ -47,6 +47,7 @@ from civicpy.exports.gks.constants import (
     TYPE_FIELD,
     CuriePrefix,
 )
+from civicpy.exports.gks.groups import get_group_concept_types
 from civicpy.exports.gks.identifiers import (
     Identifiable,
     compute_identifier,
@@ -550,8 +551,8 @@ class _BundleBuilder:
             for key, item in value.items()
         }
 
-    @staticmethod
     def _resolve_group_collection(
+        self,
         value: Mapping[str, Any],
         field_name: str,
     ) -> Collection | None:
@@ -563,6 +564,12 @@ class _BundleBuilder:
         """
         if CONDITIONS_FIELD not in value:
             return None
+
+        concept_types = get_group_concept_types(value)
+        if "Therapy" in concept_types:
+            return Collection.THERAPY_GROUP
+        if concept_types & {"Disease", "Phenotype"}:
+            return Collection.CONDITION_SET
 
         return _GROUP_COLLECTION_BY_PARENT_FIELD.get(field_name)
 
