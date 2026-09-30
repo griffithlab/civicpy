@@ -12,12 +12,12 @@ from pathlib import Path
 from typing import Any
 
 from civicpy.exports.gks.models import (
-    GksAssertionError,
-    GksModel,
-    GksOutputMetadata,
-    GksRecord,
+    GkmAssertionError,
+    GkmModel,
+    GkmOutputMetadata,
+    GkmRecord,
 )
-from civicpy.exports.gks.bundle import GksBundle, build_gks_bundle
+from civicpy.exports.gks.bundle import GkmBundle, build_gkm_bundle
 
 
 def _serialize_json_default(value: Any) -> str:
@@ -32,13 +32,13 @@ def _serialize_json_default(value: Any) -> str:
     raise TypeError(f"Object of type {type(value)} is not JSON serializable")
 
 
-class GksOutput(GksModel):
+class GksOutput(GkmModel):
     """Dereferenced export with each assertion's related objects inline."""
 
-    gks_records: list[GksRecord]
-    metadata: GksOutputMetadata
+    gks_records: list[GkmRecord]
+    metadata: GkmOutputMetadata
     failed_assertion_ids: list[int]
-    errors: list[GksAssertionError]
+    errors: list[GkmAssertionError]
 
 
 class CivicGksWriter:
@@ -52,8 +52,8 @@ class CivicGksWriter:
     def __init__(
         self,
         filepath: Path,
-        gks_records: list[GksRecord],
-        errors: list[GksAssertionError] | None = None,
+        gks_records: list[GkmRecord],
+        errors: list[GkmAssertionError] | None = None,
         bundle: bool = False,
     ) -> None:
         """Write CIViC GKS Statements to a dereferenced or bundled JSON file.
@@ -69,7 +69,7 @@ class CivicGksWriter:
         if filepath.suffix.lower() != ".json":
             raise ValueError("Output file path must end in '.json'.")
 
-        metadata = GksOutputMetadata(
+        metadata = GkmOutputMetadata(
             created_at=datetime.datetime.now(tz=datetime.timezone.utc).strftime(
                 "%Y-%m-%d"
             )
@@ -77,7 +77,7 @@ class CivicGksWriter:
         export_errors = errors or []
 
         if bundle:
-            output: GksBundle | GksOutput = build_gks_bundle(
+            output: GkmBundle | GksOutput = build_gkm_bundle(
                 gks_records, metadata, export_errors
             )
         else:

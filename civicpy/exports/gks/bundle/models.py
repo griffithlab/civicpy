@@ -1,11 +1,11 @@
-"""Define the referenced CIViC GKS Bundle Format.
+"""Define the referenced CIViC GKM Bundle Format.
 
 This module owns the public bundle schema, metadata, and statistics. Object
 extraction and reference construction are implemented in
 :mod:`civicpy.exports.gks.bundle.builder`; file serialization remains in
 :mod:`civicpy.exports.civic_gks_writer`.
 
-The GKS Bundle Format permits pointers to every extracted collection. Organization
+The GKM Bundle Format permits pointers to every extracted collection. Organization
 and proposition fields currently use pointers even though VA-Spec does not type
 those fields as ``iriReference``.
 """
@@ -55,22 +55,22 @@ from civicpy.exports.gks.constants import (
     TYPE_FIELD,
 )
 from civicpy.exports.gks.models import (
-    GksAssertionError,
-    GksModel,
-    GksOutputMetadata,
+    GkmAssertionError,
+    GkmModel,
+    GkmOutputMetadata,
 )
 
-GksBundleObject: TypeAlias = dict[str, Any]
-GksBundleReference: TypeAlias = str
+GkmBundleObject: TypeAlias = dict[str, Any]
+GkmBundleReference: TypeAlias = str
 BUNDLE_SCHEMA_FILENAME = f"{BUNDLE_FORMAT_NAME}-v{BUNDLE_FORMAT_VERSION}.schema.json"
 BUNDLE_SCHEMA_ID = f"urn:civic:gkm-bundle:schema:{BUNDLE_FORMAT_VERSION}"
 CIVIC_KNOWLEDGE_MODEL_URL = "https://civic.readthedocs.io/en/latest/model.html"
 
 
-def _external_gks_schema(
+def _external_gkm_schema(
     *models: type[BaseModel], concept_type: str | None = None
 ) -> WithJsonSchema:
-    """Describe a value using canonical upstream GKS schema references."""
+    """Describe a value using canonical upstream GKM schema references."""
     references = [{"$ref": model.schema_id()} for model in models]
     schema: dict[str, Any] = (
         references[0] if len(references) == 1 else {"anyOf": references}
@@ -88,61 +88,61 @@ def _external_gks_schema(
     return WithJsonSchema(schema)
 
 
-GksSequenceReferenceId: TypeAlias = Annotated[
+GkmSequenceReferenceId: TypeAlias = Annotated[
     str, StringConstraints(pattern=r"^SQ\.[A-Za-z0-9_-]+$")
 ]
-GksLocationId: TypeAlias = Annotated[
+GkmLocationId: TypeAlias = Annotated[
     str, StringConstraints(pattern=r"^ga4gh:SL\.[A-Za-z0-9_-]+$")
 ]
-GksVariantId: TypeAlias = Annotated[
+GkmVariantId: TypeAlias = Annotated[
     str, StringConstraints(pattern=r"^civic\.vid:[0-9]+$")
 ]
-GksFeatureId: TypeAlias = Annotated[
+GkmFeatureId: TypeAlias = Annotated[
     str, StringConstraints(pattern=r"^civic\.gid:[0-9]+$")
 ]
-GksMolecularProfileId: TypeAlias = Annotated[
+GkmMolecularProfileId: TypeAlias = Annotated[
     str, StringConstraints(pattern=r"^civic\.mpid:[0-9]+$")
 ]
-GksDiseaseId: TypeAlias = Annotated[
+GkmDiseaseId: TypeAlias = Annotated[
     str, StringConstraints(pattern=r"^civic\.did:[0-9]+$")
 ]
-GksPhenotypeId: TypeAlias = Annotated[
+GkmPhenotypeId: TypeAlias = Annotated[
     str, StringConstraints(pattern=r"^civic\.phenotype:[0-9]+$")
 ]
-GksConditionSetId: TypeAlias = Annotated[
+GkmConditionSetId: TypeAlias = Annotated[
     str, StringConstraints(pattern=r"^civic\.conditionSet:[A-Za-z0-9_-]+$")
 ]
-GksTherapyId: TypeAlias = Annotated[
+GkmTherapyId: TypeAlias = Annotated[
     str, StringConstraints(pattern=r"^civic\.tid:[0-9]+$")
 ]
-GksTherapyGroupId: TypeAlias = Annotated[
+GkmTherapyGroupId: TypeAlias = Annotated[
     str, StringConstraints(pattern=r"^civic\.therapyGroup:[A-Za-z0-9_-]+$")
 ]
-GksVariantOriginId: TypeAlias = Annotated[
+GkmVariantOriginId: TypeAlias = Annotated[
     str, StringConstraints(pattern=r"^civic\.variantOrigin:[A-Za-z0-9_-]+$")
 ]
-GksSourceId: TypeAlias = Annotated[
+GkmSourceId: TypeAlias = Annotated[
     str, StringConstraints(pattern=r"^(civic\.sid|pmid):[0-9]+$")
 ]
-GksMethodId: TypeAlias = Annotated[
+GkmMethodId: TypeAlias = Annotated[
     str, StringConstraints(pattern=r"^civic\.method:[A-Za-z0-9_-]+$")
 ]
-GksOrganizationId: TypeAlias = Annotated[
+GkmOrganizationId: TypeAlias = Annotated[
     str, StringConstraints(pattern=r"^civic\.organization:[A-Za-z0-9_-]+$")
 ]
-GksPropositionId: TypeAlias = Annotated[
+GkmPropositionId: TypeAlias = Annotated[
     str, StringConstraints(pattern=r"^civic\.proposition:[A-Za-z0-9_-]+$")
 ]
-GksEvidenceId: TypeAlias = Annotated[
+GkmEvidenceId: TypeAlias = Annotated[
     str, StringConstraints(pattern=r"^civic\.eid:[0-9]+$")
 ]
-GksAssertionId: TypeAlias = Annotated[
+GkmAssertionId: TypeAlias = Annotated[
     str, StringConstraints(pattern=r"^civic\.aid:[0-9]+$")
 ]
 
 
 class Collection(str, Enum):
-    """Names of keyed root collections in the CIViC GKS Bundle Format."""
+    """Names of keyed root collections in the CIViC GKM Bundle Format."""
 
     SEQUENCE_REFERENCE = "sequenceReference"
     LOCATION = "location"
@@ -199,7 +199,7 @@ _COLLECTION_DESCRIPTIONS: Mapping[Collection, str] = {
         "clinical context."
     ),
     Collection.CONDITION_SET: (
-        "Disease and phenotype context grouped for reuse in GKS propositions."
+        "Disease and phenotype context grouped for reuse in GKM propositions."
     ),
     Collection.THERAPY: (
         "Drugs or treatment types associated with predictive Evidence Items and "
@@ -217,7 +217,7 @@ _COLLECTION_DESCRIPTIONS: Mapping[Collection, str] = {
         "and Assertions."
     ),
     Collection.METHOD: (
-        "Curation or classification method used to produce a CIViC GKS Statement."
+        "Curation or classification method used to produce a CIViC GKM Statement."
     ),
     Collection.ORGANIZATION: (
         "CIViC organizations connected to assertion approvals or submissions."
@@ -331,7 +331,7 @@ VariantRepresentations: TypeAlias = Annotated[
 
 
 def _count_variant_representation_types(
-    variants: Mapping[str, GksBundleObject],
+    variants: Mapping[str, GkmBundleObject],
 ) -> dict[str, int]:
     """Count concrete object types stored in variant representations.
 
@@ -362,18 +362,18 @@ _TYPE_COUNT_FIELD_BY_COLLECTION = {
 }
 
 
-class CollectionStatistics(GksModel):
+class CollectionStatistics(GkmModel):
     """Summarize the objects stored in one root bundle collection."""
 
     count: NonNegativeInt = Field(description="Total objects in the collection.")
     types: dict[str, NonNegativeInt] | None = Field(
         default=None,
-        description="Object counts grouped by concrete GKS type, when applicable.",
+        description="Object counts grouped by concrete GKM type, when applicable.",
     )
 
 
-class Statistics(GksModel):
-    """Summarize the contents of a CIViC GKS bundle."""
+class Statistics(GkmModel):
+    """Summarize the contents of a CIViC GKM bundle."""
 
     collections: dict[str, CollectionStatistics] = Field(
         description="Statistics keyed by root bundle collection name.",
@@ -382,7 +382,7 @@ class Statistics(GksModel):
     @classmethod
     def summarize_bundle_collections(
         cls,
-        collections: Mapping[Collection, Mapping[str, GksBundleObject]],
+        collections: Mapping[Collection, Mapping[str, GkmBundleObject]],
     ) -> "Statistics":
         """Calculate statistics from the bundle's root collections.
 
@@ -418,7 +418,7 @@ class Statistics(GksModel):
         return cls(collections=statistics)
 
 
-class Metadata(GksOutputMetadata):
+class Metadata(GkmOutputMetadata):
     """Describe the bundle format, export provenance, and contents."""
 
     bundle_format: str = BUNDLE_FORMAT_NAME
@@ -428,8 +428,8 @@ class Metadata(GksOutputMetadata):
     )
 
 
-class GksBundle(GksModel):
-    """Represent CIViC data in the GKS Bundle Format.
+class GkmBundle(GkmModel):
+    """Represent CIViC data in the GKM Bundle Format.
 
     Referenceable objects are stored once in keyed root collections. Nested uses
     become JSON Pointers such as ``#/molecularProfile/civic.mpid:33``.
@@ -438,7 +438,7 @@ class GksBundle(GksModel):
     """
 
     model_config = ConfigDict(
-        title=(f"CIViC GKS Bundle v{BUNDLE_FORMAT_VERSION}"),
+        title=(f"CIViC GKM Bundle v{BUNDLE_FORMAT_VERSION}"),
         json_schema_extra={
             "$id": BUNDLE_SCHEMA_ID,
             "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -447,10 +447,10 @@ class GksBundle(GksModel):
                 "variants and molecular profiles with evidence from source "
                 "publications, summary assertions, and clinical context such "
                 "as diseases, therapies, phenotypes, variant origins, and "
-                "curating organizations. This schema describes a GA4GH GKS "
+                "curating organizations. This schema describes a GA4GH GKM "
                 "representation of those CIViC concepts. Top-level keys use "
                 "CIViC knowledge model terms where possible, with additional "
-                "keys for supporting GKS representation details. For the "
+                "keys for supporting GKM representation details. For the "
                 f"CIViC data model, see {CIVIC_KNOWLEDGE_MODEL_URL}."
             ),
             "civicBundleFormat": BUNDLE_FORMAT_NAME,
@@ -459,97 +459,97 @@ class GksBundle(GksModel):
     )
 
     sequenceReference: dict[
-        GksSequenceReferenceId,
+        GkmSequenceReferenceId,
         Annotated[
-            GksBundleObject,
-            _external_gks_schema(SequenceReference),
+            GkmBundleObject,
+            _external_gkm_schema(SequenceReference),
         ],
     ] = Field(
         json_schema_extra=_closed_collection_schema(Collection.SEQUENCE_REFERENCE)
     )
     location: dict[
-        GksLocationId,
+        GkmLocationId,
         Annotated[
-            GksBundleObject,
-            _external_gks_schema(SequenceLocation),
+            GkmBundleObject,
+            _external_gkm_schema(SequenceLocation),
         ],
     ] = Field(json_schema_extra=_closed_collection_schema(Collection.LOCATION))
-    variant: dict[GksVariantId, VariantRepresentations] = Field(
+    variant: dict[GkmVariantId, VariantRepresentations] = Field(
         json_schema_extra=_closed_collection_schema(Collection.VARIANT)
     )
     feature: dict[
-        GksFeatureId,
+        GkmFeatureId,
         Annotated[
-            GksBundleObject,
-            _external_gks_schema(MappableConcept, concept_type="Gene"),
+            GkmBundleObject,
+            _external_gkm_schema(MappableConcept, concept_type="Gene"),
         ],
     ] = Field(json_schema_extra=_closed_collection_schema(Collection.FEATURE))
     molecularProfile: dict[
-        GksMolecularProfileId,
+        GkmMolecularProfileId,
         Annotated[
-            GksBundleObject,
-            _external_gks_schema(CategoricalVariant),
+            GkmBundleObject,
+            _external_gkm_schema(CategoricalVariant),
         ],
     ] = Field(json_schema_extra=_closed_collection_schema(Collection.MOLECULAR_PROFILE))
     disease: dict[
-        GksDiseaseId,
+        GkmDiseaseId,
         Annotated[
-            GksBundleObject,
-            _external_gks_schema(Condition, concept_type="Disease"),
+            GkmBundleObject,
+            _external_gkm_schema(Condition, concept_type="Disease"),
         ],
     ] = Field(json_schema_extra=_closed_collection_schema(Collection.DISEASE))
     phenotype: dict[
-        GksPhenotypeId,
+        GkmPhenotypeId,
         Annotated[
-            GksBundleObject,
-            _external_gks_schema(Condition, concept_type="Phenotype"),
+            GkmBundleObject,
+            _external_gkm_schema(Condition, concept_type="Phenotype"),
         ],
     ] = Field(json_schema_extra=_closed_collection_schema(Collection.PHENOTYPE))
     conditionSet: dict[
-        GksConditionSetId,
+        GkmConditionSetId,
         Annotated[
-            GksBundleObject,
-            _external_gks_schema(ConditionSet),
+            GkmBundleObject,
+            _external_gkm_schema(ConditionSet),
         ],
     ] = Field(json_schema_extra=_closed_collection_schema(Collection.CONDITION_SET))
     therapy: dict[
-        GksTherapyId,
+        GkmTherapyId,
         Annotated[
-            GksBundleObject,
-            _external_gks_schema(Therapy, concept_type="Therapy"),
+            GkmBundleObject,
+            _external_gkm_schema(Therapy, concept_type="Therapy"),
         ],
     ] = Field(json_schema_extra=_closed_collection_schema(Collection.THERAPY))
     therapyGroup: dict[
-        GksTherapyGroupId,
+        GkmTherapyGroupId,
         Annotated[
-            GksBundleObject,
-            _external_gks_schema(TherapyGroup),
+            GkmBundleObject,
+            _external_gkm_schema(TherapyGroup),
         ],
     ] = Field(json_schema_extra=_closed_collection_schema(Collection.THERAPY_GROUP))
     variantOrigin: dict[
-        GksVariantOriginId,
+        GkmVariantOriginId,
         Annotated[
-            GksBundleObject,
-            _external_gks_schema(MappableConcept),
+            GkmBundleObject,
+            _external_gkm_schema(MappableConcept),
         ],
     ] = Field(json_schema_extra=_closed_collection_schema(Collection.VARIANT_ORIGIN))
     source: dict[
-        GksSourceId,
-        Annotated[GksBundleObject, _external_gks_schema(Document)],
+        GkmSourceId,
+        Annotated[GkmBundleObject, _external_gkm_schema(Document)],
     ] = Field(json_schema_extra=_closed_collection_schema(Collection.SOURCE))
     method: dict[
-        GksMethodId,
-        Annotated[GksBundleObject, _external_gks_schema(Method)],
+        GkmMethodId,
+        Annotated[GkmBundleObject, _external_gkm_schema(Method)],
     ] = Field(json_schema_extra=_closed_collection_schema(Collection.METHOD))
     organization: dict[
-        GksOrganizationId,
-        Annotated[GksBundleObject, _external_gks_schema(Agent)],
+        GkmOrganizationId,
+        Annotated[GkmBundleObject, _external_gkm_schema(Agent)],
     ] = Field(json_schema_extra=_closed_collection_schema(Collection.ORGANIZATION))
     proposition: dict[
-        GksPropositionId,
+        GkmPropositionId,
         Annotated[
-            GksBundleObject,
-            _external_gks_schema(
+            GkmBundleObject,
+            _external_gkm_schema(
                 VariantClinicalSignificanceProposition,
                 VariantDiagnosticProposition,
                 VariantOncogenicityProposition,
@@ -559,14 +559,14 @@ class GksBundle(GksModel):
         ],
     ] = Field(json_schema_extra=_closed_collection_schema(Collection.PROPOSITION))
     evidence: dict[
-        GksEvidenceId,
-        Annotated[GksBundleObject, _external_gks_schema(Statement)],
+        GkmEvidenceId,
+        Annotated[GkmBundleObject, _external_gkm_schema(Statement)],
     ] = Field(json_schema_extra=_closed_collection_schema(Collection.EVIDENCE))
     assertion: dict[
-        GksAssertionId,
+        GkmAssertionId,
         Annotated[
-            GksBundleObject,
-            _external_gks_schema(
+            GkmBundleObject,
+            _external_gkm_schema(
                 VariantClinicalSignificanceStatement,
                 VariantOncogenicityStatement,
             ),
@@ -578,6 +578,6 @@ class GksBundle(GksModel):
     failed_assertion_ids: list[int] = Field(
         description="CIViC Assertion IDs skipped because they could not be converted.",
     )
-    errors: list[GksAssertionError] = Field(
+    errors: list[GkmAssertionError] = Field(
         description="Export errors explaining why specific CIViC Assertions were skipped.",
     )

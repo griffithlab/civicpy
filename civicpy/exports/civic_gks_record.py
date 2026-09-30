@@ -1005,15 +1005,15 @@ class CivicGksTherapyGroup(TherapyGroup):
     """
 
     def __init__(
-        self, concepts: list[CivicTherapy], therapy_interaction_type: str | None
+        self, therapies: list[CivicTherapy], therapy_interaction_type: str | None
     ) -> None:
         """Initialize CivicGksTherapyGroup class
 
-        :param concepts: List of CIViC therapy records
+        :param therapies: List of CIViC therapy records
         :param therapy_interaction_type: Interaction type for list of therapies
         :raises CivicGksRecordError: If no therapies were provided
         """
-        if not concepts:
+        if not therapies:
             err_msg = "No therapies provided"
             raise CivicGksRecordError(err_msg)
 

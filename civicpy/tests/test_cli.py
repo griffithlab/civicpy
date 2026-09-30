@@ -8,7 +8,7 @@ from unittest.mock import Mock, patch
 import pytest
 
 from civicpy import civic, cli
-from civicpy.exports.gks.bundle import GksBundle
+from civicpy.exports.gks.bundle import GkmBundle
 from civicpy.exports.gks.bundle.models import (
     BUNDLE_SCHEMA_FILENAME,
     BUNDLE_SCHEMA_ID,
@@ -59,7 +59,7 @@ def check_metadata(metadata: dict[str, Any], bundle: bool = False) -> None:
     )
 
     specification_versions = metadata["specificationVersions"]
-    assert set(specification_versions) == {"GKSCore", "VRS", "CatVRS", "VASpec"}
+    assert set(specification_versions) == {"GKMCore", "VRS", "CatVRS", "VASpec"}
     assert all(
         isinstance(version, str) and version
         for version in specification_versions.values()
@@ -85,7 +85,7 @@ class TestCli(object):
         with output_path.open() as read_file:
             schema = json.load(read_file)
 
-        assert schema == GksBundle.model_json_schema()
+        assert schema == GkmBundle.model_json_schema()
         assert "Allele" not in schema["$defs"]
         assert "VariantOncogenicityStatement" not in schema["$defs"]
         assert "GksAllele" not in schema["$defs"]
@@ -97,10 +97,10 @@ class TestCli(object):
             "variants and molecular profiles with evidence from source "
             "publications, summary assertions, and clinical context such "
             "as diseases, therapies, phenotypes, variant origins, and "
-            "curating organizations. This schema describes a GA4GH GKS "
+            "curating organizations. This schema describes a GA4GH GKM "
             "representation of those CIViC concepts. Top-level keys use "
             "CIViC knowledge model terms where possible, with additional "
-            "keys for supporting GKS representation details. For the "
+            "keys for supporting GKM representation details. For the "
             f"CIViC data model, see {CIVIC_KNOWLEDGE_MODEL_URL}."
         )
         assert schema["civicBundleFormat"] == "civic-gkm-bundle"
@@ -190,7 +190,7 @@ class TestCli(object):
 
             with open(tmp_file.name, "r") as f:
                 gks_output = json.load(f)
-                expected_model = GksBundle if bundle else GksOutput
+                expected_model = GkmBundle if bundle else GksOutput
                 expected_json_keys = {
                     field.alias or field_name
                     for field_name, field in expected_model.model_fields.items()
@@ -198,7 +198,7 @@ class TestCli(object):
                 assert set(gks_output) == expected_json_keys
                 check_metadata(gks_output["metadata"], bundle=bundle)
                 if bundle:
-                    GksBundle.model_validate(gks_output)
+                    GkmBundle.model_validate(gks_output)
                     statement = gks_output["assertion"]["civic.aid:6"]
                     accessions_by_contributor = {
                         contribution["contributor"]: contribution["extensions"][0]

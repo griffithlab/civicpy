@@ -1,6 +1,6 @@
-"""Compute stable CIViC identifiers for GKS objects without source IDs.
+"""Compute stable CIViC identifiers for GKM objects without source IDs.
 
-The CIViC GKS Bundle Format uses these identifiers for referenceable objects
+The CIViC GKM Bundle Format uses these identifiers for referenceable objects
 without an ID defined by CIViC. For example, molecular profiles already have
 ``civic.mpid`` IDs, while propositions and groups need computed identifiers.
 """

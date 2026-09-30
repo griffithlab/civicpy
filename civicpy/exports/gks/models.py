@@ -1,4 +1,4 @@
-"""Define data shared by dereferenced and bundled CIViC GKS outputs.
+"""Define data shared by dereferenced and bundled CIViC GKM outputs.
 
 This module owns the common record type, metadata, and error models. It does not
 construct bundle references or write files; those responsibilities belong to
@@ -21,11 +21,11 @@ from civicpy.exports.civic_gks_record import (
     CivicGksOncogenicAssertion,
 )
 
-GksRecord: TypeAlias = CivicGksClinSigAssertion | CivicGksOncogenicAssertion
+GkmRecord: TypeAlias = CivicGksClinSigAssertion | CivicGksOncogenicAssertion
 
 
-class GksModel(BaseModel):
-    """Base model using camelCase aliases for GKS JSON fields."""
+class GkmModel(BaseModel):
+    """Base model using camelCase aliases for GKM JSON fields."""
 
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
 
@@ -42,8 +42,8 @@ def _get_pkg_version(name: str) -> str:
         return "unknown"
 
 
-class ImplementationVersions(GksModel):
-    """Python package versions used to generate a GKS export."""
+class ImplementationVersions(GkmModel):
+    """Python package versions used to generate a GKM export."""
 
     vrs_python: str = Field(
         alias="VRSPython",
@@ -62,12 +62,12 @@ class ImplementationVersions(GksModel):
     )
 
 
-class SpecificationVersions(GksModel):
-    """GA4GH specification versions represented in a GKS export."""
+class SpecificationVersions(GkmModel):
+    """GA4GH specification versions represented in a GKM export."""
 
-    gks_core: str = Field(
-        alias="GKSCore",
-        description="GKS-Core version represented in this export.",
+    gkm_core: str = Field(
+        alias="GKMCore",
+        description="GKM-Core version represented in this export.",
         default=CORE_VERSION,
     )
     vrs: str = Field(
@@ -87,8 +87,8 @@ class SpecificationVersions(GksModel):
     )
 
 
-class GksOutputMetadata(GksModel):
-    """Generation date and version provenance for a GKS export."""
+class GkmOutputMetadata(GkmModel):
+    """Generation date and version provenance for a GKM export."""
 
     implementation_versions: ImplementationVersions = Field(
         alias="implementationVersions",
@@ -103,8 +103,8 @@ class GksOutputMetadata(GksModel):
     created_at: str = Field(description="Date this export was created.")
 
 
-class GksAssertionError(GksModel):
-    """Describe a CIViC Assertion that could not become a GKS Statement."""
+class GkmAssertionError(GkmModel):
+    """Describe a CIViC Assertion that could not become a GKM Statement."""
 
     assertion_id: int = Field(
         description="CIViC Assertion ID that could not be exported.",

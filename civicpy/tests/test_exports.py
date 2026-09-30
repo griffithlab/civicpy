@@ -1695,7 +1695,7 @@ class TestCivicGksTherapyGroup(object):
     def test_no_therapies(self):
         """Test that CivicGksTherapyGroup works as expected when no therapies provided"""
         with pytest.raises(CivicGksRecordError, match=r"No therapies provided"):
-            CivicGksTherapyGroup(concepts=[], therapy_interaction_type=None)
+            CivicGksTherapyGroup(therapies=[], therapy_interaction_type=None)
 
 
 class TestCivicGksEvidence(object):

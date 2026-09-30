@@ -14,10 +14,10 @@ from pydantic import ValidationError
 from civicpy import civic
 from civicpy.exports.civic_gks_record import create_gks_record_from_assertion
 from civicpy.exports.gks.models import (
-    GksAssertionError,
-    GksOutputMetadata,
+    GkmAssertionError,
+    GkmOutputMetadata,
 )
-from civicpy.exports.gks.bundle import GksBundle, build_gks_bundle
+from civicpy.exports.gks.bundle import GkmBundle, build_gkm_bundle
 from civicpy.exports.gks.bundle.models import (
     _COLLECTION_DESCRIPTIONS,
     _COLLECTION_KEY_DESCRIPTIONS,
@@ -32,7 +32,7 @@ class TestCivicGksBundleOutput:
 
     def test_metadata_schema_uses_public_version_aliases(self) -> None:
         """Expose grouped version provenance with acronym-preserving names."""
-        schema = GksOutputMetadata.model_json_schema(by_alias=True)
+        schema = GkmOutputMetadata.model_json_schema(by_alias=True)
 
         assert set(schema["properties"]) == {
             "implementationVersions",
@@ -45,7 +45,7 @@ class TestCivicGksBundleOutput:
             "VASpecPython",
         }
         assert set(schema["$defs"]["SpecificationVersions"]["properties"]) == {
-            "GKSCore",
+            "GKMCore",
             "VRS",
             "CatVRS",
             "VASpec",
@@ -53,7 +53,7 @@ class TestCivicGksBundleOutput:
 
     def test_schema_describes_concrete_bundle_objects(self) -> None:
         """Expose upstream GKS models instead of arbitrary JSON objects."""
-        schema = GksBundle.model_json_schema()
+        schema = GkmBundle.model_json_schema()
         properties = schema["properties"]
 
         collection_key_patterns = {
@@ -154,7 +154,7 @@ class TestCivicGksBundleOutput:
         collect_definition_references(schema)
         assert definition_references <= schema["$defs"].keys()
 
-        public_schema = GksBundle.model_json_schema()
+        public_schema = GkmBundle.model_json_schema()
         public_definition_references: set[str] = set()
         definition_references = public_definition_references
         collect_definition_references(public_schema)
@@ -226,14 +226,14 @@ class TestCivicGksBundleOutput:
 
     def test_builds_empty_bundle_with_errors(self) -> None:
         """Retain errors and zero counts when no Statements are available."""
-        error = GksAssertionError(
+        error = GkmAssertionError(
             assertion_id=1,
             message="Unsupported value: #/this/is/not/a/bundle/reference",
         )
 
-        bundle = build_gks_bundle(
+        bundle = build_gkm_bundle(
             [],
-            GksOutputMetadata(created_at="2026-08-03"),
+            GkmOutputMetadata(created_at="2026-08-03"),
             [error],
         )
 
@@ -246,7 +246,7 @@ class TestCivicGksBundleOutput:
 
     def test_builds_with_default_metadata_and_errors(self) -> None:
         """Provide convenient defaults for optional bundle context."""
-        bundle = build_gks_bundle([])
+        bundle = build_gkm_bundle([])
 
         assert bundle.metadata.created_at == date.today().isoformat()
         assert bundle.errors == []
@@ -261,7 +261,7 @@ class TestCivicGksBundleOutput:
             for assertion_id in (6, 202)
         ]
 
-        bundle = build_gks_bundle(records)
+        bundle = build_gkm_bundle(records)
 
         assert set(bundle.assertion) == {"civic.aid:6", "civic.aid:202"}
         assert bundle.evidence
@@ -327,9 +327,9 @@ class TestCivicGksBundleOutput:
             },
         }
 
-        bundle = build_gks_bundle(
+        bundle = build_gkm_bundle(
             [second_record, first_record],
-            GksOutputMetadata(created_at="2026-08-03"),
+            GkmOutputMetadata(created_at="2026-08-03"),
             [],
         )
 
@@ -370,9 +370,9 @@ class TestCivicGksBundleOutput:
             },
         }
 
-        bundle = build_gks_bundle(
+        bundle = build_gkm_bundle(
             [record],
-            GksOutputMetadata(created_at="2026-08-03"),
+            GkmOutputMetadata(created_at="2026-08-03"),
             [],
         )
 
@@ -424,9 +424,9 @@ class TestCivicGksBundleOutput:
             },
         }
 
-        bundle = build_gks_bundle(
+        bundle = build_gkm_bundle(
             [record],
-            GksOutputMetadata(created_at="2026-08-03"),
+            GkmOutputMetadata(created_at="2026-08-03"),
             [],
         )
 
@@ -476,9 +476,9 @@ class TestCivicGksBundleOutput:
             },
         }
 
-        bundle = build_gks_bundle(
+        bundle = build_gkm_bundle(
             [record],
-            GksOutputMetadata(created_at="2026-08-03"),
+            GkmOutputMetadata(created_at="2026-08-03"),
             [],
         )
 
@@ -547,9 +547,9 @@ class TestCivicGksBundleOutput:
             },
         }
 
-        bundle = build_gks_bundle(
+        bundle = build_gkm_bundle(
             [record],
-            GksOutputMetadata(created_at="2026-08-03"),
+            GkmOutputMetadata(created_at="2026-08-03"),
             [],
         )
 
@@ -581,8 +581,8 @@ class TestCivicGksBundleOutput:
         }
 
         with pytest.raises(ValidationError):
-            build_gks_bundle(
+            build_gkm_bundle(
                 [record],
-                GksOutputMetadata(created_at="2026-08-03"),
+                GkmOutputMetadata(created_at="2026-08-03"),
                 [],
             )

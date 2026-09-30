@@ -26,9 +26,9 @@ from ga4gh.vrs.models import SequenceLocation, Syntax, VrsType
 
 from civicpy.exports.gks.bundle.models import (
     Collection,
-    GksBundle,
-    GksBundleObject,
-    GksBundleReference,
+    GkmBundle,
+    GkmBundleObject,
+    GkmBundleReference,
     Metadata,
     Statistics,
     VariantRepresentation,
@@ -52,9 +52,9 @@ from civicpy.exports.gks.identifiers import (
     compute_identifier,
 )
 from civicpy.exports.gks.models import (
-    GksAssertionError,
-    GksOutputMetadata,
-    GksRecord,
+    GkmAssertionError,
+    GkmOutputMetadata,
+    GkmRecord,
 )
 
 _logger = logging.getLogger(__name__)
@@ -136,20 +136,20 @@ class _BundleBuilder:
     def __init__(self) -> None:
         """Initialize empty collections and the deduplication index."""
         # Objects grouped by bundle collection.
-        self._collections: dict[Collection, dict[str, GksBundleObject]] = {
+        self._collections: dict[Collection, dict[str, GkmBundleObject]] = {
             collection: {} for collection in Collection
         }
         # Original serialization for each collection key.
         self._source_serializations: dict[tuple[Collection, str], str] = {}
         # A molecular profile's CIViC mapping supplies the key for its defining VRS object.
-        self._variant_reference_by_vrs_id: dict[str, GksBundleReference] = {}
+        self._variant_reference_by_vrs_id: dict[str, GkmBundleReference] = {}
 
     def build(
         self,
-        records: Iterable[GksRecord],
-        metadata: GksOutputMetadata,
-        errors: list[GksAssertionError],
-    ) -> GksBundle:
+        records: Iterable[GkmRecord],
+        metadata: GkmOutputMetadata,
+        errors: list[GkmAssertionError],
+    ) -> GkmBundle:
         """Build a validated bundle from inlined GKS Statements.
 
         :param records: Inlined VA-Spec GKS Statements.
@@ -182,7 +182,7 @@ class _BundleBuilder:
                 self._collections
             ),
         )
-        return GksBundle(
+        return GkmBundle(
             **{
                 collection.value: dict(sorted(objects.items()))
                 for collection, objects in self._collections.items()
@@ -195,7 +195,7 @@ class _BundleBuilder:
     @staticmethod
     def _build_reference(
         collection: Collection, collection_key: str
-    ) -> GksBundleReference:
+    ) -> GkmBundleReference:
         """Build a JSON Pointer to an object in a bundle collection.
 
         :param collection: Root collection containing the object.
@@ -284,7 +284,7 @@ class _BundleBuilder:
 
     def _store_bundle_object(
         self, record: dict[str, Any], collection: Collection
-    ) -> GksBundleReference:
+    ) -> GkmBundleReference:
         """Store a referenceable object once and return its JSON Pointer.
 
         Differing representations of a repeated identifier log a warning;
@@ -355,7 +355,7 @@ class _BundleBuilder:
         self._store_variant_representations(variant_id, transformed)
 
     def _store_variant_representations(
-        self, variant_id: str, representations: GksBundleObject
+        self, variant_id: str, representations: GkmBundleObject
     ) -> None:
         """Store one CIViC variant's bundle representations.
 
@@ -392,9 +392,9 @@ class _BundleBuilder:
         variant_id: str,
         variations: Mapping[str, dict[str, Any]],
         defining_vrs_ids: set[str],
-    ) -> dict[str, GksBundleObject]:
+    ) -> dict[str, GkmBundleObject]:
         """Group VRS objects by coordinate level and index their references."""
-        grouped: dict[str, GksBundleObject] = {}
+        grouped: dict[str, GkmBundleObject] = {}
         for vrs_id, variation in variations.items():
             representation = self._classify_vrs_representation(
                 variation, is_defining=vrs_id in defining_vrs_ids
@@ -570,7 +570,7 @@ class _BundleBuilder:
         self,
         value: dict[str, Any],
         collection: Collection,
-    ) -> GksBundleReference:
+    ) -> GkmBundleReference:
         """Store an object without a source ID under a computed CIViC GKS identifier.
 
         :param value: Serialized GKS object without a source-provided ID.
@@ -581,7 +581,7 @@ class _BundleBuilder:
         identifier = compute_identifier(gks_object)
         return self._store_bundle_object({ID_FIELD: identifier, **value}, collection)
 
-    def _store_variant_origin(self, value: dict[str, Any]) -> GksBundleReference:
+    def _store_variant_origin(self, value: dict[str, Any]) -> GkmBundleReference:
         """Store a variant origin under the code from its first mapping."""
         try:
             code = value[MAPPINGS_FIELD][0][CODING_FIELD][CODE_FIELD]
@@ -636,11 +636,11 @@ class _BundleBuilder:
         return model_class.model_validate(model_value)
 
 
-def build_gks_bundle(
-    records: Iterable[GksRecord],
-    metadata: GksOutputMetadata | None = None,
-    errors: list[GksAssertionError] | None = None,
-) -> GksBundle:
+def build_gkm_bundle(
+    records: Iterable[GkmRecord],
+    metadata: GkmOutputMetadata | None = None,
+    errors: list[GkmAssertionError] | None = None,
+) -> GkmBundle:
     """Build a referenced GKS bundle from inlined CIViC GKS Statements.
 
     :param records: Inlined VA-Spec GKS Statements translated from CIViC
@@ -653,6 +653,6 @@ def build_gks_bundle(
     """
     return _BundleBuilder().build(
         records,
-        metadata or GksOutputMetadata(created_at=date.today().isoformat()),
+        metadata or GkmOutputMetadata(created_at=date.today().isoformat()),
         errors or [],
     )

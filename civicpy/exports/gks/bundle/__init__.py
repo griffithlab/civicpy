@@ -1,9 +1,9 @@
-"""Build and describe the referenced CIViC GKS Bundle Format."""
+"""Build and describe the referenced CIViC GKM Bundle Format."""
 
-from civicpy.exports.gks.bundle.builder import build_gks_bundle
-from civicpy.exports.gks.bundle.models import GksBundle
+from civicpy.exports.gks.bundle.builder import build_gkm_bundle
+from civicpy.exports.gks.bundle.models import GkmBundle
 
 __all__ = [
-    "GksBundle",
-    "build_gks_bundle",
+    "GkmBundle",
+    "build_gkm_bundle",
 ]

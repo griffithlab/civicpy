@@ -14,9 +14,9 @@ from civicpy import civic
 from civicpy.__env__ import LOCAL_CACHE_PATH
 from civicpy.__version__ import __version__
 from civicpy.civic import CoordinateQuery
-from civicpy.exports.gks.bundle import GksBundle
+from civicpy.exports.gks.bundle import GkmBundle
 from civicpy.exports.gks.bundle.models import BUNDLE_SCHEMA_FILENAME
-from civicpy.exports.gks.models import GksAssertionError, GksRecord
+from civicpy.exports.gks.models import GkmAssertionError, GkmRecord
 from civicpy.exports.civic_gks_record import (
     CivicGksRecordError,
     ClinVarSubmissionType,
@@ -228,7 +228,7 @@ def create_gks_bundle(
 
 @cli.command(context_settings=CONTEXT_SETTINGS)
 def create_gks_bundle_schema() -> None:
-    """Write the CIViC GKS Bundle Format JSON Schema.
+    """Write the CIViC GKM Bundle Format JSON Schema.
 
     The schema describes the keyed bundle collections, their identifier patterns,
     and the concrete VRS, Cat-VRS, and VA-Spec models accepted in each collection.
@@ -237,7 +237,7 @@ def create_gks_bundle_schema() -> None:
     """
     output_json = Path(BUNDLE_SCHEMA_FILENAME)
     with output_json.open("w", encoding="utf-8") as write_file:
-        json.dump(GksBundle.model_json_schema(), write_file, indent=2)
+        json.dump(GkmBundle.model_json_schema(), write_file, indent=2)
 
 
 def _create_gks_export(
@@ -273,7 +273,7 @@ def _create_gks_export(
 def _transform_assertions_to_gks(
     assertion_approvals: Iterable[_AssertionApprovals],
     submission_type: ClinVarSubmissionType | None,
-) -> tuple[list[GksRecord], list[GksAssertionError]]:
+) -> tuple[list[GkmRecord], list[GkmAssertionError]]:
     """Transform eligible CIViC Assertions into VA-Spec GKS Statement models.
 
     :param assertion_approvals: Assertions paired with their approvals.
@@ -281,13 +281,13 @@ def _transform_assertions_to_gks(
     :return: Successfully transformed GKS Statements and errors for Assertions
         that could not be transformed.
     """
-    gks_records: list[GksRecord] = []
-    errors: list[GksAssertionError] = []
+    gks_records: list[GkmRecord] = []
+    errors: list[GkmAssertionError] = []
 
     for assertion, approvals in assertion_approvals:
         if not assertion.is_valid_for_gks_json(emit_warnings=True):
             errors.append(
-                GksAssertionError(
+                GkmAssertionError(
                     assertion_id=assertion.id,
                     message="Assertion is not valid for GKS JSON. See logs for more details.",
                 )
@@ -302,7 +302,7 @@ def _transform_assertions_to_gks(
             )
         except (CivicGksRecordError, NotImplementedError) as error:
             errors.append(
-                GksAssertionError(assertion_id=assertion.id, message=str(error))
+                GkmAssertionError(assertion_id=assertion.id, message=str(error))
             )
             continue
 
