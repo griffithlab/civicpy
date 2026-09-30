@@ -25,7 +25,7 @@ from ga4gh.va_spec.base import (
     Document,
     Method,
     Statement,
-    Therapeutic,
+    Therapy,
     TherapyGroup,
     VariantClinicalSignificanceProposition,
     VariantDiagnosticProposition,
@@ -63,7 +63,7 @@ from civicpy.exports.gks.models import (
 GksBundleObject: TypeAlias = dict[str, Any]
 GksBundleReference: TypeAlias = str
 BUNDLE_SCHEMA_FILENAME = f"{BUNDLE_FORMAT_NAME}-v{BUNDLE_FORMAT_VERSION}.schema.json"
-BUNDLE_SCHEMA_ID = f"urn:civic:gks-bundle:schema:{BUNDLE_FORMAT_VERSION}"
+BUNDLE_SCHEMA_ID = f"urn:civic:gkm-bundle:schema:{BUNDLE_FORMAT_VERSION}"
 CIVIC_KNOWLEDGE_MODEL_URL = "https://civic.readthedocs.io/en/latest/model.html"
 
 
@@ -516,7 +516,7 @@ class GksBundle(GksModel):
         GksTherapyId,
         Annotated[
             GksBundleObject,
-            _external_gks_schema(Therapeutic, concept_type="Therapy"),
+            _external_gks_schema(Therapy, concept_type="Therapy"),
         ],
     ] = Field(json_schema_extra=_closed_collection_schema(Collection.THERAPY))
     therapyGroup: dict[

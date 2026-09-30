@@ -44,8 +44,8 @@ from ga4gh.va_spec.aac_2017 import (
 )
 from ga4gh.va_spec.base import (
     Agent,
-    Condition,
     CcvClassification,
+    Condition,
     ConditionSet,
     Contribution,
     DiagnosticPredicate,
@@ -57,8 +57,8 @@ from ga4gh.va_spec.base import (
     StrengthCode,
     System,
     TherapeuticResponsePredicate,
+    Therapy,
     TherapyGroup,
-    Therapeutic,
     VariantClinicalSignificanceProposition,
     VariantDiagnosticProposition,
     VariantOncogenicityProposition,
@@ -89,7 +89,7 @@ from civicpy.civic import (
     Organization,
     Phenotype,
     Source,
-    Therapy,
+    Therapy as CivicTherapy,
 )
 from civicpy.exports.gks.constants import CuriePrefix
 from civicpy.exports.gks.identifiers import AlleleOriginQualifier
@@ -872,12 +872,10 @@ class CivicGksDisease(Condition):
         :param disease: CIViC disease record
         """
         super().__init__(
-            root=MappableConcept(
-                id=f"{CuriePrefix.DISEASE}:{disease.id}",
-                conceptType="Disease",
-                name=disease.name,
-                mappings=self.get_mappings(disease),
-            )
+            id=f"{CuriePrefix.DISEASE}:{disease.id}",
+            conceptType="Disease",
+            name=disease.name,
+            mappings=self.get_mappings(disease),
         )
 
     @staticmethod
@@ -892,7 +890,7 @@ class CivicGksDisease(Condition):
             mappings = [
                 ConceptMapping(
                     coding=Coding(
-                        code=f"DOID:{disease.doid}",
+                        code=code(f"DOID:{disease.doid}"),
                         system="https://disease-ontology.org/?id=",
                     ),
                     relation=Relation.EXACT_MATCH,
@@ -916,12 +914,10 @@ class CivicGksPhenotype(Condition):
         """
 
         super().__init__(
-            root=MappableConcept(
-                id=f"{CuriePrefix.PHENOTYPE}:{phenotype.id}",
-                conceptType=phenotype.type.capitalize(),
-                name=phenotype.name,
-                mappings=self.get_mappings(phenotype),
-            )
+            id=f"{CuriePrefix.PHENOTYPE}:{phenotype.id}",
+            conceptType=phenotype.type.capitalize(),
+            name=phenotype.name,
+            mappings=self.get_mappings(phenotype),
         )
 
     @staticmethod
@@ -944,29 +940,27 @@ class CivicGksPhenotype(Condition):
         ]
 
 
-class CivicGksTherapy(Therapeutic):
-    """Class for representing CIViC Therapy as Therapeutic
+class CivicGksTherapy(Therapy):
+    """Class for representing CIViC Therapy as Therapy
 
     :param therapy: CIViC therapy record
     """
 
-    def __init__(self, therapy: Therapy) -> None:
+    def __init__(self, therapy: CivicTherapy) -> None:
         """Initialize CivicGksTherapy class
 
         :param therapy: CIViC therapy record
         """
         super().__init__(
-            root=MappableConcept(
-                id=f"{CuriePrefix.THERAPY}:{therapy.id}",
-                name=therapy.name,
-                conceptType="Therapy",
-                mappings=self.get_mappings(therapy),
-                extensions=self.get_extensions(therapy),
-            )
+            id=f"{CuriePrefix.THERAPY}:{therapy.id}",
+            name=therapy.name,
+            conceptType="Therapy",
+            mappings=self.get_mappings(therapy),
+            extensions=self.get_extensions(therapy),
         )
 
     @staticmethod
-    def get_mappings(therapy: Therapy) -> list[ConceptMapping] | None:
+    def get_mappings(therapy: CivicTherapy) -> list[ConceptMapping] | None:
         """Get mappings for CIViC therapy
 
         :param therapy: CIViC therapy record
@@ -989,7 +983,7 @@ class CivicGksTherapy(Therapeutic):
         return mappings
 
     @staticmethod
-    def get_extensions(therapy: Therapy) -> list[Extension] | None:
+    def get_extensions(therapy: CivicTherapy) -> list[Extension] | None:
         """Get extensions for CIViC therapy
 
         :param therapy: CIViC therapy record
@@ -1011,15 +1005,15 @@ class CivicGksTherapyGroup(TherapyGroup):
     """
 
     def __init__(
-        self, therapies: list[Therapy], therapy_interaction_type: str | None
+        self, concepts: list[CivicTherapy], therapy_interaction_type: str | None
     ) -> None:
         """Initialize CivicGksTherapyGroup class
 
-        :param therapies: List of CIViC therapy records
+        :param concepts: List of CIViC therapy records
         :param therapy_interaction_type: Interaction type for list of therapies
         :raises CivicGksRecordError: If no therapies were provided
         """
-        if not therapies:
+        if not concepts:
             err_msg = "No therapies provided"
             raise CivicGksRecordError(err_msg)
 
@@ -1028,11 +1022,11 @@ class CivicGksTherapyGroup(TherapyGroup):
             if therapy_interaction_type == CivicInteractionType.COMBINATION
             else MembershipOperator.OR
         )
-        therapies_mc: list[MappableConcept] = [
-            CivicGksTherapy(t).root for t in therapies
+        therapies_mc: list[Therapy] = [
+            CivicGksTherapy(t) for t in therapies
         ]
 
-        super().__init__(therapies=therapies_mc, membershipOperator=membership_operator)
+        super().__init__(concepts=therapies_mc, membershipOperator=membership_operator)
 
 
 class _CivicGksEvidenceAssertionMixin:
@@ -1122,7 +1116,7 @@ class _CivicGksEvidenceAssertionMixin:
                 ConceptMapping(
                     coding=Coding(
                         system="https://go.osu.edu/evidence-codes",
-                        code=vicc_concept_vocab.code,
+                        code=code(vicc_concept_vocab.code),
                         name=vicc_concept_vocab.name,
                     ),
                     relation=Relation.EXACT_MATCH,
@@ -1148,7 +1142,7 @@ class _CivicGksEvidenceAssertionMixin:
         variant: GeneVariant = record.molecular_profile.variants[0]
 
         params = {
-            "subjectVariant": CivicGksMolecularProfile(record.molecular_profile),
+            "subject": CivicGksMolecularProfile(record.molecular_profile),
             "geneContextQualifier": CivicGksGene(variant.gene),
             "alleleOriginQualifier": self.get_allele_origin_qualifier(record),
             "predicate": self.get_predicate(record)
@@ -1159,36 +1153,36 @@ class _CivicGksEvidenceAssertionMixin:
         }
 
         if record_type == CivicEvidenceAssertionType.ONCOGENIC:
-            condition_key = "objectTumorType"
+            condition_key = "object"
         elif (
             is_clinical_significance_prop
             or record_type != CivicEvidenceAssertionType.PREDICTIVE
         ):
-            condition_key = "objectCondition"
+            condition_key = "object"
         else:
             condition_key = "conditionQualifier"
 
         gks_disease = CivicGksDisease(record.disease)
 
         if record.phenotypes:
-            conditions = [gks_disease]
+            conditions: list[CivicGksDisease | ConditionSet] = [gks_disease]
             if len(record.phenotypes) > 1:
                 conditions.append(
                     ConditionSet(
                         membershipOperator=MembershipOperator.OR,
-                        conditions=[
-                            CivicGksPhenotype(phenotype).root
+                        concepts=[
+                            CivicGksPhenotype(phenotype)
                             for phenotype in record.phenotypes
                         ],
                     )
                 )
             else:
-                conditions.append(CivicGksPhenotype(record.phenotypes[0]).root)
+                conditions.append(CivicGksPhenotype(record.phenotypes[0]))
 
             params[condition_key] = ConditionSet(
                 membershipOperator=MembershipOperator.AND,
-                conditions=[
-                    condition.root if isinstance(condition, Condition) else condition
+                concepts=[
+                    condition
                     for condition in conditions
                 ],
             )
@@ -1224,7 +1218,7 @@ class _CivicGksEvidenceAssertionMixin:
                     record.therapies, record.therapy_interaction_type
                 )
 
-            params["objectTherapeutic"] = therapeutic
+            params["object"] = therapeutic
             proposition_cls = VariantTherapeuticResponseProposition
         else:
             if record_type == CivicEvidenceAssertionType.PROGNOSTIC:
@@ -1426,7 +1420,7 @@ class _CivicGksAssertionMixin:
         return [cls._create_clinvar_accession_extension(extension_value)]
 
     @staticmethod
-    def get_reported_in(assertion: Assertion) -> list[iriReference]:
+    def get_reported_in(assertion: Assertion) -> list[Document | iriReference]:
         """Get reported in information for an assertion
 
         If multiple evidence items link to same source, will merge the source.

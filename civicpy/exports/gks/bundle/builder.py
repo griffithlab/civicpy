@@ -23,6 +23,16 @@ from ga4gh.va_spec.base import (
     VariantTherapeuticResponseProposition,
 )
 from ga4gh.vrs.models import SequenceLocation, Syntax, VrsType
+
+from civicpy.exports.gks.bundle.models import (
+    Collection,
+    GksBundle,
+    GksBundleObject,
+    GksBundleReference,
+    Metadata,
+    Statistics,
+    VariantRepresentation,
+)
 from civicpy.exports.gks.constants import (
     ALLELE_ORIGIN_QUALIFIER_FIELD,
     CODE_FIELD,
@@ -34,7 +44,6 @@ from civicpy.exports.gks.constants import (
     PROPOSITION_FIELD,
     REFGET_ACCESSION_FIELD,
     TARGET_PROPOSITION_FIELD,
-    THERAPIES_FIELD,
     TYPE_FIELD,
     CuriePrefix,
 )
@@ -46,15 +55,6 @@ from civicpy.exports.gks.models import (
     GksAssertionError,
     GksOutputMetadata,
     GksRecord,
-)
-from civicpy.exports.gks.bundle.models import (
-    Collection,
-    GksBundle,
-    GksBundleObject,
-    GksBundleReference,
-    Metadata,
-    Statistics,
-    VariantRepresentation,
 )
 
 _logger = logging.getLogger(__name__)
@@ -76,9 +76,11 @@ _VRS_REPRESENTATION_BY_SYNTAX = {
     Syntax.HGVS_C.value: VariantRepresentation.CODING,
     Syntax.HGVS_G.value: VariantRepresentation.GENOMIC,
 }
-_GROUP_COLLECTION_BY_MEMBER_FIELD = {
-    CONDITIONS_FIELD: Collection.CONDITION_SET,
-    THERAPIES_FIELD: Collection.THERAPY_GROUP,
+_GROUP_COLLECTION_BY_PARENT_FIELD = {
+    # Both VA-Spec group models serialize their members as ``concepts``. The
+    # containing Statement field determines which concrete group model applies.
+    "condition": Collection.CONDITION_SET,
+    "therapeutic": Collection.THERAPY_GROUP,
 }
 
 _BUNDLE_COLLECTION_BY_ID_PREFIX = {
@@ -156,7 +158,10 @@ class _BundleBuilder:
         :return: Validated CIViC GKS bundle.
         """
         serialized_records = sorted(
-            (record.model_dump(exclude_none=True) for record in records),
+            (
+                record.model_dump(exclude_none=True, serialize_as_any=True)
+                for record in records
+            ),
             key=lambda record: str(record.get(ID_FIELD, "")),
         )
 
@@ -536,7 +541,7 @@ class _BundleBuilder:
         if collection:
             return self._store_bundle_object(value, collection)
 
-        group_collection = self._resolve_group_collection(value)
+        group_collection = self._resolve_group_collection(value, field_name)
         if group_collection:
             return self._store_object_with_computed_id(value, group_collection)
 
@@ -548,17 +553,18 @@ class _BundleBuilder:
     @staticmethod
     def _resolve_group_collection(
         value: Mapping[str, Any],
+        field_name: str,
     ) -> Collection | None:
-        """Identify a group without a source-provided ID from its member field.
+        """Identify a group without a source-provided ID from its parent field.
 
         :param value: Serialized nested GKS object.
+        :param field_name: Parent field containing the nested value.
         :return: Matching group collection, or ``None`` for another value object.
         """
-        for member_field, collection in _GROUP_COLLECTION_BY_MEMBER_FIELD.items():
-            if member_field in value:
-                return collection
+        if CONDITIONS_FIELD not in value:
+            return None
 
-        return None
+        return _GROUP_COLLECTION_BY_PARENT_FIELD.get(field_name)
 
     def _store_object_with_computed_id(
         self,

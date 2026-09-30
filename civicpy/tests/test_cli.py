@@ -37,8 +37,8 @@ def check_metadata(metadata: dict[str, Any], bundle: bool = False) -> None:
                 "statistics",
             }
         )
-        assert metadata["bundleFormat"] == "civic-gks-bundle"
-        assert metadata["bundleFormatVersion"] == "0.1.0"
+        assert metadata["bundleFormat"] == "civic-gkm-bundle"
+        assert metadata["bundleFormatVersion"] == "0.1.0-a0"
         statistics = metadata["statistics"]
         assert set(statistics) == {"collections"}
         assert all(
@@ -103,8 +103,8 @@ class TestCli(object):
             "keys for supporting GKS representation details. For the "
             f"CIViC data model, see {CIVIC_KNOWLEDGE_MODEL_URL}."
         )
-        assert schema["civicBundleFormat"] == "civic-gks-bundle"
-        assert schema["civicBundleFormatVersion"] == "0.1.0"
+        assert schema["civicBundleFormat"] == "civic-gkm-bundle"
+        assert schema["civicBundleFormatVersion"] == "0.1.0-a0"
 
     @pytest.mark.skip(reason="Long running test")
     def test_create_cache(self):

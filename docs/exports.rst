@@ -242,7 +242,7 @@ related object directly::
 
     {
       "proposition": {
-        "subjectVariant": {
+        "subject": {
           "id": "civic.mpid:33",
           "type": "CategoricalVariant"
         }
@@ -263,7 +263,7 @@ stored once and referenced with a pointer::
       "proposition": {
         "civic.proposition:-AKWXtNluL_XZYk5cDaaV7bKw6fKlPmD": {
           "id": "civic.proposition:-AKWXtNluL_XZYk5cDaaV7bKw6fKlPmD",
-          "subjectVariant": "#/molecularProfile/civic.mpid:33"
+          "subject": "#/molecularProfile/civic.mpid:33"
         }
       }
     }
@@ -428,7 +428,7 @@ easy to see::
         "civic.proposition:-AKWXtNluL_XZYk5cDaaV7bKw6fKlPmD": {
           "id": "civic.proposition:-AKWXtNluL_XZYk5cDaaV7bKw6fKlPmD",
           "type": "VariantClinicalSignificanceProposition",
-          "subjectVariant": "#/molecularProfile/civic.mpid:33",
+          "subject": "#/molecularProfile/civic.mpid:33",
           "geneContextQualifier": "#/feature/civic.gid:19",
           "predicate": "hasClinicalSignificanceFor",
           "objectCondition": "#/disease/civic.did:8"
@@ -436,9 +436,9 @@ easy to see::
         "civic.proposition:lzu38uLu_bvAPfb7Jo_ol8741OJaSdnu": {
           "id": "civic.proposition:lzu38uLu_bvAPfb7Jo_ol8741OJaSdnu",
           "type": "VariantTherapeuticResponseProposition",
-          "subjectVariant": "#/molecularProfile/civic.mpid:33",
+          "subject": "#/molecularProfile/civic.mpid:33",
           "predicate": "predictsSensitivityTo",
-          "objectTherapeutic": "#/therapy/civic.tid:146"
+          "object": "#/therapy/civic.tid:146"
         }
       },
       "assertion": {

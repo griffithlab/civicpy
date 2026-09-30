@@ -11,7 +11,7 @@ from typing import Any, TypeAlias
 from ga4gh.core import sha512t24u
 from ga4gh.core.models import ConceptMapping, MappableConcept
 from ga4gh.va_spec.base import (
-    ClinicalVariantProposition,
+    GeneticContextVariantProposition,
     ConditionSet,
     TherapyGroup,
 )
@@ -64,7 +64,7 @@ class AlleleOriginQualifier(MappableConcept):
 
 # Object types supported by ``compute_identifier``.
 Identifiable: TypeAlias = (
-    ClinicalVariantProposition
+    GeneticContextVariantProposition
     | ConditionSet
     | TherapyGroup
     | AlleleOriginQualifier
@@ -96,7 +96,7 @@ def compute_identifier(gks_object: BaseModel) -> str:
     :raises IdentifierError: If the object is not a supported GKS model.
     :return: Computed identifier in the namespace for the object's GKS type.
     """
-    if isinstance(gks_object, ClinicalVariantProposition):
+    if isinstance(gks_object, GeneticContextVariantProposition):
         identifier_prefix = CuriePrefix.PROPOSITION
         member_field = None
     elif isinstance(gks_object, ConditionSet):
@@ -124,7 +124,7 @@ def compute_identifier(gks_object: BaseModel) -> str:
         serialized_object = gks_object.model_dump(mode="json", exclude_none=True)
         excluded_fields = (
             _NON_IDENTITY_PROPOSITION_FIELDS
-            if isinstance(gks_object, ClinicalVariantProposition)
+            if isinstance(gks_object, GeneticContextVariantProposition)
             else _COMMON_NON_IDENTITY_FIELDS
         )
         serialized_object = {

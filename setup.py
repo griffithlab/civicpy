@@ -40,9 +40,7 @@ setup(
         "pysam",
         "python-dateutil",
         "deprecation",
-        # "ga4gh.vrs~=2.4.0-a1",
-        # "ga4gh.cat_vrs~=0.8.0-a1",
-        "ga4gh.va_spec @ git+https://github.com/ga4gh/va-spec-python.git@daa80e6e858da367126aea6ca96c604a06cf0661",
+        "ga4gh.va_spec @ git+https://github.com/ga4gh/va-spec-python.git@341dfd4df68923c9216bce03c317b7e863df6db1",
     ],
     extras_require={
         "test": [

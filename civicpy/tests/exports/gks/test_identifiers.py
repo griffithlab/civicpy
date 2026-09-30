@@ -10,7 +10,9 @@ from ga4gh.core.models import (
     iriReference,
 )
 from ga4gh.va_spec.base import (
+    Condition,
     ConditionSet,
+    Therapy,
     TherapyGroup,
     VariantClinicalSignificanceProposition,
     VariantOncogenicityProposition,
@@ -78,21 +80,21 @@ class _UnsupportedGksObject(BaseModel):
     """Represent an unsupported Pydantic model for error-path testing."""
 
 
-def _concept(identifier: str, name: str) -> MappableConcept:
+def _concept(identifier: str, name: str) -> Therapy:
     """Create a minimally identified concept with descriptive content.
 
     :param identifier: Stable concept identifier.
     :param name: Descriptive concept name that must not define group identity.
-    :return: Minimal GKS mappable concept.
+    :return: Minimal GKS Therapy.
     """
-    return MappableConcept(id=identifier, conceptType="Therapy", name=name)
+    return Therapy(id=identifier, conceptType="Therapy", name=name)
 
 
 def test_group_identifier_uses_member_ids_not_descriptive_content() -> None:
     """Ignore member order and descriptive changes when identifying a group."""
     original = TherapyGroup(
         membershipOperator=MembershipOperator.AND,
-        therapies=[
+        concepts=[
             _concept("civic.tid:1", "Therapy 1"),
             _concept("civic.tid:2", "Therapy 2"),
         ],
@@ -100,7 +102,7 @@ def test_group_identifier_uses_member_ids_not_descriptive_content() -> None:
     updated = TherapyGroup(
         id="civic.therapyGroup:preexisting",
         membershipOperator=MembershipOperator.AND,
-        therapies=[
+        concepts=[
             _concept("civic.tid:2", "Renamed therapy 2"),
             _concept("civic.tid:1", "Renamed therapy 1"),
         ],
@@ -114,19 +116,19 @@ def test_group_identifier_uses_member_ids_not_descriptive_content() -> None:
 
 def test_group_identifier_includes_membership_operator() -> None:
     """Treat different membership semantics as different group identities."""
-    conditions: list[MappableConcept | ConditionSet] = [
-        MappableConcept(id="civic.did:1", conceptType="Disease", name="Disease"),
-        MappableConcept(
+    concepts: list[MappableConcept | ConditionSet] = [
+        Condition(id="civic.did:1", conceptType="Disease", name="Disease"),
+        Condition(
             id="civic.phenotype:2", conceptType="Phenotype", name="Phenotype"
         ),
     ]
     and_group = ConditionSet(
         membershipOperator=MembershipOperator.AND,
-        conditions=conditions,
+        concepts=concepts,
     )
     or_group = ConditionSet(
         membershipOperator=MembershipOperator.OR,
-        conditions=conditions,
+        concepts=concepts,
     )
 
     and_identifier = compute_identifier(and_group)
@@ -140,14 +142,14 @@ def test_computes_proposition_identifier_from_pydantic_type() -> None:
     proposition = VariantOncogenicityProposition(
         name="Original name",
         description="Original description",
-        subjectVariant=iriReference(root="civic.mpid:1"),
-        objectTumorType=iriReference(root="civic.did:1"),
+        subject=iriReference(root="civic.mpid:1"),
+        object=iriReference(root="civic.did:1"),
     )
     updated_proposition = proposition.model_copy(
         update={"name": "Updated name", "description": "Updated description"}
     )
     different_object = proposition.model_copy(
-        update={"objectTumorType": iriReference(root="civic.did:2")}
+        update={"object": iriReference(root="civic.did:2")}
     )
 
     identifier = compute_identifier(proposition)
@@ -161,36 +163,36 @@ def test_proposition_identifier_uses_nested_group_identifier() -> None:
     """Ignore nested condition descriptions and order in proposition identity."""
     original_conditions = ConditionSet(
         membershipOperator=MembershipOperator.AND,
-        conditions=[
-            MappableConcept(id="civic.did:1", conceptType="Disease", name="Disease"),
-            MappableConcept(
+        concepts=[
+            Condition(id="civic.did:1", conceptType="Disease", name="Disease"),
+            Condition(
                 id="civic.phenotype:2", conceptType="Phenotype", name="Phenotype"
             ),
         ],
     )
-    updated_conditions = ConditionSet(
+    updated_concepts = ConditionSet(
         membershipOperator=MembershipOperator.AND,
-        conditions=[
-            MappableConcept(
+        concepts=[
+            Condition(
                 id="civic.phenotype:2",
                 conceptType="Phenotype",
                 name="Renamed phenotype",
             ),
-            MappableConcept(
+            Condition(
                 id="civic.did:1", conceptType="Disease", name="Renamed disease"
             ),
         ],
     )
     original = VariantClinicalSignificanceProposition.model_validate(
         {
-            "subjectVariant": iriReference(root="civic.mpid:1"),
-            "objectCondition": original_conditions,
+            "subject": iriReference(root="civic.mpid:1"),
+            "object": original_conditions,
         }
     )
     updated = VariantClinicalSignificanceProposition.model_validate(
         {
-            "subjectVariant": iriReference(root="civic.mpid:1"),
-            "objectCondition": updated_conditions,
+            "subject": iriReference(root="civic.mpid:1"),
+            "object": updated_concepts,
         }
     )
 

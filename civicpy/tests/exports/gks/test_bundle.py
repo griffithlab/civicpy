@@ -510,30 +510,36 @@ class TestCivicGksBundleOutput:
             "id": "civic.aid:1",
             "type": "Statement",
             "condition": {
+                "type": "ConceptSet",
                 "membershipOperator": "AND",
-                "conditions": [
+                "concepts": [
                     {
                         "id": "civic.did:1",
+                        "type": "MappableConcept",
                         "conceptType": "Disease",
                         "name": "Disease",
                     },
                     {
                         "id": "civic.phenotype:2",
+                        "type": "MappableConcept",
                         "conceptType": "Phenotype",
                         "name": "Phenotype",
                     },
                 ],
             },
             "therapeutic": {
+                "type": "ConceptSet",
                 "membershipOperator": "AND",
-                "therapies": [
+                "concepts": [
                     {
                         "id": "civic.tid:1",
+                        "type": "MappableConcept",
                         "conceptType": "Therapy",
                         "name": "Therapy 1",
                     },
                     {
                         "id": "civic.tid:2",
+                        "type": "MappableConcept",
                         "conceptType": "Therapy",
                         "name": "Therapy 2",
                     },
@@ -557,7 +563,7 @@ class TestCivicGksBundleOutput:
         assert bundle.therapyGroup[therapy_group_id]["id"] == therapy_group_id
         assert set(bundle.disease) == {"civic.did:1"}
         assert set(bundle.phenotype) == {"civic.phenotype:2"}
-        assert bundle.conditionSet[condition_set_id]["conditions"] == [
+        assert bundle.conditionSet[condition_set_id]["concepts"] == [
             "#/disease/civic.did:1",
             "#/phenotype/civic.phenotype:2",
         ]
@@ -571,7 +577,7 @@ class TestCivicGksBundleOutput:
         record.model_dump.return_value = {
             "id": "civic.aid:1",
             "type": "Statement",
-            "therapeutic": {"therapies": []},
+            "therapeutic": {"concepts": []},
         }
 
         with pytest.raises(ValidationError):

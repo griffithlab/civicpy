@@ -15,16 +15,16 @@ NAME_FIELD = "name"
 DESCRIPTION_FIELD = "description"
 ALIASES_FIELD = "aliases"
 MAPPINGS_FIELD = "mappings"
-CONDITIONS_FIELD = "conditions"
-THERAPIES_FIELD = "therapies"
+CONDITIONS_FIELD = "concepts"
+THERAPIES_FIELD = "concepts"
 MEMBERSHIP_OPERATOR_FIELD = "membershipOperator"
 PROPOSITION_FIELD = "proposition"
 TARGET_PROPOSITION_FIELD = "targetProposition"
 ALLELE_ORIGIN_QUALIFIER_FIELD = "alleleOriginQualifier"
 
 
-BUNDLE_FORMAT_NAME = "civic-gks-bundle"
-BUNDLE_FORMAT_VERSION = "0.1.0"
+BUNDLE_FORMAT_NAME = "civic-gkm-bundle"
+BUNDLE_FORMAT_VERSION = "0.1.0-a0"
 
 
 class CuriePrefix:
