@@ -198,7 +198,7 @@ def gks_mpid33():
                     {
                         "type": "MappableConcept",
                         "primaryCoding": {
-                            "system": "ga4gh-gks-term:allele-relation",
+                            "system": "ga4gh-gkm-term:allele-relation",
                             "code": "liftover_to",
                         }
                     },
@@ -899,7 +899,7 @@ def civic_mpid113(ret_m918t_vrs, civic_mpid113_cdna_vrs, civic_mpid113_genomic_v
                     {
                         "type": "MappableConcept",
                         "primaryCoding": {
-                            "system": "ga4gh-gks-term:allele-relation",
+                            "system": "ga4gh-gkm-term:allele-relation",
                             "code": "liftover_to",
                         }
                     },
@@ -1549,7 +1549,7 @@ class TestCivicGksMolecularProfile(object):
                     "type": "MappableConcept",
                     "primaryCoding": {
                         "code": "liftover_to",
-                        "system": "ga4gh-gks-term:allele-relation",
+                        "system": "ga4gh-gkm-term:allele-relation",
                     }
                 },
                 {
@@ -1626,7 +1626,7 @@ class TestCivicGksMolecularProfile(object):
                             "type": "MappableConcept",
                             "primaryCoding": {
                                 "code": "liftover_to",
-                                "system": "ga4gh-gks-term:allele-relation",
+                                "system": "ga4gh-gkm-term:allele-relation",
                             }
                         }
                     ],
@@ -1634,7 +1634,7 @@ class TestCivicGksMolecularProfile(object):
                         "type": "MappableConcept",
                         "primaryCoding": {
                             "code": "is_within",
-                            "system": "ga4gh-gks-term:location-match",
+                            "system": "ga4gh-gkm-term:location-match",
                         }
                     },
                 },

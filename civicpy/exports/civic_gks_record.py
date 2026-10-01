@@ -89,6 +89,8 @@ from civicpy.civic import (
     Organization,
     Phenotype,
     Source,
+)
+from civicpy.civic import (
     Therapy as CivicTherapy,
 )
 from civicpy.exports.gks.constants import CuriePrefix
@@ -845,7 +847,7 @@ class CivicGksMolecularProfile(CategoricalVariant):
                     matchCharacteristic=MappableConcept(
                         primaryCoding=Coding(
                             code=code("is_within"),
-                            system="ga4gh-gks-term:location-match",
+                            system="ga4gh-gkm-term:location-match",
                         )
                     ),
                     relations=[LIFTOVER_TO_RELATION],
