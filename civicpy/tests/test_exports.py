@@ -456,7 +456,6 @@ def gks_source592():
         "pmid": "23982599",
         "type": "Document",
         "urls": [
-            "https://civicdb.org/links/evidence/2997",
             "https://civicdb.org/links/source/1725",
             "http://www.ncbi.nlm.nih.gov/pubmed/23982599",
         ],

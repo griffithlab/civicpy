@@ -1236,14 +1236,16 @@ class CivicGksSource(Document):
     :param source: CIViC source record
     """
 
-    def __init__(self, source: Source, urls: list[str] | None = None) -> None:
+    def __init__(self, source: Source) -> None:
         """Initialize CivicGksSource class
 
         :param source: CIViC source record
-        :param urls: List of additional URLs to include in the document
         """
-        source_urls = urls or []
-        source_urls.extend([f"{LINKS_URL}/source/{source.id}", source.source_url])
+        source_urls = [
+            f"{LINKS_URL}/source/{source.id}",
+            source.source_url
+        ]
+
         pmid = source.citation_id if source.source_type == "PUBMED" else None
         if pmc_id := source.pmc_id:
             source_urls.append(f"https://www.ncbi.nlm.nih.gov/pmc/articles/{pmc_id}")
@@ -1319,7 +1321,6 @@ class CivicGksEvidence(Statement, _CivicGksEvidenceAssertionMixin):
             reportedIn=[
                 CivicGksSource(
                     evidence_item.source,
-                    urls=[f"{LINKS_URL}/evidence/{evidence_item.id}"],
                 ),
             ],
         )
