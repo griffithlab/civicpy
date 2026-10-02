@@ -8,10 +8,11 @@
 
 import logging
 import re
+from collections.abc import Sequence
 from dataclasses import dataclass
 from enum import Enum
 from types import MappingProxyType
-from typing import ClassVar
+from typing import ClassVar, TypeAlias
 
 from ga4gh.cat_vrs.models import (
     CategoricalVariant,
@@ -44,6 +45,7 @@ from ga4gh.va_spec.aac_2017 import (
 from ga4gh.va_spec.base import (
     Agent,
     CcvClassification,
+    Condition,
     ConditionSet,
     Contribution,
     DiagnosticPredicate,
@@ -55,6 +57,7 @@ from ga4gh.va_spec.base import (
     StrengthCode,
     System,
     TherapeuticResponsePredicate,
+    Therapy,
     TherapyGroup,
     VariantClinicalSignificanceProposition,
     VariantDiagnosticProposition,
@@ -86,8 +89,12 @@ from civicpy.civic import (
     Organization,
     Phenotype,
     Source,
-    Therapy,
 )
+from civicpy.civic import (
+    Therapy as CivicTherapy,
+)
+from civicpy.exports.gks.constants import CuriePrefix
+from civicpy.exports.gks.identifiers import AlleleOriginQualifier
 from civicpy.exports.variation_normalizer import (
     VariationNormalizerDataProxy,
     VariationNormalizerRESTDataProxy,
@@ -96,6 +103,11 @@ from civicpy.exports.variation_normalizer import (
 _logger = logging.getLogger(__name__)
 
 PUBMED_URL = "https://pubmed.ncbi.nlm.nih.gov"
+_CLINVAR_ACCESSION_EXTENSION_NAME = "clinvarAccession"
+_CLINVAR_ACCESSIONS_EXTENSION_NAME = "clinvarAccessions"
+
+# Keep accepting one approval while bundles add support for multiple approvals.
+_ApprovalInput: TypeAlias = Approval | Sequence[Approval] | None
 
 
 class CivicGksRecordError(Exception):
@@ -263,7 +275,7 @@ class CivicGksSop(Method):
     def __init__(self) -> None:
         """Initialize CivicGksSop class"""
         super().__init__(
-            id="civic.method:2019",
+            id=f"{CuriePrefix.METHOD}:2019",
             name="CIViC Curation SOP (2019)",
             reportedIn=Document(
                 id="pmid:31779674",
@@ -293,7 +305,7 @@ class CivicGksGene(MappableConcept):
         :param gene: CIViC gene record
         """
         super().__init__(
-            id=f"civic.gid:{gene.id}",
+            id=f"{CuriePrefix.GENE}:{gene.id}",
             conceptType="Gene",
             name=gene.name,
             mappings=self.get_mappings(gene),
@@ -449,7 +461,7 @@ class CivicGksMolecularProfile(CategoricalVariant):
         )
 
         super().__init__(
-            id=f"civic.mpid:{molecular_profile.id}",
+            id=f"{CuriePrefix.MOLECULAR_PROFILE}:{molecular_profile.id}",
             name=molecular_profile.name,
             description=molecular_profile.description,
             aliases=aliases or None,
@@ -508,7 +520,7 @@ class CivicGksMolecularProfile(CategoricalVariant):
         mappings = [
             ConceptMapping(
                 coding=Coding(
-                    id=f"civic.mpid:{molecular_profile.id}",
+                    id=f"{CuriePrefix.MOLECULAR_PROFILE}:{molecular_profile.id}",
                     code=str(molecular_profile.id),
                     system=f"{LINKS_URL}/molecular_profile/",
                 ),
@@ -835,7 +847,7 @@ class CivicGksMolecularProfile(CategoricalVariant):
                     matchCharacteristic=MappableConcept(
                         primaryCoding=Coding(
                             code=code("is_within"),
-                            system="ga4gh-gks-term:location-match",
+                            system="ga4gh-gkm-term:location-match",
                         )
                     ),
                     relations=[LIFTOVER_TO_RELATION],
@@ -850,8 +862,8 @@ class CivicGksMolecularProfile(CategoricalVariant):
         )
 
 
-class CivicGksDisease(MappableConcept):
-    """Class for representing CIViC Disease as MappableConcept
+class CivicGksDisease(Condition):
+    """Class for representing CIViC Disease as Condition
 
     :param disease: CIViC disease record
     """
@@ -862,7 +874,7 @@ class CivicGksDisease(MappableConcept):
         :param disease: CIViC disease record
         """
         super().__init__(
-            id=f"civic.did:{disease.id}",
+            id=f"{CuriePrefix.DISEASE}:{disease.id}",
             conceptType="Disease",
             name=disease.name,
             mappings=self.get_mappings(disease),
@@ -880,7 +892,7 @@ class CivicGksDisease(MappableConcept):
             mappings = [
                 ConceptMapping(
                     coding=Coding(
-                        code=f"DOID:{disease.doid}",
+                        code=code(f"DOID:{disease.doid}"),
                         system="https://disease-ontology.org/?id=",
                     ),
                     relation=Relation.EXACT_MATCH,
@@ -891,8 +903,8 @@ class CivicGksDisease(MappableConcept):
         return mappings
 
 
-class CivicGksPhenotype(MappableConcept):
-    """Class for representing CIViC Phenotype as MappableConcept
+class CivicGksPhenotype(Condition):
+    """Class for representing CIViC Phenotype as Condition
 
     :param phenotype: CIViC phenotype record
     """
@@ -904,7 +916,7 @@ class CivicGksPhenotype(MappableConcept):
         """
 
         super().__init__(
-            id=f"civic.{phenotype.type}:{phenotype.id}",
+            id=f"{CuriePrefix.PHENOTYPE}:{phenotype.id}",
             conceptType=phenotype.type.capitalize(),
             name=phenotype.name,
             mappings=self.get_mappings(phenotype),
@@ -930,19 +942,19 @@ class CivicGksPhenotype(MappableConcept):
         ]
 
 
-class CivicGksTherapy(MappableConcept):
-    """Class for representing CIViC Therapy as MappableConcept
+class CivicGksTherapy(Therapy):
+    """Class for representing CIViC Therapy as Therapy
 
     :param therapy: CIViC therapy record
     """
 
-    def __init__(self, therapy: Therapy) -> None:
+    def __init__(self, therapy: CivicTherapy) -> None:
         """Initialize CivicGksTherapy class
 
         :param therapy: CIViC therapy record
         """
         super().__init__(
-            id=f"civic.tid:{therapy.id}",
+            id=f"{CuriePrefix.THERAPY}:{therapy.id}",
             name=therapy.name,
             conceptType="Therapy",
             mappings=self.get_mappings(therapy),
@@ -950,7 +962,7 @@ class CivicGksTherapy(MappableConcept):
         )
 
     @staticmethod
-    def get_mappings(therapy: Therapy) -> list[ConceptMapping] | None:
+    def get_mappings(therapy: CivicTherapy) -> list[ConceptMapping] | None:
         """Get mappings for CIViC therapy
 
         :param therapy: CIViC therapy record
@@ -973,7 +985,7 @@ class CivicGksTherapy(MappableConcept):
         return mappings
 
     @staticmethod
-    def get_extensions(therapy: Therapy) -> list[Extension] | None:
+    def get_extensions(therapy: CivicTherapy) -> list[Extension] | None:
         """Get extensions for CIViC therapy
 
         :param therapy: CIViC therapy record
@@ -995,7 +1007,7 @@ class CivicGksTherapyGroup(TherapyGroup):
     """
 
     def __init__(
-        self, therapies: list[Therapy], therapy_interaction_type: str | None
+        self, therapies: list[CivicTherapy], therapy_interaction_type: str | None
     ) -> None:
         """Initialize CivicGksTherapyGroup class
 
@@ -1012,24 +1024,30 @@ class CivicGksTherapyGroup(TherapyGroup):
             if therapy_interaction_type == CivicInteractionType.COMBINATION
             else MembershipOperator.OR
         )
-        therapies_mc: list[MappableConcept] = [CivicGksTherapy(t) for t in therapies]
+        therapies_mc: list[Therapy] = [
+            CivicGksTherapy(t) for t in therapies
+        ]
 
-        super().__init__(therapies=therapies_mc, membershipOperator=membership_operator)
+        super().__init__(concepts=therapies_mc, membershipOperator=membership_operator)
 
 
 class _CivicGksEvidenceAssertionMixin:
     """Mixin for CIViC Evidence and Assertions"""
 
     @staticmethod
-    def get_allele_origin_qualifier(record: Evidence | Assertion) -> MappableConcept:
-        """Get GKS allele origin qualifier
+    def get_allele_origin_qualifier(
+        record: Evidence | Assertion,
+    ) -> AlleleOriginQualifier:
+        """Create the mapped allele origin concept for a CIViC record.
 
-        :param record: CIViC assertion or evidence item
-        :return: Allele origin qualifier
+        The first mapping code identifies the object in a CIViC GKS bundle.
+
+        :param record: CIViC assertion or evidence item.
+        :return: Mapped allele origin qualifier.
         """
         variant_origin = record.variant_origin
 
-        return MappableConcept(
+        return AlleleOriginQualifier(
             name=VARIANT_ORIGIN_TO_ALLELE_ORIGIN[variant_origin],
             mappings=[
                 ConceptMapping(
@@ -1100,7 +1118,7 @@ class _CivicGksEvidenceAssertionMixin:
                 ConceptMapping(
                     coding=Coding(
                         system="https://go.osu.edu/evidence-codes",
-                        code=vicc_concept_vocab.code,
+                        code=code(vicc_concept_vocab.code),
                         name=vicc_concept_vocab.name,
                     ),
                     relation=Relation.EXACT_MATCH,
@@ -1126,7 +1144,7 @@ class _CivicGksEvidenceAssertionMixin:
         variant: GeneVariant = record.molecular_profile.variants[0]
 
         params = {
-            "subjectVariant": CivicGksMolecularProfile(record.molecular_profile),
+            "subject": CivicGksMolecularProfile(record.molecular_profile),
             "geneContextQualifier": CivicGksGene(variant.gene),
             "alleleOriginQualifier": self.get_allele_origin_qualifier(record),
             "predicate": self.get_predicate(record)
@@ -1137,24 +1155,24 @@ class _CivicGksEvidenceAssertionMixin:
         }
 
         if record_type == CivicEvidenceAssertionType.ONCOGENIC:
-            condition_key = "objectTumorType"
+            condition_key = "object"
         elif (
             is_clinical_significance_prop
             or record_type != CivicEvidenceAssertionType.PREDICTIVE
         ):
-            condition_key = "objectCondition"
+            condition_key = "object"
         else:
             condition_key = "conditionQualifier"
 
         gks_disease = CivicGksDisease(record.disease)
 
         if record.phenotypes:
-            conditions = [gks_disease]
+            conditions: list[CivicGksDisease | ConditionSet] = [gks_disease]
             if len(record.phenotypes) > 1:
                 conditions.append(
                     ConditionSet(
                         membershipOperator=MembershipOperator.OR,
-                        conditions=[
+                        concepts=[
                             CivicGksPhenotype(phenotype)
                             for phenotype in record.phenotypes
                         ],
@@ -1164,7 +1182,11 @@ class _CivicGksEvidenceAssertionMixin:
                 conditions.append(CivicGksPhenotype(record.phenotypes[0]))
 
             params[condition_key] = ConditionSet(
-                membershipOperator=MembershipOperator.AND, conditions=conditions
+                membershipOperator=MembershipOperator.AND,
+                concepts=[
+                    condition
+                    for condition in conditions
+                ],
             )
         else:
             params[condition_key] = gks_disease
@@ -1198,7 +1220,7 @@ class _CivicGksEvidenceAssertionMixin:
                     record.therapies, record.therapy_interaction_type
                 )
 
-            params["objectTherapeutic"] = therapeutic
+            params["object"] = therapeutic
             proposition_cls = VariantTherapeuticResponseProposition
         else:
             if record_type == CivicEvidenceAssertionType.PROGNOSTIC:
@@ -1214,20 +1236,22 @@ class CivicGksSource(Document):
     :param source: CIViC source record
     """
 
-    def __init__(self, source: Source, urls: list[str] | None = None) -> None:
+    def __init__(self, source: Source) -> None:
         """Initialize CivicGksSource class
 
         :param source: CIViC source record
-        :param urls: List of additional URLs to include in the document
         """
-        source_urls = urls or []
-        source_urls.extend([f"{LINKS_URL}/source/{source.id}", source.source_url])
+        source_urls = [
+            f"{LINKS_URL}/source/{source.id}",
+            source.source_url
+        ]
+
         pmid = source.citation_id if source.source_type == "PUBMED" else None
         if pmc_id := source.pmc_id:
             source_urls.append(f"https://www.ncbi.nlm.nih.gov/pmc/articles/{pmc_id}")
 
         super().__init__(
-            id=f"civic.sid:{source.id}",
+            id=f"{CuriePrefix.SOURCE}:{source.id}",
             name=source.citation,
             title=source.title,
             pmid=pmid,
@@ -1286,7 +1310,7 @@ class CivicGksEvidence(Statement, _CivicGksEvidenceAssertionMixin):
             raise CivicGksRecordError(err_msg)
 
         super().__init__(
-            id=f"civic.eid:{evidence_item.id}",
+            id=f"{CuriePrefix.EVIDENCE}:{evidence_item.id}",
             description=evidence_item.description,
             specifiedBy=CivicGksSop(),
             proposition=self.get_target_proposition(evidence_item),
@@ -1297,7 +1321,6 @@ class CivicGksEvidence(Statement, _CivicGksEvidenceAssertionMixin):
             reportedIn=[
                 CivicGksSource(
                     evidence_item.source,
-                    urls=[f"{LINKS_URL}/evidence/{evidence_item.id}"],
                 ),
             ],
         )
@@ -1307,77 +1330,117 @@ class _CivicGksAssertionMixin:
     """Mixin for CIViC Assertions"""
 
     @staticmethod
-    def get_contributions(approval: Approval) -> list[Contribution]:
-        """Get contributions for an approval
+    def _normalize_approvals(approval: _ApprovalInput) -> tuple[Approval, ...]:
+        """Normalize one or more approvals into a stable tuple.
 
-        :param approval: Approval for assertion
-        :return: List of contributions, with one item containing when the approval was
-            last reviewed an organization.
-            Will include an ``isApprovedVcep`` extension.
+        :param approval: One approval, multiple approvals, or ``None``.
+        :return: Approvals sorted by organization and approval identifier.
         """
-        organization: Organization = approval.organization
-        return [
-            Contribution(
-                activityType=f"{approval.type}.last_reviewed",
-                date=approval.last_reviewed.split("T", 1)[0],
-                contributor=Agent(
-                    id=f"civic.{organization.type}:{organization.id}",
-                    name=organization.name,
-                    description=organization.description,
-                    extensions=[
-                        Extension(
-                            name="isApprovedVcep", value=organization.is_approved_vcep
-                        )
-                    ],
-                ),
-            )
-        ]
+        if approval is None:
+            return ()
+        approvals = (approval,) if isinstance(approval, Approval) else tuple(approval)
+        return tuple(
+            sorted(approvals, key=lambda item: (item.organization_id, item.id))
+        )
 
     @staticmethod
-    def get_extensions(approval: Approval | None) -> list[Extension]:
-        """Get extensions for an assertion
+    def _create_clinvar_accession_extension(
+        accession: str | list[str],
+    ) -> Extension:
+        """Create a singular or plural ClinVar accession extension.
 
-        :param approval: Approval for assertion, if exists
-        :return: List of extensions for an assertion. This will contain a
-            single record, `clinvar_accession` if one exists
+        One accession uses ``clinvarAccession``; multiple use
+        ``clinvarAccessions``.
+
+        :param accession: One ClinVar accession or multiple unique accessions.
+        :return: Extension whose name and value cardinality agree.
         """
-        extensions = []
-        if approval and approval.clinvar_accession:
-            extensions.append(
-                Extension(name="clinvarAccession", value=approval.clinvar_accession)
+        extension_name = (
+            _CLINVAR_ACCESSIONS_EXTENSION_NAME
+            if isinstance(accession, list)
+            else _CLINVAR_ACCESSION_EXTENSION_NAME
+        )
+        return Extension(name=extension_name, value=accession)
+
+    @classmethod
+    def get_contributions(cls, approvals: Sequence[Approval]) -> list[Contribution]:
+        """Create one contribution for each approval of an assertion.
+
+        :param approvals: Approvals associated with one assertion.
+        :return: Contributions recording when each organization last reviewed
+            its approval, including the organization's ``isApprovedVcep`` value.
+        """
+        contributions: list[Contribution] = []
+        for approval in approvals:
+            organization: Organization = approval.organization
+            contributions.append(
+                Contribution(
+                    activityType=f"{approval.type}.last_reviewed",
+                    date=approval.last_reviewed.split("T", 1)[0],
+                    extensions=(
+                        [
+                            cls._create_clinvar_accession_extension(
+                                approval.clinvar_accession
+                            )
+                        ]
+                        if approval.clinvar_accession
+                        else None
+                    ),
+                    contributor=Agent(
+                        id=f"{CuriePrefix.ORGANIZATION}:{organization.id}",
+                        name=organization.name,
+                        description=organization.description,
+                        extensions=[
+                            Extension(
+                                name="isApprovedVcep",
+                                value=organization.is_approved_vcep,
+                            )
+                        ],
+                    ),
+                )
             )
-        return extensions
+        return contributions
+
+    @classmethod
+    def get_extensions(cls, approvals: Sequence[Approval]) -> list[Extension]:
+        """Get unique ClinVar accession extensions from assertion approvals.
+
+        :param approvals: Approvals associated with one assertion.
+        :return: One singular or plural ClinVar accession extension.
+        """
+        accessions = sorted(
+            {
+                approval.clinvar_accession
+                for approval in approvals
+                if approval.clinvar_accession
+            }
+        )
+        if not accessions:
+            return []
+        extension_value: str | list[str] = (
+            accessions[0] if len(accessions) == 1 else accessions
+        )
+        return [cls._create_clinvar_accession_extension(extension_value)]
+
+
+    @staticmethod
+    def get_has_evidence(assertion: Assertion) -> list[iriReference]:
+        evidence_items = assertion.evidence_items or []
+        return [
+            iriReference(f"{LINKS_URL}/evidence/{evidence_item.id}")
+            for evidence_item in evidence_items
+        ]
 
     @staticmethod
     def get_reported_in(assertion: Assertion) -> list[iriReference]:
         """Get reported in information for an assertion
 
-        If multiple evidence items link to same source, will merge the source.
-
         :param assertion: CIViC assertion record
         :return: List of CIViC links to records which the assertion is reported in
         """
-        reported_in: list[iriReference | Document] = [
+        return [
             iriReference(f"{LINKS_URL}/assertion/{assertion.id}")
         ]
-        civic_gks_sources = {}
-        for evidence_item in assertion.evidence_items or []:
-            source = evidence_item.source
-            source_id = source.id
-            evidence_item_url = f"{LINKS_URL}/evidence/{evidence_item.id}"
-
-            if source_id in civic_gks_sources:
-                civic_gks_sources[source_id].urls.append(evidence_item_url)
-            else:
-                civic_gks_sources[source_id] = Document.model_validate(
-                    CivicGksSource(
-                        source,
-                        urls=[evidence_item_url],
-                    )
-                )
-        reported_in.extend(list(civic_gks_sources.values()))
-
-        return reported_in
 
 
 class CivicGksClinSigAssertion(
@@ -1396,12 +1459,12 @@ class CivicGksClinSigAssertion(
     def __init__(
         self,
         assertion: Assertion,
-        approval: Approval | None = None,
+        approval: _ApprovalInput = None,
     ) -> None:
         """Initialize CivicGksClinSigAssertion class
 
         :param assertion: CIViC assertion record
-        :param approval: CIViC approval for the assertion, defaults to None
+        :param approval: One or more CIViC approvals for the assertion.
         :raises CivicGksRecordError: If CIViC assertion is not able to be represented as
             GKS object
         """
@@ -1418,9 +1481,10 @@ class CivicGksClinSigAssertion(
         classification, strength, level = self.get_classification_strength_level(
             assertion.amp_level
         )
-        contributions = self.get_contributions(approval) if approval else None
+        approvals = self._normalize_approvals(approval)
+        contributions = self.get_contributions(approvals) or None
         super().__init__(
-            id=f"civic.aid:{assertion.id}",
+            id=f"{CuriePrefix.ASSERTION}:{assertion.id}",
             contributions=contributions,
             description=assertion.description,
             specifiedBy=CivicGksSop(),
@@ -1428,9 +1492,10 @@ class CivicGksClinSigAssertion(
             direction=self.get_direction(assertion.assertion_direction),
             classification=classification,
             strength=strength,
+            hasEvidence=self.get_has_evidence(assertion),
             hasEvidenceLines=self.get_evidence_lines(assertion, level),
             reportedIn=self.get_reported_in(assertion),
-            extensions=self.get_extensions(approval) or None,
+            extensions=self.get_extensions(approvals) or None,
         )
 
     def get_classification_strength_level(
@@ -1554,12 +1619,12 @@ class CivicGksOncogenicAssertion(
     def __init__(
         self,
         assertion: Assertion,
-        approval: Approval | None = None,
+        approval: _ApprovalInput = None,
     ) -> None:
         """Initialize CivicGksOncogenicAssertion class
 
         :param assertion: CIViC assertion record
-        :param approval: CIViC approval for the assertion, defaults to None
+        :param approval: One or more CIViC approvals for the assertion.
         :raises CivicGksRecordError: If CIViC assertion is not able to be represented as
             GKS object
         """
@@ -1571,14 +1636,15 @@ class CivicGksOncogenicAssertion(
             err_msg = "Assertion is not valid for GKS."
             raise CivicGksRecordError(err_msg)
 
-        contributions = self.get_contributions(approval) if approval else None
+        approvals = self._normalize_approvals(approval)
+        contributions = self.get_contributions(approvals) or None
         proposition = self.get_proposition(assertion)
         classification, strength = self.get_classification_strength(
             assertion.significance
         )
 
         super().__init__(
-            id=f"civic.aid:{assertion.id}",
+            id=f"{CuriePrefix.ASSERTION}:{assertion.id}",
             contributions=contributions,
             description=assertion.description,
             specifiedBy=CCV_METHOD,
@@ -1586,6 +1652,7 @@ class CivicGksOncogenicAssertion(
             direction=self.get_direction(assertion.assertion_direction),
             classification=classification,
             strength=strength,
+            hasEvidence=self.get_has_evidence(assertion),
             hasEvidenceLines=self.get_evidence_lines(assertion),
             reportedIn=self.get_reported_in(assertion),
         )
@@ -1623,8 +1690,9 @@ class CivicGksOncogenicAssertion(
 
         return classification, strength
 
+    @classmethod
     def get_evidence_lines(
-        self,
+        cls,
         assertion: Assertion,
     ) -> list[VariantOncogenicityEvidenceLine]:
         """Get evidence lines for a CIViC assertion
@@ -1632,17 +1700,17 @@ class CivicGksOncogenicAssertion(
         :param assertion: CIViC assertion
         :return: List of CIViC evidence lines
         """
-        direction = self.get_direction(assertion.assertion_direction)
+        direction = cls.get_direction(assertion.assertion_direction)
 
         evidence_lines = []
         for clingen_code in assertion.clingen_codes or []:
-            evidence_attrs = derive_onco_evidence_attributes(
-                VariantOncogenicityEvidenceLine.Criterion(clingen_code.code)
-            )
+            evidence_attrs = derive_onco_evidence_attributes(clingen_code.code)
             evidence_lines.append(
                 VariantOncogenicityEvidenceLine(
                     directionOfEvidenceProvided=direction,
-                    **evidence_attrs.model_dump(),
+                    **evidence_attrs.model_dump(
+                        exclude={"directionOfEvidenceProvided"}
+                    ),
                 )
             )
 
@@ -1664,21 +1732,19 @@ class CivicGksOncogenicAssertion(
 
 def create_gks_record_from_assertion(
     assertion: Assertion,
-    approval: Approval | None = None,
+    approval: _ApprovalInput = None,
     submission_type_filter: ClinVarSubmissionType | None = None,
 ) -> CivicGksClinSigAssertion | CivicGksOncogenicAssertion:
-    """Create GKS Record from CIViC Assertion
+    """Transform a CIViC Assertion into a supported VA-Spec GKS Statement.
 
-    :param assertion: CIViC assertion record
-    :param approval: CIViC approval for the assertion, defaults to None
+    :param assertion: CIViC Assertion to transform.
+    :param approval: One or more CIViC approvals for the assertion.
     :param submission_type_filter: Optional ClinVar submission type used to
-        restrict which assertion types may be translated
-    :raises NotImplementedError: If GKS Record translation is not yet supported.
-        Currently, only the following assertion types are supported: DIAGNOSTIC,
-        PREDICTIVE, PROGNOSTIC, and ONCOGENIC.
-        Or if the assertion type is excluded by the provided ClinVar submission type
-            filter.
-    :return: GKS Assertion Record object
+        restrict which Assertion types may be translated.
+    :raises NotImplementedError: If the Assertion type is unsupported or excluded
+        by ``submission_type_filter``. Supported types are ``DIAGNOSTIC``,
+        ``PREDICTIVE``, ``PROGNOSTIC``, and ``ONCOGENIC``.
+    :return: A clinical-significance or oncogenicity GKS Statement.
     """
     assertion_type = assertion.assertion_type
 
