@@ -190,7 +190,6 @@ class _BundleBuilder:
             },
             metadata=bundle_metadata,
             failed_assertion_ids=[error.assertion_id for error in errors],
-            errors=errors,
         )
 
     @staticmethod

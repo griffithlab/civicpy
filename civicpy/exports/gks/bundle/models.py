@@ -578,6 +578,3 @@ class GkmBundle(GkmModel):
     failed_assertion_ids: list[int] = Field(
         description="CIViC Assertion IDs skipped because they could not be converted.",
     )
-    errors: list[GkmAssertionError] = Field(
-        description="Export errors explaining why specific CIViC Assertions were skipped.",
-    )
