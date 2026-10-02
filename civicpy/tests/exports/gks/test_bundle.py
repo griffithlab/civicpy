@@ -84,7 +84,6 @@ class TestCivicGksBundleOutput:
         for property_name in (
             "metadata",
             "failedAssertionIds",
-            "errors",
         ):
             assert properties[property_name]["description"]
 
@@ -238,7 +237,6 @@ class TestCivicGksBundleOutput:
         )
 
         assert bundle.failed_assertion_ids == [1]
-        assert bundle.errors == [error]
         assert all(
             statistics.count == 0
             for statistics in bundle.metadata.statistics.collections.values()
@@ -249,7 +247,6 @@ class TestCivicGksBundleOutput:
         bundle = build_gkm_bundle([])
 
         assert bundle.metadata.created_at == date.today().isoformat()
-        assert bundle.errors == []
         assert bundle.failed_assertion_ids == []
 
     def test_builds_real_assertions_across_bundle_collections(

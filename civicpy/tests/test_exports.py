@@ -531,6 +531,14 @@ def gks_aid6(gks_method, gks_therapeutic_proposition, gks_eid2997, gks_source592
                 "code": "tier i",
             },
         },
+        "hasEvidence": [
+            "https://civicdb.org/links/evidence/879",
+            "https://civicdb.org/links/evidence/982",
+            "https://civicdb.org/links/evidence/883",
+            "https://civicdb.org/links/evidence/968",
+            "https://civicdb.org/links/evidence/2629",
+            "https://civicdb.org/links/evidence/2997",
+        ],
         "hasEvidenceLines": [
             {
                 "type": "EvidenceLine",
@@ -548,69 +556,6 @@ def gks_aid6(gks_method, gks_therapeutic_proposition, gks_eid2997, gks_source592
         ],
         "reportedIn": [
             "https://civicdb.org/links/assertion/6",
-            gks_source592,
-            {
-                "type": "Document",
-                "id": "civic.sid:592",
-                "name": "Sequist et al., 2013",
-                "title": "Phase III study of afatinib or cisplatin plus pemetrexed in patients with metastatic lung adenocarcinoma with EGFR mutations.",
-                "pmid": "23816960",
-                "urls": [
-                    "https://civicdb.org/links/evidence/879",
-                    "https://civicdb.org/links/source/592",
-                    "http://www.ncbi.nlm.nih.gov/pubmed/23816960",
-                ],
-            },
-            {
-                "type": "Document",
-                "id": "civic.sid:679",
-                "name": "Wu et al., 2014",
-                "title": "Afatinib versus cisplatin plus gemcitabine for first-line treatment of Asian patients with advanced non-small-cell lung cancer harbouring EGFR mutations (LUX-Lung 6): an open-label, randomised phase 3 trial.",
-                "pmid": "24439929",
-                "urls": [
-                    "https://civicdb.org/links/evidence/982",
-                    "https://civicdb.org/links/source/679",
-                    "http://www.ncbi.nlm.nih.gov/pubmed/24439929",
-                ],
-            },
-            {
-                "type": "Document",
-                "id": "civic.sid:594",
-                "name": "Yang et al., 2012",
-                "title": "Afatinib for patients with lung adenocarcinoma and epidermal growth factor receptor mutations (LUX-Lung 2): a phase 2 trial.",
-                "pmid": "22452895",
-                "urls": [
-                    "https://civicdb.org/links/evidence/883",
-                    "https://civicdb.org/links/source/594",
-                    "http://www.ncbi.nlm.nih.gov/pubmed/22452895",
-                ],
-            },
-            {
-                "type": "Document",
-                "id": "civic.sid:669",
-                "name": "Hirano et al., 2015",
-                "title": "In vitro modeling to determine mutation specificity of EGFR tyrosine kinase inhibitors against clinically relevant EGFR mutants in non-small-cell lung cancer.",
-                "pmid": "26515464",
-                "urls": [
-                    "https://civicdb.org/links/evidence/968",
-                    "https://civicdb.org/links/source/669",
-                    "http://www.ncbi.nlm.nih.gov/pubmed/26515464",
-                    "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4770737",
-                ],
-            },
-            {
-                "type": "Document",
-                "id": "civic.sid:1525",
-                "name": "Li et al., 2008",
-                "title": "BIBW2992, an irreversible EGFR/HER2 inhibitor highly effective in preclinical lung cancer models.",
-                "pmid": "18408761",
-                "urls": [
-                    "https://civicdb.org/links/evidence/2629",
-                    "https://civicdb.org/links/source/1525",
-                    "http://www.ncbi.nlm.nih.gov/pubmed/18408761",
-                    "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC2748240",
-                ],
-            },
         ],
     }
     return VariantClinicalSignificanceStatement(**params)
@@ -1095,82 +1040,17 @@ def gks_aid202(gks_aid202_proposition):
                 "system": "ClinGen/CGC/VICC Guidelines for Oncogenicity, 2022",
             }
         },
+        "hasEvidence": [
+            "https://civicdb.org/links/evidence/74",
+            "https://civicdb.org/links/evidence/12800",
+            "https://civicdb.org/links/evidence/78",
+            "https://civicdb.org/links/evidence/12711",
+            "https://civicdb.org/links/evidence/12805",
+            "https://civicdb.org/links/evidence/11723",
+            "https://civicdb.org/links/evidence/12709",
+        ],
         "reportedIn": [
             "https://civicdb.org/links/assertion/202",
-            {
-                "id": "civic.sid:44",
-                "type": "Document",
-                "name": "Elisei et al., 2008",
-                "title": "Prognostic significance of somatic RET oncogene mutations in sporadic medullary thyroid cancer: a 10-year follow-up study.",
-                "urls": [
-                    "https://civicdb.org/links/evidence/74",
-                    "https://civicdb.org/links/source/44",
-                    "http://www.ncbi.nlm.nih.gov/pubmed/18073307",
-                    "https://civicdb.org/links/evidence/12800",
-                ],
-                "pmid": "18073307",
-            },
-            {
-                "id": "civic.sid:92",
-                "type": "Document",
-                "name": "Egawa et al., 1998",
-                "title": "Genotype-phenotype correlation of patients with multiple endocrine neoplasia type 2 in Japan.",
-                "urls": [
-                    "https://civicdb.org/links/evidence/78",
-                    "https://civicdb.org/links/source/92",
-                    "http://www.ncbi.nlm.nih.gov/pubmed/9839497",
-                ],
-                "pmid": "9839497",
-            },
-            {
-                "id": "civic.sid:5458",
-                "type": "Document",
-                "name": "Romei et al., 2018",
-                "title": "RET mutation heterogeneity in primary advanced medullary thyroid cancers and their metastases.",
-                "urls": [
-                    "https://civicdb.org/links/evidence/12711",
-                    "https://civicdb.org/links/source/5458",
-                    "http://www.ncbi.nlm.nih.gov/pubmed/29515777",
-                    "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5839408",
-                ],
-                "pmid": "29515777",
-            },
-            {
-                "id": "civic.sid:5519",
-                "type": "Document",
-                "name": "Gujral et al., 2006",
-                "title": "Molecular mechanisms of RET receptor-mediated oncogenesis in multiple endocrine neoplasia 2B.",
-                "urls": [
-                    "https://civicdb.org/links/evidence/12805",
-                    "https://civicdb.org/links/source/5519",
-                    "http://www.ncbi.nlm.nih.gov/pubmed/17108110",
-                ],
-                "pmid": "17108110",
-            },
-            {
-                "id": "civic.sid:4870",
-                "type": "Document",
-                "name": "Zhao et al., 2020",
-                "title": "Identifying novel oncogenic RET mutations and characterising their sensitivity to RET-specific inhibitors.",
-                "urls": [
-                    "https://civicdb.org/links/evidence/11723",
-                    "https://civicdb.org/links/source/4870",
-                    "http://www.ncbi.nlm.nih.gov/pubmed/32284345",
-                ],
-                "pmid": "32284345",
-            },
-            {
-                "id": "civic.sid:4953",
-                "type": "Document",
-                "name": "Ceccherini et al., 1997",
-                "title": "Somatic in frame deletions not involving juxtamembranous cysteine residues strongly activate the RET proto-oncogene.",
-                "urls": [
-                    "https://civicdb.org/links/evidence/12709",
-                    "https://civicdb.org/links/source/4953",
-                    "http://www.ncbi.nlm.nih.gov/pubmed/9191060",
-                ],
-                "pmid": "9191060",
-            },
         ],
         "direction": "supports",
         "specifiedBy": _ccv_method("guideline"),
@@ -1825,29 +1705,11 @@ class TestCivicGksClinSigAssertion(object):
         assert len(record.hasEvidenceLines) == 1
         assert record.hasEvidenceLines[0].hasEvidenceItems is None
 
-        reported_in = []
-        for r in record.reportedIn:
-            if isinstance(r, iriReference):
-                reported_in.append(r.root)
-            else:
-                reported_in.append(r.model_dump(exclude_none=True))
+        assert len(record.reportedIn) == 1
+        assert record.reportedIn[0].root == "https://civicdb.org/links/assertion/20"
 
-        assert reported_in == [
-            "https://civicdb.org/links/assertion/20",
-            {
-                "type": "Document",
-                "id": "civic.sid:4914",
-                "name": "Grimwade et al., 1998",
-                "title": "The importance of diagnostic cytogenetics on outcome in AML: analysis of 1,612 patients entered into the MRC AML 10 trial. The Medical Research Council Adult and Children's Leukaemia Working Parties.",
-                "pmid": "9746770",
-                "urls": [
-                    "https://civicdb.org/links/evidence/11881",
-                    "https://civicdb.org/links/source/4914",
-                    "http://www.ncbi.nlm.nih.gov/pubmed/9746770",
-                ],
-            },
-        ]
-
+        assert len(record.hasEvidence) == 1
+        assert record.hasEvidence[0].root == "https://civicdb.org/links/evidence/11881"
 
 class TestCivicGksDiagnosticAssertion(object):
     """Test that CivicGksDiagnosticAssertion works as expected"""

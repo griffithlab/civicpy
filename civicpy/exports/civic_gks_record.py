@@ -1421,36 +1421,25 @@ class _CivicGksAssertionMixin:
         )
         return [cls._create_clinvar_accession_extension(extension_value)]
 
-    @staticmethod
-    def get_reported_in(assertion: Assertion) -> list[Document | iriReference]:
-        """Get reported in information for an assertion
 
-        If multiple evidence items link to same source, will merge the source.
+    @staticmethod
+    def get_has_evidence(assertion: Assertion) -> list[iriReference]:
+        evidence_items = assertion.evidence_items or []
+        return [
+            iriReference(f"{LINKS_URL}/evidence/{evidence_item.id}")
+            for evidence_item in evidence_items
+        ]
+
+    @staticmethod
+    def get_reported_in(assertion: Assertion) -> list[iriReference]:
+        """Get reported in information for an assertion
 
         :param assertion: CIViC assertion record
         :return: List of CIViC links to records which the assertion is reported in
         """
-        reported_in: list[iriReference | Document] = [
+        return [
             iriReference(f"{LINKS_URL}/assertion/{assertion.id}")
         ]
-        civic_gks_sources = {}
-        for evidence_item in assertion.evidence_items or []:
-            source = evidence_item.source
-            source_id = source.id
-            evidence_item_url = f"{LINKS_URL}/evidence/{evidence_item.id}"
-
-            if source_id in civic_gks_sources:
-                civic_gks_sources[source_id].urls.append(evidence_item_url)
-            else:
-                civic_gks_sources[source_id] = Document.model_validate(
-                    CivicGksSource(
-                        source,
-                        urls=[evidence_item_url],
-                    )
-                )
-        reported_in.extend(list(civic_gks_sources.values()))
-
-        return reported_in
 
 
 class CivicGksClinSigAssertion(
@@ -1502,6 +1491,7 @@ class CivicGksClinSigAssertion(
             direction=self.get_direction(assertion.assertion_direction),
             classification=classification,
             strength=strength,
+            hasEvidence=self.get_has_evidence(assertion),
             hasEvidenceLines=self.get_evidence_lines(assertion, level),
             reportedIn=self.get_reported_in(assertion),
             extensions=self.get_extensions(approvals) or None,
@@ -1661,6 +1651,7 @@ class CivicGksOncogenicAssertion(
             direction=self.get_direction(assertion.assertion_direction),
             classification=classification,
             strength=strength,
+            hasEvidence=self.get_has_evidence(assertion),
             hasEvidenceLines=self.get_evidence_lines(assertion),
             reportedIn=self.get_reported_in(assertion),
         )
