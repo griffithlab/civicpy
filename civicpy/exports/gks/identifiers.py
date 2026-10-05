@@ -11,8 +11,8 @@ from typing import Any, TypeAlias
 from ga4gh.core import sha512t24u
 from ga4gh.core.models import ConceptMapping, MappableConcept
 from ga4gh.va_spec.base import (
-    GeneticContextVariantProposition,
     ConditionSet,
+    GeneticContextVariantProposition,
     TherapyGroup,
 )
 from ga4gh.vrs.models import VrsType

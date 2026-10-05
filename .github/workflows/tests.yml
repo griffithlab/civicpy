@@ -27,7 +27,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Install Python dependencies
         run: |
-          pip install -e .[test]
+          pip install -e '.[test]'
       - name: List installed packages
         run: |
           pip list
