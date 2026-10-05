@@ -20,7 +20,7 @@ def rest_dp():
 BRAF_V600E_QUERY = "BRAF V600E"
 
 
-class TestVariationNormalizerRESTDataProxy(object):
+class TestVariationNormalizerRESTDataProxy:
     """Test that VariationNormalizerRESTDataProxy works as expected
 
     These are mocked for CI purposes
@@ -221,7 +221,7 @@ class TestVariationNormalizerRESTDataProxy(object):
 
 
 @pytest.mark.live
-class TestVariationNormalizerRESTDataProxyLive(object):
+class TestVariationNormalizerRESTDataProxyLive:
     """Test that VariationNormalizerRESTDataProxy works as expected
 
     Note: This hits the live VICC Variation Normalizer service.

@@ -196,12 +196,14 @@ def gks_mpid33():
                 },
                 "relations": [
                     {
+                        "type": "MappableConcept",
                         "primaryCoding": {
-                            "system": "ga4gh-gks-term:allele-relation",
+                            "system": "ga4gh-gkm-term:allele-relation",
                             "code": "liftover_to",
                         }
                     },
                     {
+                        "type": "MappableConcept",
                         "primaryCoding": {
                             "system": "http://www.sequenceontology.org",
                             "code": "translation_of",
@@ -328,6 +330,7 @@ def gks_gid19():
     """Create test fixture for CIViC GID19 GKS representation."""
     return {
         "id": "civic.gid:19",
+        "type": "MappableConcept",
         "conceptType": "Gene",
         "name": "EGFR",
         "mappings": [
@@ -368,6 +371,7 @@ def gks_did8():
     """Create test fixture for CIViC DID8 GKS representation."""
     return {
         "id": "civic.did:8",
+        "type": "MappableConcept",
         "conceptType": "Disease",
         "name": "Lung Non-small Cell Carcinoma",
         "mappings": [
@@ -387,6 +391,7 @@ def gks_tid146():
     """Create test fixture for CIViC TID146 GKS representation."""
     return {
         "id": "civic.tid:146",
+        "type": "MappableConcept",
         "conceptType": "Therapy",
         "name": "Afatinib",
         "mappings": [
@@ -418,7 +423,7 @@ def gks_therapeutic_proposition(gks_mpid33, gks_gid19, gks_tid146, gks_did8):
     """Create test fixture for GKS therapeutic proposition"""
     return {
         "type": "VariantTherapeuticResponseProposition",
-        "subjectVariant": gks_mpid33,
+        "subject": gks_mpid33,
         "geneContextQualifier": gks_gid19,
         "alleleOriginQualifier": {
             "name": "somatic",
@@ -436,7 +441,7 @@ def gks_therapeutic_proposition(gks_mpid33, gks_gid19, gks_tid146, gks_did8):
             ],
         },
         "predicate": "predictsSensitivityTo",
-        "objectTherapeutic": gks_tid146,
+        "object": gks_tid146,
         "conditionQualifier": gks_did8,
     }
 
@@ -451,7 +456,6 @@ def gks_source592():
         "pmid": "23982599",
         "type": "Document",
         "urls": [
-            "https://civicdb.org/links/evidence/2997",
             "https://civicdb.org/links/source/1725",
             "http://www.ncbi.nlm.nih.gov/pubmed/23982599",
         ],
@@ -472,6 +476,7 @@ def gks_eid2997(
         "direction": "supports",
         "strength": {
             "name": "Validated association",
+            "type": "MappableConcept",
             "primaryCoding": {
                 "system": "https://civic.readthedocs.io/en/latest/model/evidence/level.html",
                 "code": "A",
@@ -500,8 +505,8 @@ def gks_aid6(gks_method, gks_therapeutic_proposition, gks_eid2997, gks_source592
     clin_sig_prop = deepcopy(gks_therapeutic_proposition)
     clin_sig_prop["predicate"] = "hasClinicalSignificanceFor"
     clin_sig_prop["type"] = "VariantClinicalSignificanceProposition"
-    clin_sig_prop.pop("objectTherapeutic")
-    clin_sig_prop["objectCondition"] = clin_sig_prop.pop("conditionQualifier")
+    clin_sig_prop.pop("object")
+    clin_sig_prop["object"] = clin_sig_prop.pop("conditionQualifier")
 
     params = {
         "id": "civic.aid:6",
@@ -511,6 +516,7 @@ def gks_aid6(gks_method, gks_therapeutic_proposition, gks_eid2997, gks_source592
         "proposition": clin_sig_prop,
         "direction": "supports",
         "strength": {
+            "type": "MappableConcept",
             "primaryCoding": {
                 "system": "AMP/ASCO/CAP Guidelines, 2017",
                 "code": "strong",
@@ -518,11 +524,20 @@ def gks_aid6(gks_method, gks_therapeutic_proposition, gks_eid2997, gks_source592
         },
         "classification": {
             "name": "Tier I",
+            "type": "MappableConcept",
             "primaryCoding": {
                 "system": "AMP/ASCO/CAP Guidelines, 2017",
                 "code": "tier i",
             },
         },
+        "hasEvidence": [
+            "https://civicdb.org/links/evidence/879",
+            "https://civicdb.org/links/evidence/982",
+            "https://civicdb.org/links/evidence/883",
+            "https://civicdb.org/links/evidence/968",
+            "https://civicdb.org/links/evidence/2629",
+            "https://civicdb.org/links/evidence/2997",
+        ],
         "hasEvidenceLines": [
             {
                 "type": "EvidenceLine",
@@ -530,6 +545,7 @@ def gks_aid6(gks_method, gks_therapeutic_proposition, gks_eid2997, gks_source592
                 "directionOfEvidenceProvided": "supports",
                 "targetProposition": gks_therapeutic_proposition,
                 "strengthOfEvidenceProvided": {
+                    "type": "MappableConcept",
                     "primaryCoding": {
                         "code": "A",
                         "system": "AMP/ASCO/CAP Guidelines, 2017",
@@ -539,69 +555,6 @@ def gks_aid6(gks_method, gks_therapeutic_proposition, gks_eid2997, gks_source592
         ],
         "reportedIn": [
             "https://civicdb.org/links/assertion/6",
-            gks_source592,
-            {
-                "type": "Document",
-                "id": "civic.sid:592",
-                "name": "Sequist et al., 2013",
-                "title": "Phase III study of afatinib or cisplatin plus pemetrexed in patients with metastatic lung adenocarcinoma with EGFR mutations.",
-                "pmid": "23816960",
-                "urls": [
-                    "https://civicdb.org/links/evidence/879",
-                    "https://civicdb.org/links/source/592",
-                    "http://www.ncbi.nlm.nih.gov/pubmed/23816960",
-                ],
-            },
-            {
-                "type": "Document",
-                "id": "civic.sid:679",
-                "name": "Wu et al., 2014",
-                "title": "Afatinib versus cisplatin plus gemcitabine for first-line treatment of Asian patients with advanced non-small-cell lung cancer harbouring EGFR mutations (LUX-Lung 6): an open-label, randomised phase 3 trial.",
-                "pmid": "24439929",
-                "urls": [
-                    "https://civicdb.org/links/evidence/982",
-                    "https://civicdb.org/links/source/679",
-                    "http://www.ncbi.nlm.nih.gov/pubmed/24439929",
-                ],
-            },
-            {
-                "type": "Document",
-                "id": "civic.sid:594",
-                "name": "Yang et al., 2012",
-                "title": "Afatinib for patients with lung adenocarcinoma and epidermal growth factor receptor mutations (LUX-Lung 2): a phase 2 trial.",
-                "pmid": "22452895",
-                "urls": [
-                    "https://civicdb.org/links/evidence/883",
-                    "https://civicdb.org/links/source/594",
-                    "http://www.ncbi.nlm.nih.gov/pubmed/22452895",
-                ],
-            },
-            {
-                "type": "Document",
-                "id": "civic.sid:669",
-                "name": "Hirano et al., 2015",
-                "title": "In vitro modeling to determine mutation specificity of EGFR tyrosine kinase inhibitors against clinically relevant EGFR mutants in non-small-cell lung cancer.",
-                "pmid": "26515464",
-                "urls": [
-                    "https://civicdb.org/links/evidence/968",
-                    "https://civicdb.org/links/source/669",
-                    "http://www.ncbi.nlm.nih.gov/pubmed/26515464",
-                    "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4770737",
-                ],
-            },
-            {
-                "type": "Document",
-                "id": "civic.sid:1525",
-                "name": "Li et al., 2008",
-                "title": "BIBW2992, an irreversible EGFR/HER2 inhibitor highly effective in preclinical lung cancer models.",
-                "pmid": "18408761",
-                "urls": [
-                    "https://civicdb.org/links/evidence/2629",
-                    "https://civicdb.org/links/source/1525",
-                    "http://www.ncbi.nlm.nih.gov/pubmed/18408761",
-                    "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC2748240",
-                ],
-            },
         ],
     }
     return VariantClinicalSignificanceStatement(**params)
@@ -611,9 +564,11 @@ def gks_aid6(gks_method, gks_therapeutic_proposition, gks_eid2997, gks_source592
 def gks_aid93_object_condition():
     """Create test fixture for GKS AID 93 object condition"""
     return {
-        "conditions": [
+        "type": "ConceptSet",
+        "concepts": [
             {
                 "id": "civic.did:3225",
+                "type": "MappableConcept",
                 "conceptType": "Disease",
                 "name": "CNS Neuroblastoma With FOXR2 Activation",
                 "mappings": [
@@ -628,6 +583,7 @@ def gks_aid93_object_condition():
             },
             {
                 "id": "civic.phenotype:15320",
+                "type": "MappableConcept",
                 "conceptType": "Phenotype",
                 "name": "Pediatric onset",
                 "mappings": [
@@ -649,9 +605,11 @@ def gks_aid93_object_condition():
 def gks_aid115_object_condition():
     """Create test fixture for GKS AID 115 object condition"""
     return {
-        "conditions": [
+        "type": "ConceptSet",
+        "concepts": [
             {
                 "id": "civic.did:3387",
+                "type": "MappableConcept",
                 "conceptType": "Disease",
                 "name": "Diffuse Astrocytoma, MYB- Or MYBL1-altered",
                 "mappings": [
@@ -665,9 +623,11 @@ def gks_aid115_object_condition():
                 ],
             },
             {
-                "conditions": [
+                "type": "ConceptSet",
+                "concepts": [
                     {
                         "id": "civic.phenotype:8121",
+                        "type": "MappableConcept",
                         "conceptType": "Phenotype",
                         "name": "Childhood onset",
                         "mappings": [
@@ -682,6 +642,7 @@ def gks_aid115_object_condition():
                     },
                     {
                         "id": "civic.phenotype:2656",
+                        "type": "MappableConcept",
                         "conceptType": "Phenotype",
                         "name": "Juvenile onset",
                         "mappings": [
@@ -696,6 +657,7 @@ def gks_aid115_object_condition():
                     },
                     {
                         "id": "civic.phenotype:2643",
+                        "type": "MappableConcept",
                         "conceptType": "Phenotype",
                         "name": "Adult onset",
                         "mappings": [
@@ -742,6 +704,7 @@ def gks_gid42():
     """Create test fixture for CIViC GID42 GKS representation."""
     return {
         "id": "civic.gid:42",
+        "type": "MappableConcept",
         "conceptType": "Gene",
         "name": "RET",
         "mappings": [
@@ -878,12 +841,14 @@ def civic_mpid113(ret_m918t_vrs, civic_mpid113_cdna_vrs, civic_mpid113_genomic_v
                 "allele": ret_m918t_vrs_copy,
                 "relations": [
                     {
+                        "type": "MappableConcept",
                         "primaryCoding": {
-                            "system": "ga4gh-gks-term:allele-relation",
+                            "system": "ga4gh-gkm-term:allele-relation",
                             "code": "liftover_to",
                         }
                     },
                     {
+                        "type": "MappableConcept",
                         "primaryCoding": {
                             "system": "http://www.sequenceontology.org",
                             "code": "translation_of",
@@ -1017,8 +982,9 @@ def gks_aid202_proposition(gks_gid42, civic_mpid113):
     return {
         "type": "VariantOncogenicityProposition",
         "geneContextQualifier": gks_gid42,
-        "objectTumorType": {
+        "object": {
             "id": "civic.did:15",
+            "type": "MappableConcept",
             "conceptType": "Disease",
             "name": "Medullary Thyroid Carcinoma",
             "mappings": [
@@ -1047,7 +1013,7 @@ def gks_aid202_proposition(gks_gid42, civic_mpid113):
             ],
         },
         "predicate": "isOncogenicFor",
-        "subjectVariant": civic_mpid113,
+        "subject": civic_mpid113,
     }
 
 
@@ -1060,93 +1026,30 @@ def gks_aid202(gks_aid202_proposition):
         "description": "Published sequencing studies have shown that RET mutations are very common in medullary thryoid carcinoma (MTC) and M918T is the most common specific variant, especially in the MEN2B clinical subtype of familial disease (civic.EID:78) but also in sporadic cases(civic.EID:12800). M918T mutations may predict worse outcomes (civic.EID:74). Biochemical and functional characterization demonstrates that the M918T mutation leads to functional activation of RET relative to wild-type through multiple complementary mechanisms, including increased ATP affinity (>10-fold) and complex stability, reduced conformational rigidity, and the promotion of ligand-independent dimerization and autophosphorylation (civic.EID:12805). Exogenous expression has been shown to induce transformation of Ba/F3 cells (civic.EID:11723), and drive colony formation in NIH3T3 cells (civic.EID:12709, OS2). RET M918T occurs in the region of the tyrosine kinase domain which is associated with multiple endocrine neoplasia type 2 B (OM1). RET M918T is predicted to be deleterious (CHASMplus score 0.314 > VECS gene-specific cutoff of 0.22, OP1). Eleven instances of the variant occur in cancerhotspots.org (V2): 6 Thyroid, 4 Adrenal Gland, 1 Breast (OP3). The variant is absent in gnomAD database (v4.1.0, OP4). Together these criteria indicate that M918T is likely oncogenic, with a score of 9.",
         "proposition": gks_aid202_proposition,
         "strength": {
+            "type": "MappableConcept",
             "primaryCoding": {
                 "code": "likely",
                 "system": "ClinGen/CGC/VICC Guidelines for Oncogenicity, 2022",
             }
         },
         "classification": {
+            "type": "MappableConcept",
             "primaryCoding": {
                 "code": "likely oncogenic",
                 "system": "ClinGen/CGC/VICC Guidelines for Oncogenicity, 2022",
             }
         },
+        "hasEvidence": [
+            "https://civicdb.org/links/evidence/74",
+            "https://civicdb.org/links/evidence/12800",
+            "https://civicdb.org/links/evidence/78",
+            "https://civicdb.org/links/evidence/12711",
+            "https://civicdb.org/links/evidence/12805",
+            "https://civicdb.org/links/evidence/11723",
+            "https://civicdb.org/links/evidence/12709",
+        ],
         "reportedIn": [
             "https://civicdb.org/links/assertion/202",
-            {
-                "id": "civic.sid:44",
-                "type": "Document",
-                "name": "Elisei et al., 2008",
-                "title": "Prognostic significance of somatic RET oncogene mutations in sporadic medullary thyroid cancer: a 10-year follow-up study.",
-                "urls": [
-                    "https://civicdb.org/links/evidence/74",
-                    "https://civicdb.org/links/source/44",
-                    "http://www.ncbi.nlm.nih.gov/pubmed/18073307",
-                    "https://civicdb.org/links/evidence/12800",
-                ],
-                "pmid": "18073307",
-            },
-            {
-                "id": "civic.sid:92",
-                "type": "Document",
-                "name": "Egawa et al., 1998",
-                "title": "Genotype-phenotype correlation of patients with multiple endocrine neoplasia type 2 in Japan.",
-                "urls": [
-                    "https://civicdb.org/links/evidence/78",
-                    "https://civicdb.org/links/source/92",
-                    "http://www.ncbi.nlm.nih.gov/pubmed/9839497",
-                ],
-                "pmid": "9839497",
-            },
-            {
-                "id": "civic.sid:5458",
-                "type": "Document",
-                "name": "Romei et al., 2018",
-                "title": "RET mutation heterogeneity in primary advanced medullary thyroid cancers and their metastases.",
-                "urls": [
-                    "https://civicdb.org/links/evidence/12711",
-                    "https://civicdb.org/links/source/5458",
-                    "http://www.ncbi.nlm.nih.gov/pubmed/29515777",
-                    "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5839408",
-                ],
-                "pmid": "29515777",
-            },
-            {
-                "id": "civic.sid:5519",
-                "type": "Document",
-                "name": "Gujral et al., 2006",
-                "title": "Molecular mechanisms of RET receptor-mediated oncogenesis in multiple endocrine neoplasia 2B.",
-                "urls": [
-                    "https://civicdb.org/links/evidence/12805",
-                    "https://civicdb.org/links/source/5519",
-                    "http://www.ncbi.nlm.nih.gov/pubmed/17108110",
-                ],
-                "pmid": "17108110",
-            },
-            {
-                "id": "civic.sid:4870",
-                "type": "Document",
-                "name": "Zhao et al., 2020",
-                "title": "Identifying novel oncogenic RET mutations and characterising their sensitivity to RET-specific inhibitors.",
-                "urls": [
-                    "https://civicdb.org/links/evidence/11723",
-                    "https://civicdb.org/links/source/4870",
-                    "http://www.ncbi.nlm.nih.gov/pubmed/32284345",
-                ],
-                "pmid": "32284345",
-            },
-            {
-                "id": "civic.sid:4953",
-                "type": "Document",
-                "name": "Ceccherini et al., 1997",
-                "title": "Somatic in frame deletions not involving juxtamembranous cysteine residues strongly activate the RET proto-oncogene.",
-                "urls": [
-                    "https://civicdb.org/links/evidence/12709",
-                    "https://civicdb.org/links/source/4953",
-                    "http://www.ncbi.nlm.nih.gov/pubmed/9191060",
-                ],
-                "pmid": "9191060",
-            },
         ],
         "direction": "supports",
         "specifiedBy": _ccv_method("guideline"),
@@ -1155,91 +1058,101 @@ def gks_aid202(gks_aid202_proposition):
                 "type": "EvidenceLine",
                 "directionOfEvidenceProvided": "supports",
                 "strengthOfEvidenceProvided": {
+                    "type": "MappableConcept",
                     "primaryCoding": {
                         "code": "moderate",
                         "system": "ClinGen/CGC/VICC Guidelines for Oncogenicity, 2022",
                     }
                 },
                 "evidenceOutcome": {
+                    "type": "MappableConcept",
                     "primaryCoding": {
                         "code": "OM1",
                         "system": "ClinGen/CGC/VICC Guidelines for Oncogenicity, 2022",
                     }
                 },
                 "scoreOfEvidenceProvided": 2,
-                "specifiedBy": _ccv_method("functional_domain_location"),
+                "specifiedBy": _ccv_method("functional_domain_assessment"),
             },
             {
                 "type": "EvidenceLine",
                 "directionOfEvidenceProvided": "supports",
                 "strengthOfEvidenceProvided": {
+                    "type": "MappableConcept",
                     "primaryCoding": {
                         "code": "strong",
                         "system": "ClinGen/CGC/VICC Guidelines for Oncogenicity, 2022",
                     }
                 },
                 "evidenceOutcome": {
+                    "type": "MappableConcept",
                     "primaryCoding": {
                         "code": "OS2",
                         "system": "ClinGen/CGC/VICC Guidelines for Oncogenicity, 2022",
                     }
                 },
                 "scoreOfEvidenceProvided": 4,
-                "specifiedBy": _ccv_method("functional_assay"),
+                "specifiedBy": _ccv_method("functional_data_assessment"),
             },
             {
                 "type": "EvidenceLine",
                 "directionOfEvidenceProvided": "supports",
                 "strengthOfEvidenceProvided": {
+                    "type": "MappableConcept",
                     "primaryCoding": {
                         "code": "supporting",
                         "system": "ClinGen/CGC/VICC Guidelines for Oncogenicity, 2022",
                     }
                 },
                 "evidenceOutcome": {
+                    "type": "MappableConcept",
                     "primaryCoding": {
                         "code": "OP4",
                         "system": "ClinGen/CGC/VICC Guidelines for Oncogenicity, 2022",
                     }
                 },
                 "scoreOfEvidenceProvided": 1,
-                "specifiedBy": _ccv_method("population_frequency"),
+                "specifiedBy": _ccv_method("population_data_assessment"),
             },
             {
                 "type": "EvidenceLine",
                 "directionOfEvidenceProvided": "supports",
                 "strengthOfEvidenceProvided": {
+                    "type": "MappableConcept",
                     "primaryCoding": {
                         "code": "supporting",
                         "system": "ClinGen/CGC/VICC Guidelines for Oncogenicity, 2022",
                     }
                 },
                 "evidenceOutcome": {
+                    "type": "MappableConcept",
                     "primaryCoding": {
                         "code": "OP1",
                         "system": "ClinGen/CGC/VICC Guidelines for Oncogenicity, 2022",
                     }
                 },
                 "scoreOfEvidenceProvided": 1,
-                "specifiedBy": _ccv_method("computational_prediction"),
+                "specifiedBy": _ccv_method("in_silico_impact_assessment"),
             },
             {
                 "type": "EvidenceLine",
                 "directionOfEvidenceProvided": "supports",
                 "strengthOfEvidenceProvided": {
+                    "type": "MappableConcept",
                     "primaryCoding": {
                         "code": "supporting",
                         "system": "ClinGen/CGC/VICC Guidelines for Oncogenicity, 2022",
                     }
                 },
                 "evidenceOutcome": {
+                    "type": "MappableConcept",
                     "primaryCoding": {
                         "code": "OP3",
                         "system": "ClinGen/CGC/VICC Guidelines for Oncogenicity, 2022",
                     }
                 },
                 "scoreOfEvidenceProvided": 1,
-                "specifiedBy": _ccv_method("somatic_hotspot_recurrence"),
+                "specifiedBy": _ccv_method("somatic_hotspot_assessment"),
             },
         ],
     }
@@ -1438,6 +1351,7 @@ class TestCivicGksMolecularProfile(object):
         assert constraints[0].model_dump(exclude_none=True) == {
             "type": "FeatureContextConstraint",
             "featureContext": {
+                "type": "MappableConcept",
                 "primaryCoding": {
                     "code": "673",
                     "id": "ncbigene:673",
@@ -1511,12 +1425,14 @@ class TestCivicGksMolecularProfile(object):
             "allele": normalized_allele,
             "relations": [
                 {
+                    "type": "MappableConcept",
                     "primaryCoding": {
                         "code": "liftover_to",
-                        "system": "ga4gh-gks-term:allele-relation",
+                        "system": "ga4gh-gkm-term:allele-relation",
                     }
                 },
                 {
+                    "type": "MappableConcept",
                     "primaryCoding": {
                         "code": "translation_of",
                         "system": "http://www.sequenceontology.org",
@@ -1586,16 +1502,18 @@ class TestCivicGksMolecularProfile(object):
                     ),
                     "relations": [
                         {
+                            "type": "MappableConcept",
                             "primaryCoding": {
                                 "code": "liftover_to",
-                                "system": "ga4gh-gks-term:allele-relation",
+                                "system": "ga4gh-gkm-term:allele-relation",
                             }
                         }
                     ],
                     "matchCharacteristic": {
+                        "type": "MappableConcept",
                         "primaryCoding": {
                             "code": "is_within",
-                            "system": "ga4gh-gks-term:location-match",
+                            "system": "ga4gh-gkm-term:location-match",
                         }
                     },
                 },
@@ -1703,11 +1621,11 @@ class TestCivicGksClinSigAssertion(object):
         assert isinstance(record, VariantClinicalSignificanceStatement)
         assert len(record.hasEvidenceLines) == 1
         assert len(record.hasEvidenceLines[0].hasEvidenceItems) == 4
-        therapy = record.hasEvidenceLines[0].targetProposition.objectTherapeutic.root
+        therapy = record.hasEvidenceLines[0].targetProposition.object
         assert isinstance(therapy, TherapyGroup)
         assert therapy.membershipOperator == "AND"
-        assert len(therapy.therapies) == 2
-        therapy_ids = {t.id for t in therapy.therapies}
+        assert len(therapy.concepts) == 2
+        therapy_ids = {t.id for t in therapy.concepts}
         assert therapy_ids == {"civic.tid:19", "civic.tid:22"}
 
     @patch.object(civic.Assertion, "is_valid_for_gks_json")
@@ -1753,11 +1671,11 @@ class TestCivicGksClinSigAssertion(object):
         record = CivicGksClinSigAssertion(aid19)
         assert isinstance(record, VariantClinicalSignificanceStatement)
         assert len(record.hasEvidenceLines) == 1
-        therapy = record.hasEvidenceLines[0].targetProposition.objectTherapeutic.root
+        therapy = record.hasEvidenceLines[0].targetProposition.object
         assert isinstance(therapy, TherapyGroup)
         assert therapy.membershipOperator == "OR"
-        assert len(therapy.therapies) == 2
-        therapy_ids = {t.id for t in therapy.therapies}
+        assert len(therapy.concepts) == 2
+        therapy_ids = {t.id for t in therapy.concepts}
         assert therapy_ids == {"civic.tid:5", "civic.tid:20"}
 
     def test_valid_prognostic(self, aid20, mocked_normalizer):
@@ -1786,29 +1704,11 @@ class TestCivicGksClinSigAssertion(object):
         assert len(record.hasEvidenceLines) == 1
         assert record.hasEvidenceLines[0].hasEvidenceItems is None
 
-        reported_in = []
-        for r in record.reportedIn:
-            if isinstance(r, iriReference):
-                reported_in.append(r.root)
-            else:
-                reported_in.append(r.model_dump(exclude_none=True))
+        assert len(record.reportedIn) == 1
+        assert record.reportedIn[0].root == "https://civicdb.org/links/assertion/20"
 
-        assert reported_in == [
-            "https://civicdb.org/links/assertion/20",
-            {
-                "type": "Document",
-                "id": "civic.sid:4914",
-                "name": "Grimwade et al., 1998",
-                "title": "The importance of diagnostic cytogenetics on outcome in AML: analysis of 1,612 patients entered into the MRC AML 10 trial. The Medical Research Council Adult and Children's Leukaemia Working Parties.",
-                "pmid": "9746770",
-                "urls": [
-                    "https://civicdb.org/links/evidence/11881",
-                    "https://civicdb.org/links/source/4914",
-                    "http://www.ncbi.nlm.nih.gov/pubmed/9746770",
-                ],
-            },
-        ]
-
+        assert len(record.hasEvidence) == 1
+        assert record.hasEvidence[0].root == "https://civicdb.org/links/evidence/11881"
 
 class TestCivicGksDiagnosticAssertion(object):
     """Test that CivicGksDiagnosticAssertion works as expected"""
@@ -1843,9 +1743,8 @@ class TestCivicGksDiagnosticAssertion(object):
         # Single phenotype (complex condition set)
         record = CivicGksClinSigAssertion(aid93)
         assert isinstance(record, VariantClinicalSignificanceStatement)
-        record_object_condition = record.proposition.objectCondition
-        assert isinstance(record_object_condition, Condition)
-        assert isinstance(record_object_condition.root, ConditionSet)
+        record_object_condition = record.proposition.object
+        assert isinstance(record_object_condition, ConditionSet)
         diff = DeepDiff(
             record_object_condition.model_dump(exclude_none=True),
             gks_aid93_object_condition,
@@ -1856,9 +1755,8 @@ class TestCivicGksDiagnosticAssertion(object):
         # Phenotypes (complex condition set)
         record = CivicGksClinSigAssertion(aid115)
         assert isinstance(record, VariantClinicalSignificanceStatement)
-        record_object_condition = record.proposition.objectCondition
-        assert isinstance(record_object_condition, Condition)
-        assert isinstance(record_object_condition.root, ConditionSet)
+        record_object_condition = record.proposition.object
+        assert isinstance(record_object_condition, ConditionSet)
         diff = DeepDiff(
             record_object_condition.model_dump(exclude_none=True),
             gks_aid115_object_condition,
